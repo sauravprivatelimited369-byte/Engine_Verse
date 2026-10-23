@@ -39,7 +39,7 @@
               <span class="navmenu-label">{{ child.label }}</span>
               {% if child.blurb %}<span class="navmenu-desc">{{ child.blurb }}</span>{% endif %}
             </span>
-            {% if child.signed_in and not user %}<span class="navmenu-lock">sign in</span>{% endif %}
+            {% if child.signed_in and not user and not static_export %}<span class="navmenu-lock">sign in</span>{% endif %}
           </a>
         {% endfor %}
       </div>
@@ -91,9 +91,13 @@
 
     <div class="mobilenav-group">
       <div class="mobilenav-head plain">
-        <span aria-hidden="true">{{ icon("cog", 16) }}</span> Your account
+        <span aria-hidden="true">{{ icon("cog", 16) }}</span> {{ 'This device' if static_export and not user else 'Your account' }}
       </div>
       <div class="mobilenav-links">
+        {% if static_export and not user %}
+          <a href="/dashboard" class="{{ 'on' if path == '/dashboard' }}">My progress</a>
+          <a href="/settings" class="{{ 'on' if path == '/settings' }}">Settings and data export</a>
+        {% endif %}
         {% for child in nav_account %}
           <a href="{{ child.path }}" class="{{ 'on' if child.matches(path) }}">{{ child.label }}</a>
         {% endfor %}

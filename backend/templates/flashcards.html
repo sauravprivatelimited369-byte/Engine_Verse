@@ -18,7 +18,7 @@
   <a class="btn btn-soft" href="/flashcards">Browse all flashcards</a>
 {% else %}
   <h1>Browse flashcards</h1>
-  <p class="muted">Prompts and answers are public. Sign in to save a personal SM-2 review schedule.</p>
+  <p class="muted">Prompts and answers are public. {% if static_export %}Personal SM-2 review schedules need an account on a hosted EngineVerse server.{% else %}Sign in to save a personal SM-2 review schedule.{% endif %}</p>
   <form class="panel mb" method="get" action="/flashcards">
     <div class="row">
       <input type="search" name="q" value="{{ q or '' }}" maxlength="120" placeholder="Search prompts, hints, subjects…" aria-label="Search flashcards">

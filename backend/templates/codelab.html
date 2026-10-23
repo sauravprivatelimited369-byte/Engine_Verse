@@ -231,7 +231,7 @@
       {% if user %}
         Saved snippets sync to your EngineVerse account and stay accessible across desktop and Android devices.
       {% else %}
-        Saved snippets are stored locally on this device (sign in to sync across devices).
+        {% if static_export %}Saved snippets are stored on this device only.{% else %}Saved snippets are stored locally on this device (sign in to sync across devices).{% endif %}
       {% endif %}
     </p>
     <h3 class="h-sub">Saved Snippets</h3>

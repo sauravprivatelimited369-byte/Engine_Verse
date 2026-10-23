@@ -61,7 +61,7 @@
     return n;
   }
   function toast(msg) {
-    var ev = window.EngineVerse;
+    var ev = window.EV;
     if (ev && typeof ev.toast === "function") { ev.toast(msg); return; }
     var s = $("[data-planner-data-status]");
     if (s) s.textContent = msg;

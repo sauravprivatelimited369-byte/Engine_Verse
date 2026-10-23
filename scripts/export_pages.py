@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
+from engineverse import project  # noqa: E402
 from engineverse.distribution import normalise_apk_url  # noqa: E402
 
 FORBIDDEN = (
@@ -78,7 +79,7 @@ FILE_SUFFIXES = (
 ATTR_URL = re.compile(
     r"""(?P<attr>\b(?:href|src|action)\s*=\s*)(?P<q>["'])(?P<url>/[^"']*)(?P=q)"""
 )
-REPO = "https://github.com/authorsauravkushwaha/EngineVerse"
+REPO = project.repo_url()
 
 
 def repo_base(explicit: str | None = None) -> str:
@@ -88,10 +89,7 @@ def repo_base(explicit: str | None = None) -> str:
         if text in ("", "/"):
             return "/"
         return "/" + text.strip("/") + "/"
-    name = os.environ.get("GITHUB_REPOSITORY", "authorsauravkushwaha/EngineVerse").split("/")[-1]
-    if name.endswith(".github.io"):
-        return "/"
-    return f"/{name}/"
+    return project.pages_base()
 
 
 def join_base(base: str, path: str) -> str:
@@ -160,6 +158,10 @@ def prepare_env(db_path: Path) -> dict[str, str]:
     # The reading copy is rendered as a signed-out visitor. With the app's
     # default compulsory sign-in every page would be a redirect to /login.
     env["ENGINEVERSE_SIGNIN"] = "optional"
+    # Templates render their static variants: no sign-in prompts, no forms that
+    # post to a server, the browser Submit button on problem pages, and
+    # canonical URLs on the Pages origin rather than the export's loopback host.
+    env["ENGINEVERSE_STATIC_EXPORT"] = "1"
     return env
 
 
@@ -282,49 +284,54 @@ def banner(base: str) -> str:
 
 
 def hosting_main(app_url: str = "", apk_url: str = "") -> str:
-    hosted = (
-        '<p>The full website is available online. You do not need to clone or install the source code. '
-        'Sign in to sync your account across devices; live code execution depends on the host\'s judge.</p>'
-        f'<p><a class="btn btn-primary" href="{html.escape(app_url, quote=True)}/">Open full website</a> '
-        f'<a class="btn btn-ghost" href="{html.escape(app_url, quote=True)}/install">Use on your phone</a></p>'
-        if app_url else
-        '<p>You have full access to EngineVerse directly on this public website without downloading the ZIP '
-        'or cloning the repository. Create an account or sign in to track your XP, streaks, solved coding '
-        'problems, quizzes and mistake notebook, and sync your learner progress directly with '
-        '<code>authorsauravkushwaha/EngineVerse</code> on GitHub.</p>'
-        '<p class="row">'
-        '<a class="btn btn-primary" href="../register/">Create account</a>'
-        '<a class="btn btn-ghost" href="../login/">Sign in</a>'
-        '<a class="btn btn-ghost" href="../install/">Install Android app</a>'
-        f'<a class="btn btn-ghost" href="{REPO}#hosting-the-full-website">Hosting instructions</a></p>'
-    )
-    if apk_url:
-        hosted += (
-            f'<p><a class="btn btn-soft" href="{html.escape(apk_url, quote=True)}" '
-            'rel="noopener noreferrer">Download signed EngineVerse.apk</a></p>'
+    """The /hosting page: what this static copy does, and what needs a server."""
+    deploy_doc = f"{REPO}/blob/main/docs/DEPLOYMENT.md"
+    if app_url:
+        server = (
+            '<p>A hosted EngineVerse server is available. It adds accounts, progress that follows you between '
+            'devices, discussions and server-side code judging where the host has enabled it.</p>'
+            f'<p class="row"><a class="btn btn-primary" href="{html.escape(app_url, quote=True)}/">Open the hosted site</a></p>'
         )
+    else:
+        server = (
+            '<p>No hosted EngineVerse server is linked from this copy yet. Anyone can run one: it is a Python '
+            'FastAPI application with a SQL database. The deployment guide covers it step by step.</p>'
+            f'<p class="row"><a class="btn btn-ghost" href="{html.escape(deploy_doc, quote=True)}" '
+            'rel="noopener noreferrer">Deployment guide</a></p>'
+        )
+    apk = (
+        f'<p><a class="btn btn-soft" href="{html.escape(apk_url, quote=True)}" rel="noopener noreferrer">'
+        'Download the Android app</a></p>'
+        if apk_url else ""
+    )
     return f"""
-<h1>Use EngineVerse here</h1>
-<p class="lead">Everything on EngineVerse is available right here in your browser and on the Android app —
-  no repository clone or ZIP download required.</p>
-<div class="grid g2">
-  <article class="panel">
-    <h2>What works on this site</h2>
-    <p>Notes, 10 programming language paths, 105 coding problems with in-browser code execution and judging,
-      daily practice sets, quizzes, SQL Data Studio, n8n Workflow Automations, MiroFish Multi-Agent Swarm
-      reviews, Public APIs directory, and browser search all work directly here.</p>
-    <p class="row">
-      <a class="btn btn-primary" href="../explore/">Open the catalogue</a>
-      <a class="btn btn-ghost" href="../practice/problems/">Solve coding problems</a>
-    </p>
-  </article>
-  <article class="panel">
-    <h2>Accounts, Android APK and GitHub data sync</h2>
-    {hosted}
-    <p class="small muted">Your learner progress is saved locally and can be synced directly to the
-      <code>authorsauravkushwaha/EngineVerse</code> GitHub learner vault (or via Supabase, Appwrite, or n8n)
-      so your progress stays safe and accessible across desktop and phone.</p>
-  </article>
+<section class="page-hero">
+  <p class="ev-eyebrow">Platform · how this site works</p>
+  <h1>Use EngineVerse here</h1>
+  <p class="lead">This site is a static copy of EngineVerse that runs entirely in your browser. You do not need to
+    download or install anything to use it.</p>
+</section>
+<div class="grid g2 about-grid">
+  <section class="panel">
+    <h2>What works on this copy</h2>
+    <ul class="about-list">
+      <li>Every subject, topic note, formula, flashcard, roadmap and project brief.</li>
+      <li>Daily practice and the question bank, with answers checked in your browser.</li>
+      <li>Coding problems and the compiler, using in-browser runtimes. Each language page says whether it can
+        run here.</li>
+      <li>Progress, streaks, the mistake notebook and the study planner, saved on this device only.</li>
+    </ul>
+    <p class="row"><a class="btn btn-primary" href="/explore">Explore subjects</a>
+      <a class="btn btn-ghost" href="/practice/problems">Coding problems</a>
+      <a class="btn btn-ghost" href="/install">Install the app</a></p>
+    {apk}
+  </section>
+  <section class="panel">
+    <h2>What needs a server</h2>
+    <p>Accounts, progress that syncs between devices, posting in discussions, leaderboards with other learners and
+      certificates with a verification ID all need a hosted EngineVerse server with a database.</p>
+    {server}
+  </section>
 </div>
 """.strip()
 
@@ -338,50 +345,42 @@ def _svg(paths: list[str]) -> str:
 
 
 def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
-    """Phone installation page for the public website: Android APK, PWA and iOS.
+    """Phone installation page for the static Pages copy.
 
-    The static copy is its own HTML, so it used to drift from the app's
-    ``install.html``: no page hero, two plain panels and a bare <h1> against the
-    premium shell every other exported page uses. This mirrors the template's
-    hero and install-card stack, and keeps the honest difference between the two
-    releases - the hosted app can offer a configured APK and full-site install,
-    the static copy usually has neither.
+    Mirrors the template's hero and install-card layout, but describes this
+    copy honestly: no accounts, progress on this device, and an APK link only
+    when a signed GitHub Release has actually been configured.
     """
-    if app_url:
-        site_link = (
-            f'<p><a class="btn btn-soft" href="{html.escape(app_url, quote=True)}/install">'
-            'Install from the full website</a></p>'
-            '<p class="small muted">The full website is where accounts, saved progress and live code '
-            'execution live; this static copy is for reading.</p>'
-        )
-    else:
-        site_link = (
-            f'<p class="small muted">This page is the static reading copy. Accounts, saved progress and '
-            f'live execution live in the <a href="{REPO}#hosting-the-full-website">full self-hosted '
-            'website</a>.</p>'
-        )
-
+    android_ci = f"{REPO}/actions/workflows/android-build.yml"
+    hosted = (
+        f'<p class="small muted">A hosted EngineVerse server is also available at '
+        f'<a href="{html.escape(app_url, quote=True)}/">{html.escape(app_url)}</a>, with accounts that sync '
+        'between devices.</p>'
+        if app_url else ""
+    )
     if apk_url:
         apk_body = (
-            '<p>An alternative Android wrapper for this same HTTPS website is available as a signed '
-            'GitHub Release.</p>'
+            '<p>The native EngineVerse Android app is published as a signed GitHub Release. It includes an '
+            'offline subject catalogue, the study planner and settings, and opens lessons in a secure in-app '
+            'viewer.</p>'
             f'<p><a class="btn btn-primary" href="{html.escape(apk_url, quote=True)}" '
-            'rel="noopener noreferrer">Download signed EngineVerse.apk</a></p>'
+            'rel="noopener noreferrer">Download the signed APK</a></p>'
             '<ol class="steps">'
             '<li>Download the APK from the official GitHub Release.</li>'
-            '<li>Open it on your Android phone and allow installation if prompted.</li>'
-            '<li>Launch <strong>EngineVerse</strong>, sign in and sync your data with GitHub.</li>'
+            '<li>Open it on your Android phone and allow installation from your browser if asked.</li>'
+            '<li>Launch <strong>EngineVerse</strong>.</li>'
             '</ol>'
-            '<p class="small muted">Check the release, its SHA-256 checksum and signing certificate before '
-            'installing. Only install the APK from the official release, never from a forwarded copy; '
-            'updates require a new signed release.</p>'
+            '<p class="small muted">Only install the APK from the official release, never from a forwarded '
+            'copy. Check the SHA-256 checksum published with the release.</p>'
         )
     else:
         apk_body = (
-            '<p>No signed APK has been published and configured for this site yet. Do not install an APK '
-            'from an unofficial source — use the web app above in the meantime.</p>'
-            '<p class="small muted">An APK is only safe to install from the official signed GitHub Release. '
-            'Without a configured release, there is no APK download here.</p>'
+            '<p>No signed release of the native Android app has been published yet, so there is no APK '
+            'download here. Do not install an EngineVerse APK from any other source.</p>'
+            f'<p class="small muted">Testers can download unsigned debug builds from the '
+            f'<a href="{html.escape(android_ci, quote=True)}" rel="noopener noreferrer">Android build '
+            'workflow</a> on GitHub (a GitHub account is required, and builds expire). Debug builds are for '
+            'testing only.</p>'
         )
 
     return f"""
@@ -389,32 +388,31 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
   <p class="ev-eyebrow">Install · Android · iPhone</p>
   <h1>Use EngineVerse on your phone</h1>
-  <p class="lead">You can use the full website without downloading anything. On Android or iPhone, add
-    this same HTTPS site to your home screen. Sign in to your account to keep progress across devices;
-    installing an app is not required.</p>
-  {site_link}
+  <p class="lead">This website works in any modern mobile browser. You can also add it to your home screen so it
+    opens like an app. There is no account: your progress is saved in the browser on each device.</p>
+  {hosted}
 </section>
 
 <div class="stack install-cards">
   <section class="panel install-card">
     <span class="install-mark" aria-hidden="true">{_svg(['M12 4v11.4', 'm7.8 11.4 4.2 4.2 4.2-4.2', 'M5 19.6h14'])}</span>
     <div class="install-body">
-      <h2>Android — install the web app</h2>
+      <h2>Android: add to home screen</h2>
       <ol class="steps">
         <li>Open this site in Chrome.</li>
         <li>Tap the ⋮ menu, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li>
         <li>Confirm. The icon appears on your home screen.</li>
       </ol>
       <button class="btn btn-primary hide" id="install-btn" type="button">Install web app</button>
-      <p class="small muted">The web app uses this site's account and data. Offline access is limited to
-        previously cached public pages; submissions and sign-in need a connection.</p>
+      <p class="small muted">Pages you have already opened are cached for offline reading. Pages you have not
+        visited yet need a connection.</p>
     </div>
   </section>
 
   <section class="panel install-card">
     <span class="install-mark" aria-hidden="true">{_svg(['m13.4 6.6 4 4-7.4 7.4H6v-4z', 'm15.4 4.6 4 4', 'M4.6 19.4 8 16'])}</span>
     <div class="install-body">
-      <h2>Android — signed APK</h2>
+      <h2>Android app</h2>
       {apk_body}
     </div>
   </section>
@@ -422,7 +420,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
   <section class="panel install-card">
     <span class="install-mark" aria-hidden="true">{_svg(['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', 'M3 12h18', 'M12 3c5 5 5 13 0 18-5-5-5-13 0-18z'])}</span>
     <div class="install-body">
-      <h2>iPhone — Safari</h2>
+      <h2>iPhone: Safari</h2>
       <ol class="steps">
         <li>Open this site in Safari.</li>
         <li>Tap Share.</li>
@@ -435,8 +433,8 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
     <span class="install-mark" aria-hidden="true">{_svg(['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'])}</span>
     <div class="install-body">
       <h2>Desktop</h2>
-      <p>Use your browser menu or the install icon in the address bar. Installing does not change where your
-        account data is stored: the operator's private database.</p>
+      <p>Use your browser menu or the install icon in the address bar. Installed or not, your progress stays in
+        that browser. Use <a href="/settings">Settings</a> to export it.</p>
     </div>
   </section>
 </div>
@@ -526,58 +524,12 @@ def retarget_missing_dpp(text: str, base: str, dates: list[str]) -> str:
     return pattern.sub(repl, text)
 
 
-def identity_policy() -> dict:
-    """The contact rules, in the shape ``pages-live.js`` reads.
-
-    Exported pages have no server, so the browser is the only thing that can say
-    "that is not an address". Hand-maintaining a second copy of the rules in
-    JavaScript is how the two halves of the site came to disagree: the static copy
-    accepted ``asha@gmail`` while the hosted app refused it. The policy -
-    numbering plans, near-miss domain map, burner list - is therefore serialized
-    from the same Python tables the API validates against, and only the algorithm
-    is mirrored in JS.
-    """
-    from engineverse.security import email_rules, phone_rules
-
-    return {"email": email_rules.policy(), "phone": phone_rules.policy()}
-
-
-def phone_example() -> str:
-    """The sample subscriber number for the selector's default country.
-
-    The exported pages used to print ``9876543210`` in every phone box, which is
-    the wrong shape for the fourteen other countries on offer; ``pages-live.js``
-    updates it when the selection changes, and this is what it starts on.
-    """
-    from engineverse.security import phone_rules
-
-    return phone_rules.SELECTOR_PLANS[0].example.split(" ", 1)[1]
-
-
-def country_option_markup(indent: str = "              ") -> str:
-    """``<option>`` lines for every dialling code the validator will accept.
-
-    Five hand-written lists used to live in this file (nine, eleven and thirteen
-    countries respectively, none of them the same, none of them the fifteen the
-    server knows). A learner could pick a code the API would refuse, or be told
-    their real number was invalid because their country was missing from one
-    page's list only.
-    """
-    from engineverse.security import phone_rules
-
-    return ("\n" + indent).join(
-        f'<option value="{plan.code}">{plan.flag} {plan.label} ({plan.code})</option>'
-        for plan in phone_rules.SELECTOR_PLANS
-    )
-
-
-def live_boot(base: str, dates: list[str], apk_url: str = "", otp_api_url: str = "") -> str:
+def live_boot(base: str, dates: list[str], apk_url: str = "") -> str:
     payload = {
         "base": base if base.endswith("/") else base + "/",
         "dpp": [rewrite_url(f"/dpp/{day}", base) for day in dates],
         "tutor": rewrite_url("/tutor-corpus.json", base),
         "streaks": rewrite_url("/streaks", base),
-        "vault": rewrite_url("/learner-vault.json", base),
         "quizBank": rewrite_url("/quiz-bank.json", base),
         "codingProblems": rewrite_url("/coding-problems.json", base),
         # Same-origin CPython runtime (Pyodide) for the browser Python
@@ -593,14 +545,8 @@ def live_boot(base: str, dates: list[str], apk_url: str = "", otp_api_url: str =
         "studioSnapshot": rewrite_url("/studio-snapshot.json", base),
         "workflowsCatalog": rewrite_url("/workflows-catalog.json", base),
         "swarmCorpus": rewrite_url("/swarm-corpus.json", base),
-        # Contact rules for the browser-only auth on this copy. See identity_policy().
-        "identity": identity_policy(),
-        "githubRepo": "authorsauravkushwaha/EngineVerse",
-        "githubVaultPath": "data/learners/registry.json",
         "apkUrl": apk_url,
-        # OTP delivery service origin (services/otp). Empty = this static copy
-        # cannot send codes and shows them on the page, labelled as such.
-        "otpApiUrl": otp_api_url,
+        "issues": project.issues_url(),
     }
     blob = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
     return '<script type="application/json" id="ev-live">' + blob + "</script>"
@@ -682,17 +628,6 @@ def write_tutor_corpus(site: Path, base: str) -> None:
         }
     (site / "tutor-corpus.json").write_text(
         json.dumps(list(grouped.values()), ensure_ascii=False),
-        encoding="utf-8",
-    )
-
-
-def write_learner_vault(site: Path) -> None:
-    """Export the validated GitHub learner registry so visitors can sign in and restore progress."""
-    from engineverse.github_storage import load_registry
-
-    registry = load_registry(ROOT / "data" / "learners" / "registry.json")
-    (site / "learner-vault.json").write_text(
-        json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
 
@@ -973,661 +908,262 @@ def enable_problem_editor(body: str) -> str:
     return body
 
 
-def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = "") -> int:
-    """Export interactive browser + GitHub-synced learner account pages for the public website."""
-    apk_link = (
-        f'<a class="btn btn-soft" href="{html.escape(apk_url, quote=True)}" rel="noopener noreferrer">'
-        'Download signed EngineVerse.apk</a>'
-        if apk_url else
-        '<a class="btn btn-soft" href="/install">Phone install guide</a>'
-    )
-    pages_spec: dict[str, tuple[str, str]] = {
-        "/login": (
-            "Sign in - EngineVerse",
-            """
-<div class="auth-wrap" data-ev-page="login">
-  <div class="form-panel panel">
-    <div class="eyebrow">EngineVerse Account · GitHub Vault &amp; Supabase/Appwrite Synced</div>
-    <h1>Welcome back</h1>
-    <p class="muted mb">Verified learners sign in directly with their password — no OTP required on regular sign-in.</p>
-    <div id="ev-already-signed-in" class="callout ok mb" hidden>
-      <span class="label">Session active</span>
-      <p class="small" id="ev-already-user">You are already signed in.</p>
-      <div class="row mt">
-        <a class="btn btn-primary btn-sm" href="/dashboard" id="ev-continue-dashboard">Continue to Dashboard</a>
-        <button class="btn btn-ghost btn-sm" type="button" id="ev-switch-account-btn">Switch account / Sign out</button>
-      </div>
-    </div>
-    <div id="ev-auth-alert" class="callout info mb" hidden></div>
-    <form id="ev-login-form" class="form" novalidate>
-      <label class="field"><span>Username, Gmail/email, or mobile number</span>
-        <input type="text" name="identity" id="ev-login-identity" required autocomplete="username"
-          placeholder="saurav, learner@gmail.com, or +919876543210">
-      </label>
-      <label class="field"><span>Password</span>
-        <input type="password" name="password" id="ev-login-password" required autocomplete="current-password">
-      </label>
-      <div class="row" style="justify-content:space-between">
-        <label class="row small" style="gap:6px"><input type="checkbox" name="remember" id="ev-login-remember" value="1" checked> Keep me signed in across tabs</label>
-        <a href="/forgot-password" class="small">Forgot password? (OTP recovery)</a>
-      </div>
-      <button class="btn btn-primary" type="submit" id="ev-login-submit-btn" style="width:100%">Sign in</button>
-    </form>
-    <div id="ev-login-otp-step" class="mt pt" style="border-top:1px solid var(--border)" hidden>
-      <h2>First-time new user OTP verification</h2>
-      <p class="small muted" id="ev-login-otp-desc">Verify your new account once using the 6-digit code sent to your Gmail/email or mobile number. If no OTP service is configured for this copy, the code is shown on this page instead — the message after you request it will say which happened.</p>
-      <div id="ev-login-otp-preview" class="callout info mb" hidden></div>
-      <form id="ev-login-otp-form" class="form" novalidate>
-        <label class="field"><span>6-digit OTP code</span>
-          <input type="text" id="ev-login-otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="123456">
-        </label>
-        <div class="row">
-          <button class="btn btn-primary" type="submit" id="ev-login-otp-submit">Verify OTP &amp; Finish Sign In</button>
-          <button class="btn btn-ghost btn-sm" type="button" id="ev-login-otp-resend">Resend OTP</button>
-        </div>
-      </form>
-    </div>
-    <div class="mt pt" style="border-top:1px solid var(--border)">
-      <p class="small muted">Quick demo or GitHub vault restore:</p>
-      <div class="row">
-        <button class="btn btn-soft btn-sm" type="button" id="ev-demo-signin">Sign in as Demo Learner</button>
-        <button class="btn btn-ghost btn-sm" type="button" id="ev-github-pull-signin">Restore from GitHub Vault</button>
-      </div>
-    </div>
-    <p class="small muted mt">New here? <a href="/register">Create a free account</a> — new accounts verify once via 6-digit OTP (Gmail or mobile number).</p>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/register": (
-            "Create account - EngineVerse",
-            """
-<div class="auth-wrap" data-ev-page="register">
-  <div class="form-panel panel">
-    <div class="eyebrow">New Learner Signup · One-Time 6-Digit OTP Verification</div>
-    <h1>Create your account</h1>
-    <p class="muted mb">Verify once via Gmail or mobile number (with country code). After initial verification, future sign-ins require only your password.</p>
-    <div id="ev-auth-alert" class="callout info mb" hidden></div>
-    <form id="ev-register-form" class="form" novalidate>
-      <label class="field"><span>Display name</span>
-        <input type="text" name="display_name" id="ev-reg-display" required maxlength="60" placeholder="Aarav Sharma">
-      </label>
-      <label class="field"><span>Username</span>
-        <input type="text" name="username" id="ev-reg-username" required minlength="3" maxlength="24"
-          pattern="[a-zA-Z0-9][a-zA-Z0-9._\\-]{1,22}[a-zA-Z0-9]" placeholder="aarav_sharma">
-        <span class="help">3–24 characters: letters, digits, dot, underscore or hyphen, starting and
-          ending with a letter or digit. This becomes your portfolio URL.</span>
-      </label>
-      <label class="field"><span>Gmail / Email address</span>
-        <input type="email" name="email" id="ev-reg-email" required maxlength="254" inputmode="email"
-          autocomplete="email" placeholder="you@gmail.com">
-        <span class="help">The full address, domain included. Burner inboxes and near-miss
-          spellings (gmial.com) are refused here, because your reset link has to survive there.</span>
-      </label>
-      <div class="field"><span>Mobile number (with country code)</span>
-        <div class="phone-cc-row">
-          <select name="country_code" id="ev-reg-country-code" aria-label="Country code">
-            __EV_COUNTRY_OPTIONS__
-          </select>
-          <input type="tel" name="phone" id="ev-reg-phone" maxlength="20" inputmode="tel" autocomplete="tel-national"
-              pattern="[0-9 +.()-]*" title="Digits, spaces, dots, dashes or brackets only"
-              placeholder="__EV_PHONE_EXAMPLE__">
-        </div>
-      </div>
-      <label class="field"><span>Send 6-digit signup OTP via</span>
-        <select name="otp_channel" id="ev-reg-otp-channel">
-          <option value="email">Gmail / Email (6-digit OTP)</option>
-          <option value="phone">Mobile Number SMS with Country Code (6-digit OTP)</option>
-        </select>
-      </label>
-      <div class="form-row">
-        <label class="field"><span>Branch</span>
-          <select name="branch" id="ev-reg-branch">
-            <option value="cse">Computer Science &amp; Engineering</option>
-            <option value="ece">Electronics &amp; Communication</option>
-            <option value="ee">Electrical Engineering</option>
-            <option value="me">Mechanical Engineering</option>
-            <option value="ce">Civil Engineering</option>
-            <option value="che">Chemical Engineering</option>
-            <option value="ae">Aerospace Engineering</option>
-            <option value="AIML">AI &amp; Data Science</option>
-          </select>
-        </label>
-        <label class="field"><span>Current year</span>
-          <select name="year_of_study" id="ev-reg-year">
-            <option value="1">1st Year</option>
-            <option value="2">2nd Year</option>
-            <option value="3">3rd Year</option>
-            <option value="4">4th Year</option>
-          </select>
-        </label>
-      </div>
-      <label class="field"><span>Password</span>
-        <input type="password" name="password" id="ev-reg-password" required minlength="8" autocomplete="new-password"
-          placeholder="At least 8 characters">
-      </label>
-      <label class="row small" style="gap:6px">
-        <input type="checkbox" name="sync_github" id="ev-reg-sync-gh" value="1" checked>
-        Prepare GitHub learner vault snapshot for <code>authorsauravkushwaha/EngineVerse</code>
-      </label>
-      <button class="btn btn-primary" type="submit" style="width:100%" id="ev-reg-submit-btn">Send 6-digit OTP &amp; Verify Account</button>
-    </form>
-    <div id="ev-reg-otp-step" class="mt pt" style="border-top:1px solid var(--border)" hidden>
-      <h2>Verify your 6-digit signup OTP</h2>
-      <p class="small muted" id="ev-reg-otp-desc">Enter the 6-digit code sent to your Gmail/email or mobile number (shown on this page only when no OTP service is configured for this copy).</p>
-      <div id="ev-reg-otp-preview" class="callout info mb" hidden></div>
-      <form id="ev-reg-otp-form" class="form" novalidate>
-        <label class="field"><span>6-digit OTP code</span>
-          <input type="text" id="ev-reg-otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="123456">
-        </label>
-        <div class="row">
-          <button class="btn btn-primary" type="submit" id="ev-reg-otp-submit">Verify 6-digit OTP &amp; Create Account</button>
-          <button class="btn btn-ghost btn-sm" type="button" id="ev-reg-resend-otp">Resend OTP</button>
-          <button class="btn btn-soft btn-sm" type="button" id="ev-reg-otp-switch">Switch Gmail / Mobile OTP</button>
-        </div>
-      </form>
-    </div>
-    <p class="small muted mt">Already registered? <a href="/login">Sign in</a></p>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/forgot-password": (
-            "Reset password - EngineVerse",
-            """
-<div class="auth-wrap" data-ev-page="forgot-password">
-  <div class="form-panel panel">
-    <div class="eyebrow">Account Recovery · Gmail or Mobile Number OTP</div>
-    <h1>Reset your password</h1>
-    <p class="muted mb">Verify with the 6-digit code sent to your Gmail/email or mobile number to set a new password. It is displayed on this page only when no OTP service is configured for this copy.</p>
-    <div id="ev-auth-alert" class="callout info mb" hidden></div>
-    <form id="ev-forgot-form" class="form" novalidate>
-      <label class="field"><span>Verify via</span>
-        <select name="otp_channel" id="ev-forgot-channel">
-          <option value="email">Gmail / Email (6-digit OTP)</option>
-          <option value="phone">Mobile Number SMS with Country Code (6-digit OTP)</option>
-        </select>
-      </label>
-      <label class="field" id="ev-forgot-email-wrap"><span>Username or Gmail / Email</span>
-        <input type="text" name="identity" id="ev-forgot-identity" placeholder="saurav or you@gmail.com">
-      </label>
-      <div class="field" id="ev-forgot-phone-wrap"><span>Mobile number (with country code)</span>
-        <div class="phone-cc-row">
-          <select name="country_code" id="ev-forgot-country-code" aria-label="Country code">
-            __EV_COUNTRY_OPTIONS__
-          </select>
-          <input type="tel" name="phone" id="ev-forgot-phone" maxlength="20" inputmode="tel" autocomplete="tel-national"
-              pattern="[0-9 +.()-]*" title="Digits, spaces, dots, dashes or brackets only"
-              placeholder="__EV_PHONE_EXAMPLE__">
-        </div>
-      </div>
-      <div id="ev-forgot-otp-step" hidden>
-        <div id="ev-forgot-otp-preview" class="callout info mb" hidden></div>
-        <label class="field"><span>6-digit OTP code</span>
-          <input type="text" name="otp_code" id="ev-forgot-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
-        </label>
-        <label class="field"><span>New password</span>
-          <input type="password" name="new_password" id="ev-forgot-new-password" minlength="8" placeholder="At least 8 characters">
-        </label>
-        <label class="field"><span>Confirm new password</span>
-          <input type="password" name="confirm_password" id="ev-forgot-confirm-password" minlength="8" placeholder="Confirm new password">
-        </label>
-        <div class="row">
-          <button class="btn btn-ghost btn-sm" type="button" id="ev-forgot-resend-btn">Resend 6-digit OTP</button>
-        </div>
-      </div>
-      <div class="row">
-        <button class="btn btn-primary" type="submit" id="ev-forgot-submit-btn" style="width:100%">Send 6-digit Recovery OTP</button>
-      </div>
-    </form>
-    <p class="small muted mt"><a href="/login">Back to sign in</a></p>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/reset-password": (
-            "Choose a new password - EngineVerse",
-            """
-<div class="auth-wrap" data-ev-page="reset-password">
-  <div class="form-panel panel">
-    <div class="eyebrow">OTP Password Reset · Gmail or Mobile Number</div>
-    <h1>Choose a new password</h1>
-    <p class="muted mb">Verify with a 6-digit OTP via Gmail or mobile number (with country code) and re-sync your SHA-256 verification digest to GitHub.</p>
-    <div id="ev-auth-alert" class="callout info mb" hidden></div>
-    <form id="ev-forgot-form" class="form" novalidate>
-      <label class="field"><span>Verify via</span>
-        <select name="otp_channel" id="ev-forgot-channel">
-          <option value="email">Gmail / Email (6-digit OTP)</option>
-          <option value="phone">Mobile Number SMS with Country Code (6-digit OTP)</option>
-        </select>
-      </label>
-      <label class="field" id="ev-forgot-email-wrap"><span>Username or Gmail / Email</span>
-        <input type="text" name="identity" id="ev-forgot-identity" placeholder="saurav or you@gmail.com">
-      </label>
-      <div class="field" id="ev-forgot-phone-wrap"><span>Mobile number (with country code)</span>
-        <div class="phone-cc-row">
-          <select name="country_code" id="ev-forgot-country-code" aria-label="Country code">
-            __EV_COUNTRY_OPTIONS__
-          </select>
-          <input type="tel" name="phone" id="ev-forgot-phone" maxlength="20" inputmode="tel" autocomplete="tel-national"
-              pattern="[0-9 +.()-]*" title="Digits, spaces, dots, dashes or brackets only"
-              placeholder="__EV_PHONE_EXAMPLE__">
-        </div>
-      </div>
-      <div id="ev-forgot-otp-step" hidden>
-        <div id="ev-forgot-otp-preview" class="callout info mb" hidden></div>
-        <label class="field"><span>6-digit OTP code</span>
-          <input type="text" name="otp_code" id="ev-forgot-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
-        </label>
-        <label class="field"><span>New password</span>
-          <input type="password" name="new_password" id="ev-forgot-new-password" minlength="8" placeholder="At least 8 characters">
-        </label>
-        <label class="field"><span>Confirm new password</span>
-          <input type="password" name="confirm_password" id="ev-forgot-confirm-password" minlength="8" placeholder="Confirm new password">
-        </label>
-        <div class="row">
-          <button class="btn btn-ghost btn-sm" type="button" id="ev-forgot-resend-btn">Resend 6-digit OTP</button>
-        </div>
-      </div>
-      <button class="btn btn-primary" type="submit" id="ev-forgot-submit-btn" style="width:100%">Send 6-digit Recovery OTP</button>
-    </form>
-    <p class="small muted mt"><a href="/login">Back to sign in</a></p>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/logout": (
-            "Signed out - EngineVerse",
-            """
-<div class="auth-wrap" data-ev-page="logout">
-  <div class="form-panel panel">
-    <h1>You are signed out</h1>
-    <p class="muted mb">Your local session has been closed. Any saved progress remains safe in your browser vault and on GitHub.</p>
-    <div class="row">
-      <a class="btn btn-primary" href="/login">Sign in again</a>
-      <a class="btn btn-ghost" href="/explore">Explore catalogue</a>
-    </div>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/dashboard": (
-            "Learner Dashboard - EngineVerse",
-            f"""
-<div data-ev-page="dashboard">
-  <div class="hero" style="padding:28px">
-    <div class="eyebrow">Personal Engineering Workspace · GitHub Synced</div>
-    <h1 id="ev-dash-greeting">Welcome to EngineVerse</h1>
-    <p class="lead" id="ev-dash-sub">Track your daily streak, XP, completed topics, solved coding problems, and sync directly with GitHub.</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="/today">Today's plan</a>
-      <a class="btn btn-ghost" href="/practice/problems">Solve coding problems</a>
-      <a class="btn btn-ghost" href="/settings">GitHub Cloud Sync</a>
-      {apk_link}
-    </div>
-  </div>
-  <div class="stats mt">
-    <div class="stat"><div class="label">Total XP</div><div class="value" id="ev-stat-xp">0</div><div class="sub" id="ev-stat-level">Level 1 · Spark</div></div>
-    <div class="stat"><div class="label">Current streak</div><div class="value" id="ev-stat-streak">0 days</div><div class="sub" id="ev-stat-longest">Longest: 0d</div></div>
-    <div class="stat"><div class="label">Topics completed</div><div class="value" id="ev-stat-topics">0</div><div class="sub">Across 8 branches</div></div>
-    <div class="stat"><div class="label">Problems solved</div><div class="value" id="ev-stat-problems">0</div><div class="sub" id="ev-stat-quizzes">0 quizzes answered</div></div>
-  </div>
-  <div class="grid g2 mt">
-    <section class="panel">
-      <h2>GitHub Learner Vault Status</h2>
-      <p class="small muted">Your learner snapshot is linked to <code>authorsauravkushwaha/EngineVerse</code>
-        (<code>data/learners/registry.json</code>).</p>
-      <div id="ev-dash-sync-status" class="callout info mb">Ready to sync your learner snapshot with GitHub.</div>
-      <div class="row">
-        <button class="btn btn-primary btn-sm" type="button" data-ev-sync-github>Save progress to GitHub now</button>
-        <button class="btn btn-ghost btn-sm" type="button" data-ev-pull-github>Pull latest from GitHub</button>
-        <a class="btn btn-soft btn-sm" href="/settings">Configure token / webhooks</a>
-      </div>
-    </section>
-    <section class="panel">
-      <h2>Recent activity &amp; solved work</h2>
-      <div id="ev-dash-activity" class="small muted">Complete a note, quiz, or coding problem to see your activity log here.</div>
-      <div class="row mt">
-        <a class="btn btn-ghost btn-sm" href="/mistakes">Mistake notebook</a>
-        <a class="btn btn-ghost btn-sm" href="/portfolio">Portfolio</a>
-        <a class="btn btn-ghost btn-sm" href="/certificates">Certificates</a>
-      </div>
-    </section>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/profile": (
-            "Your Profile - EngineVerse",
-            """
-<div data-ev-page="profile">
-  <div class="section-head">
-    <div>
-      <div class="eyebrow">Learner Profile</div>
-      <h1 id="ev-profile-name">EngineVerse Learner</h1>
-    </div>
-    <div class="row">
-      <a class="btn btn-ghost btn-sm" href="/settings">Edit profile &amp; GitHub sync</a>
-      <a class="btn btn-primary btn-sm" href="/portfolio">Public portfolio</a>
-    </div>
-  </div>
-  <div class="stats mb">
-    <div class="stat"><div class="label">Username</div><div class="value" id="ev-profile-username">guest</div></div>
-    <div class="stat"><div class="label">Branch &amp; Year</div><div class="value" id="ev-profile-branch">CSE · Year 1</div></div>
-    <div class="stat"><div class="label">XP &amp; Level</div><div class="value" id="ev-profile-xp">0 XP</div></div>
-    <div class="stat"><div class="label">GitHub Vault</div><div class="value" id="ev-profile-gh">Synced</div></div>
-  </div>
-  <div class="grid g2">
-    <section class="panel">
-      <h2>Completed topics &amp; bookmarks</h2>
-      <div id="ev-profile-topics" class="small muted">No topics marked complete yet. Open any topic to mark it complete or bookmark it.</div>
-    </section>
-    <section class="panel">
-      <h2>Solved coding problems</h2>
-      <div id="ev-profile-problems" class="small muted">No coding problems solved yet. Visit the coding bank to run and submit code in your browser.</div>
-    </section>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/settings": (
-            "Settings & GitHub Sync - EngineVerse",
-            f"""
-<div data-ev-page="settings">
-  <div class="section-head">
-    <div>
-      <div class="eyebrow">Account, Cloud Sync &amp; Mobile APK</div>
-      <h1>Settings &amp; GitHub Learner Vault</h1>
-    </div>
-    <div class="row">
-      <a class="btn btn-ghost btn-sm" href="/dashboard">Dashboard</a>
-      <button class="btn btn-ghost btn-sm" type="button" id="ev-signout-btn">Sign out</button>
-    </div>
-  </div>
-  <div id="ev-settings-alert" class="callout info mb" hidden></div>
-  <div class="grid g2">
-    <section class="panel">
-      <h2>1. Save your data on GitHub (authorsauravkushwaha/EngineVerse)</h2>
-      <p class="small muted">Your account profile, XP, streak, solved coding problems, and completed topics are stored in
-        <code>data/learners/registry.json</code> on <code>authorsauravkushwaha/EngineVerse</code>. You can sync directly via
-        GitHub API token, one-click GitHub Issue sync (processed automatically by GitHub Actions), or export/import JSON.</p>
-      <form id="ev-github-sync-form" class="form">
-        <label class="field"><span>GitHub Repository</span>
-          <input type="text" name="github_repo" id="ev-gh-repo" value="authorsauravkushwaha/EngineVerse">
-        </label>
-        <label class="field"><span>GitHub Personal Access Token (optional, stored only in your browser for direct API push)</span>
-          <input type="password" name="github_token" id="ev-gh-token" placeholder="ghp_... or github_pat_... (leave blank for Issue sync)">
-        </label>
-        <div class="row">
-          <button class="btn btn-primary btn-sm" type="submit">Push snapshot to GitHub now</button>
-          <button class="btn btn-soft btn-sm" type="button" id="ev-gh-issue-sync">Sync via GitHub Actions Issue (no token needed)</button>
-          <button class="btn btn-ghost btn-sm" type="button" id="ev-gh-pull-btn">Pull from GitHub Vault</button>
-        </div>
-      </form>
-      <div class="mt pt" style="border-top:1px solid var(--border)">
-        <p class="small muted">Download or import your portable learner snapshot JSON:</p>
-        <div class="row">
-          <button class="btn btn-ghost btn-sm" type="button" id="ev-export-json">Download snapshot (.json)</button>
-          <label class="btn btn-ghost btn-sm" style="cursor:pointer">
-            Import snapshot (.json)
-            <input type="file" id="ev-import-json" accept="application/json,.json" hidden>
-          </label>
-        </div>
-      </div>
-    </section>
-    <section class="panel">
-      <h2>2. Profile &amp; Optional Cloud Connectors (Supabase / Appwrite / n8n)</h2>
-      <form id="ev-profile-form" class="form">
-        <label class="field"><span>Display name</span>
-          <input type="text" name="display_name" id="ev-set-display" required maxlength="60">
-        </label>
-        <label class="field"><span>Gmail / Email address</span>
-          <input type="email" name="email" id="ev-set-email" maxlength="254" inputmode="email"
-            autocomplete="email" placeholder="you@gmail.com">
-          <span class="help">Saved lowercased, exactly as sign-in looks it up. An address nothing
-            can receive mail at is refused; a typo one keystroke from gmail.com always is.</span>
-        </label>
-        <div class="field"><span>Mobile number (with country code)</span>
-          <div class="phone-cc-row">
-            <select name="country_code" id="ev-set-country-code" aria-label="Country code">
-            __EV_COUNTRY_OPTIONS__
-            </select>
-            <input type="tel" name="phone" id="ev-set-phone" maxlength="20" inputmode="tel" autocomplete="tel-national"
-              pattern="[0-9 +.()-]*" title="Digits, spaces, dots, dashes or brackets only"
-              placeholder="__EV_PHONE_EXAMPLE__">
-          </div>
-        </div>
-        <div class="form-row">
-          <label class="field"><span>Branch</span>
-            <select name="branch" id="ev-set-branch">
-              <option value="cse">Computer Science &amp; Engineering</option>
-              <option value="ece">Electronics &amp; Communication</option>
-              <option value="ee">Electrical Engineering</option>
-              <option value="me">Mechanical Engineering</option>
-              <option value="ce">Civil Engineering</option>
-              <option value="che">Chemical Engineering</option>
-              <option value="ae">Aerospace Engineering</option>
-              <option value="AIML">AI &amp; Data Science</option>
-            </select>
-          </label>
-          <label class="field"><span>Year of study</span>
-            <select name="year_of_study" id="ev-set-year">
-              <option value="1">1st Year</option>
-              <option value="2">2nd Year</option>
-              <option value="3">3rd Year</option>
-              <option value="4">4th Year</option>
-            </select>
-          </label>
-        </div>
-        <label class="field"><span>Bio / Target goal</span>
-          <input type="text" name="bio" id="ev-set-bio" maxlength="240" placeholder="Preparing for GATE + core systems engineering">
-        </label>
-        <label class="field"><span>Optional n8n / Supabase / Appwrite Webhook URL (auto-forwards OTP &amp; progress sync)</span>
-          <input type="url" name="webhook_url" id="ev-set-webhook" placeholder="https://your-n8n-or-supabase.example/webhook/engineverse">
-        </label>
-        <button class="btn btn-primary btn-sm" type="submit">Save profile &amp; sync settings</button>
-      </form>
-      <div class="mt pt" style="border-top:1px solid var(--border)">
-        <p class="small muted">Install on your Android phone:</p>
-        <div class="row">{apk_link}</div>
-      </div>
-    </section>
-  </div>
-  <section class="panel mt" id="ev-password-change-panel">
-    <h2>3. Change Password via 6-Digit OTP (Gmail or Mobile Number with Country Code)</h2>
-    <p class="small muted">A 6-digit code is required when changing your password. It is sent to your selected Gmail/email or mobile number, and shown on this page only when no OTP service is configured for this copy.</p>
-    <div id="ev-pwd-otp-alert" class="callout info mb" hidden></div>
-    <form id="ev-password-change-form" class="form" novalidate>
-      <div class="grid g2">
-        <label class="field"><span>Send 6-digit OTP via</span>
-          <select id="ev-pwd-otp-channel" name="otp_channel">
-            <option value="email">Gmail / Email (6-digit OTP)</option>
-            <option value="phone">Mobile Number SMS with Country Code (6-digit OTP)</option>
-          </select>
-        </label>
-        <div class="field"><span>Mobile number (with country code)</span>
-          <div class="phone-cc-row">
-            <select id="ev-pwd-country-code" name="country_code" aria-label="Country code">
-              __EV_COUNTRY_OPTIONS__
-            </select>
-            <input type="tel" id="ev-pwd-phone" name="phone" maxlength="20" inputmode="tel" autocomplete="tel-national"
-              pattern="[0-9 +.()-]*" title="Digits, spaces, dots, dashes or brackets only"
-              placeholder="__EV_PHONE_EXAMPLE__">
-          </div>
-        </div>
-      </div>
-      <div id="ev-pwd-otp-step" hidden>
-        <div id="ev-pwd-otp-preview" class="callout info mb" hidden></div>
-        <div class="grid g3">
-          <label class="field"><span>6-digit OTP code</span>
-            <input type="text" id="ev-pwd-otp-code" inputmode="numeric" maxlength="6" placeholder="123456">
-          </label>
-          <label class="field"><span>New password</span>
-            <input type="password" id="ev-pwd-new-password" minlength="8" placeholder="At least 8 characters">
-          </label>
-          <label class="field"><span>Confirm new password</span>
-            <input type="password" id="ev-pwd-confirm-password" minlength="8" placeholder="Confirm new password">
-          </label>
-        </div>
-      </div>
-      <div class="row">
-        <button class="btn btn-primary btn-sm" type="submit" id="ev-pwd-submit-btn">Send 6-digit OTP to change password</button>
-      </div>
-    </form>
+def _no_accounts_main(heading: str, intro: str) -> str:
+    """Body of the old sign-in URLs, kept so existing bookmarks still resolve."""
+    return f"""
+<section class="page-hero" data-ev-page="no-accounts">
+  <p class="ev-eyebrow">This device · no account needed</p>
+  <h1>{html.escape(heading)}</h1>
+  <p class="lead">{html.escape(intro)}</p>
+</section>
+<div class="grid g2 about-grid">
+  <section class="panel">
+    <h2>Your progress stays on this device</h2>
+    <p>This public copy of EngineVerse runs entirely in your browser. There are no accounts or passwords, and nothing
+      you do here is uploaded. Streaks, completed topics, solved problems, bookmarks and your study planner are
+      saved in this browser's local storage.</p>
+    <p class="row"><a class="btn btn-primary btn-sm" href="/dashboard">My progress</a>
+      <a class="btn btn-ghost btn-sm" href="/explore">Explore subjects</a></p>
+  </section>
+  <section class="panel">
+    <h2>Moving to another device</h2>
+    <p>Export your progress as a JSON file from <a href="/settings">Settings</a>, then import it on the other
+      device. Clearing this browser's site data deletes your progress, so export first if you want to keep it.</p>
+    <p>Accounts, synced progress, discussions and certificates with a verification ID need a hosted EngineVerse
+      server. The <a href="/hosting">hosting page</a> explains how to run one.</p>
   </section>
 </div>
-""".strip(),
-        ),
-        "/today": (
-            "Today's Study Plan - EngineVerse",
-            """
-<div data-ev-page="today">
-  <div class="section-head">
-    <div>
-      <div class="eyebrow">Daily Engineering Loop</div>
-      <h1>Today's 4-step study plan</h1>
-    </div>
-    <a class="btn btn-ghost btn-sm" href="/dpp">Open today's DPP</a>
+""".strip()
+
+
+def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = "",
+                        branches: list[tuple[str, str]] | None = None) -> int:
+    """Write the static copy's personal pages, driven by pages-live.js.
+
+    The Pages copy has no accounts. These pages read and write one local
+    profile record in this browser (``ev:local-profile:v1``) and never send it
+    anywhere. Earlier versions exported password, OTP and "GitHub vault" pages
+    here; their URLs now explain the local model so old bookmarks resolve.
+    """
+    branch_options = "\n".join(
+        f'            <option value="{html.escape(slug, quote=True)}">{html.escape(name)}</option>'
+        for slug, name in (branches or [])
+    )
+    apk_link = (
+        f'<a class="btn btn-soft btn-sm" href="{html.escape(apk_url, quote=True)}" rel="noopener noreferrer">'
+        'Download the Android app</a>'
+        if apk_url else
+        '<a class="btn btn-soft btn-sm" href="/install">Install the app</a>'
+    )
+    stats = """
+  <div class="grid g4 dash-stats" aria-label="Your progress">
+    <div class="stat dash-stat"><div class="n" id="ev-stat-xp">0</div><div class="l">XP · <span id="ev-stat-level">Level 1</span></div></div>
+    <div class="stat dash-stat"><div class="n" id="ev-stat-streak">0</div><div class="l">Day streak · <span id="ev-stat-longest">best 0</span></div></div>
+    <div class="stat dash-stat"><div class="n" id="ev-stat-topics">0</div><div class="l">Topics completed</div></div>
+    <div class="stat dash-stat"><div class="n" id="ev-stat-problems">0</div><div class="l">Problems solved · <span id="ev-stat-quizzes">0 questions answered</span></div></div>
+  </div>""".strip()
+    local_note = ('<p class="chips-row"><span class="chip ok">Saved on this device only</span>'
+                  '<span class="chip">Nothing is uploaded</span></p>')
+    pages_spec: dict[str, tuple[str, str]] = {
+        "/dashboard": ("My progress - EngineVerse", f"""
+<div data-ev-page="dashboard">
+  <section class="page-hero">
+    <p class="ev-eyebrow">This device · progress</p>
+    <h1 id="ev-dash-greeting">My progress</h1>
+    <p class="lead">Everything you complete in this browser is counted here.</p>
+    {local_note}
+    <p class="row"><a class="btn btn-primary btn-sm" href="/today">Today's plan</a>
+      <a class="btn btn-ghost btn-sm" href="/planner">Study planner</a>
+      <a class="btn btn-ghost btn-sm" href="/settings">Settings and export</a></p>
+  </section>
+  {stats}
+  <div class="grid g2 mt">
+    <section class="panel">
+      <h2>Recently completed</h2>
+      <ul class="ev-local-list" id="ev-dash-activity"></ul>
+      <p class="muted" data-ev-empty="ev-dash-activity">Nothing yet. Open a topic and mark it complete, answer a
+        <a href="/dpp">daily practice</a> question or solve a <a href="/practice/problems">coding problem</a>.</p>
+    </section>
+    <section class="panel">
+      <h2>Saved for later</h2>
+      <ul class="ev-local-list" id="ev-dash-bookmarks"></ul>
+      <p class="muted" data-ev-empty="ev-dash-bookmarks">Use the save button on a topic, video or book to keep it here.</p>
+      <p class="row"><a class="btn btn-ghost btn-sm" href="/mistakes">Mistake notebook</a>
+        <a class="btn btn-ghost btn-sm" href="/streaks">Streak heatmap</a>
+        <a class="btn btn-ghost btn-sm" href="/portfolio">Portfolio</a></p>
+    </section>
   </div>
+</div>"""),
+        "/profile": ("My profile - EngineVerse", f"""
+<div data-ev-page="profile">
+  <section class="page-hero">
+    <p class="ev-eyebrow">This device · profile</p>
+    <h1 id="ev-profile-name">EngineVerse learner</h1>
+    <p class="lead"><span id="ev-profile-branch">Branch not set</span> · <span id="ev-profile-xp">0 XP</span></p>
+    <p id="ev-profile-bio" class="muted"></p>
+    {local_note}
+    <p class="row"><a class="btn btn-ghost btn-sm" href="/settings">Edit profile</a>
+      <a class="btn btn-ghost btn-sm" href="/portfolio">Portfolio view</a></p>
+  </section>
   <div class="grid g2">
-    <article class="panel">
-      <h2>Step 1 · Read &amp; Master a Core Topic</h2>
-      <p class="muted">Pick an engineering topic note, read the derivation and worked example, and mark it complete.</p>
-      <p><a class="btn btn-primary btn-sm" href="/explore">Browse topics</a></p>
-    </article>
-    <article class="panel">
-      <h2>Step 2 · Daily Practice Problems (DPP)</h2>
-      <p class="muted">Answer today's timed multiple-choice and numerical practice set with instant browser grading.</p>
-      <p><a class="btn btn-primary btn-sm" href="/dpp">Start today's DPP</a></p>
-    </article>
-    <article class="panel">
-      <h2>Step 3 · Solve a Coding Problem</h2>
-      <p class="muted">Write, run, and submit code against all test cases directly in your browser.</p>
-      <p><a class="btn btn-primary btn-sm" href="/practice/problems">Open coding bank</a></p>
-    </article>
-    <article class="panel">
-      <h2>Step 4 · Review Mistakes &amp; Sync to GitHub</h2>
-      <p class="muted">Clear any missed questions in your mistake notebook and push your streak to GitHub.</p>
+    <section class="panel">
+      <h2>Completed topics</h2>
+      <ul class="ev-local-list" id="ev-profile-topics"></ul>
+      <p class="muted" data-ev-empty="ev-profile-topics">No topics completed yet.</p>
+    </section>
+    <section class="panel">
+      <h2>Solved problems</h2>
+      <ul class="ev-local-list" id="ev-profile-problems"></ul>
+      <p class="muted" data-ev-empty="ev-profile-problems">No problems solved yet.</p>
+    </section>
+  </div>
+</div>"""),
+        "/settings": ("Settings - EngineVerse", f"""
+<div data-ev-page="settings">
+  <section class="page-hero">
+    <p class="ev-eyebrow">This device · settings</p>
+    <h1>Settings and your data</h1>
+    <p class="lead">This copy has no accounts. Your profile and progress are stored in this browser only.</p>
+    {local_note}
+  </section>
+  <p class="callout info mb" id="ev-settings-status" role="status" aria-live="polite" hidden></p>
+  <div class="grid g2">
+    <section class="panel">
+      <h2>Profile</h2>
+      <form id="ev-profile-form" novalidate>
+        <div class="field"><label for="ev-set-display">Display name</label>
+          <input type="text" id="ev-set-display" name="display_name" maxlength="60" autocomplete="nickname"
+            placeholder="Shown on your progress and portfolio pages"></div>
+        <div class="grid g2">
+          <div class="field"><label for="ev-set-branch">Branch</label>
+            <input type="text" id="ev-set-branch" name="branch" maxlength="60" list="ev-branch-options"
+              placeholder="e.g. Computer Science">
+            <datalist id="ev-branch-options">
+{branch_options}
+            </datalist></div>
+          <div class="field"><label for="ev-set-year">Year of study</label>
+            <select id="ev-set-year" name="year_of_study">
+              <option value="0">Not set</option>
+              <option value="1">1st year</option><option value="2">2nd year</option>
+              <option value="3">3rd year</option><option value="4">4th year</option>
+              <option value="5">5th year or later</option>
+            </select></div>
+        </div>
+        <div class="field"><label for="ev-set-bio">Goal <span class="muted">(optional)</span></label>
+          <input type="text" id="ev-set-bio" name="bio" maxlength="240" placeholder="e.g. Preparing for GATE"></div>
+        <p class="small muted">Do not enter contact details: this page has no reason to store them.</p>
+        <button class="btn btn-primary btn-sm" type="submit">Save profile</button>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>Back up or move your progress</h2>
+      <p class="muted">Download your progress as a JSON file, then import it in another browser or on another
+        device. Importing replaces the progress stored here.</p>
       <p class="row">
-        <a class="btn btn-ghost btn-sm" href="/mistakes">Mistake notebook</a>
-        <button class="btn btn-soft btn-sm" type="button" data-ev-sync-github>Sync to GitHub</button>
+        <button class="btn btn-soft btn-sm" type="button" id="ev-export-json">Export progress (.json)</button>
+        <label class="btn btn-ghost btn-sm planner-import">Import progress
+          <input type="file" id="ev-import-json" accept="application/json,.json" class="sr-only"></label>
       </p>
-    </article>
+      <p class="small muted">The study planner has its own export on the <a href="/planner">planner page</a>.</p>
+      <h2 class="mt">Delete your data</h2>
+      <p class="muted">Removes your profile, streak, progress, mistakes and saved items from this browser.</p>
+      <button class="btn btn-danger btn-sm" type="button" id="ev-clear-data">Delete my progress from this browser</button>
+      <h2 class="mt">Install</h2>
+      <p class="row">{apk_link}</p>
+    </section>
   </div>
-</div>
-""".strip(),
-        ),
-        "/mistakes": (
-            "Mistake Notebook - EngineVerse",
-            """
-<div data-ev-page="mistakes">
-  <div class="section-head">
-    <div>
-      <div class="eyebrow">Active Recall &amp; Error Log</div>
-      <h1>Mistake notebook</h1>
-    </div>
-    <a class="btn btn-ghost btn-sm" href="/practice/questions">Practice question bank</a>
-  </div>
-  <p class="lead">Every quiz question or coding problem you miss is recorded here so you can re-attempt and master it.</p>
-  <div id="ev-mistakes-list" class="panel">
-    <h2>Recorded mistakes</h2>
-    <p class="muted">No unresolved mistakes recorded yet. Answer any topic quiz, DPP, or question bank item to populate your notebook.</p>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/onboarding": (
-            "Welcome & Setup - EngineVerse",
-            """
-<div data-ev-page="onboarding">
-  <div class="panel">
-    <div class="eyebrow">Quick Setup</div>
-    <h1>Set up your EngineVerse workspace</h1>
-    <p class="lead">Choose your engineering branch, year of study, and GitHub sync preferences.</p>
-    <p class="row">
-      <a class="btn btn-primary" href="/settings">Open account &amp; GitHub settings</a>
-      <a class="btn btn-ghost" href="/explore">Explore the catalogue</a>
-      <a class="btn btn-soft" href="/install">Install Android APK</a>
-    </p>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/notifications": (
-            "Notifications - EngineVerse",
-            """
-<div data-ev-page="notifications">
-  <div class="section-head">
-    <div>
-      <div class="eyebrow">Activity Feed</div>
-      <h1>Notifications &amp; milestones</h1>
-    </div>
-    <a class="btn btn-ghost btn-sm" href="/dashboard">Back to dashboard</a>
-  </div>
-  <div id="ev-notifications-list" class="panel">
-    <h2>Recent updates</h2>
-    <p class="muted">Your XP awards, streak milestones, and GitHub vault sync confirmations appear here.</p>
-  </div>
-</div>
-""".strip(),
-        ),
-        "/portfolio": (
-            "Engineering Portfolio - EngineVerse",
-            """
-<div data-ev-page="portfolio">
-  <div class="section-head">
-    <div>
-      <div class="eyebrow">Verified Learner Record</div>
-      <h1 id="ev-portfolio-title">Engineering Portfolio</h1>
-    </div>
-    <button class="btn btn-primary btn-sm" type="button" data-ev-sync-github>Publish to GitHub Vault</button>
-  </div>
-  <div class="panel mb">
-    <h2>Summary &amp; GitHub Verification</h2>
-    <p id="ev-portfolio-summary" class="muted">Sign in and complete topics, projects, or coding problems to build your verifiable engineering portfolio backed by <code>authorsauravkushwaha/EngineVerse</code>.</p>
-  </div>
+</div>"""),
+        "/today": ("Today's plan - EngineVerse", """
+<div data-ev-page="today">
+  <section class="page-hero">
+    <p class="ev-eyebrow">Progress · today</p>
+    <h1>Today's plan</h1>
+    <p class="lead">Four steps for a focused study day. Your streak counts any day you complete one.</p>
+  </section>
   <div class="grid g2">
-    <section class="panel">
-      <h2>Completed Projects &amp; Topics</h2>
-      <div id="ev-portfolio-projects" class="small muted">Mark topics and projects complete to showcase them here.</div>
-    </section>
-    <section class="panel">
-      <h2>Coding &amp; Quiz Achievements</h2>
-      <div id="ev-portfolio-coding" class="small muted">Solved coding problems and quiz accuracy metrics appear here.</div>
-    </section>
+    <section class="panel"><h2>1. Learn one topic</h2>
+      <p class="muted">Read a topic's explanation and worked example, then mark it complete.</p>
+      <p><a class="btn btn-primary btn-sm" href="/explore">Browse topics</a></p></section>
+    <section class="panel"><h2>2. Daily practice</h2>
+      <p class="muted">Answer today's practice set. Answers are checked in your browser.</p>
+      <p><a class="btn btn-primary btn-sm" href="/dpp">Open today's set</a></p></section>
+    <section class="panel"><h2>3. Solve a coding problem</h2>
+      <p class="muted">Write and run code in the browser against the problem's tests.</p>
+      <p><a class="btn btn-primary btn-sm" href="/practice/problems">Open the problem bank</a></p></section>
+    <section class="panel"><h2>4. Review mistakes</h2>
+      <p class="muted">Re-read the questions you missed and the explanation for each.</p>
+      <p class="row"><a class="btn btn-ghost btn-sm" href="/mistakes">Mistake notebook</a>
+        <a class="btn btn-ghost btn-sm" href="/planner">Plan tomorrow</a></p></section>
   </div>
-</div>
-""".strip(),
-        ),
-        "/certificates": (
-            "Certificates & Milestones - EngineVerse",
-            """
+</div>"""),
+        "/mistakes": ("Mistake notebook - EngineVerse", f"""
+<div data-ev-page="mistakes">
+  <section class="page-hero">
+    <p class="ev-eyebrow">Practice · mistakes</p>
+    <h1>Mistake notebook</h1>
+    <p class="lead">Questions you answered incorrectly in this browser, with the correct answer and explanation.</p>
+    {local_note}
+  </section>
+  <ul class="ev-local-list ev-mistakes" id="ev-mistakes-list"></ul>
+  <p class="panel muted" data-ev-empty="ev-mistakes-list">No mistakes recorded. Answer questions in the
+    <a href="/practice/questions">question bank</a> or <a href="/dpp">daily practice</a>.</p>
+</div>"""),
+        "/portfolio": ("Portfolio - EngineVerse", """
+<div data-ev-page="portfolio">
+  <section class="page-hero">
+    <p class="ev-eyebrow">This device · portfolio</p>
+    <h1 id="ev-portfolio-title">Learning portfolio</h1>
+    <p class="lead" id="ev-portfolio-summary">A summary of what you have completed in this browser.</p>
+    <p class="callout info">This page is generated from progress saved in this browser. It is not public and not
+      verified by anyone. You can print it or save it as a PDF.</p>
+    <p class="row"><button class="btn btn-soft btn-sm" type="button" id="ev-portfolio-print">Print or save as PDF</button>
+      <a class="btn btn-ghost btn-sm" href="/settings">Edit name and branch</a></p>
+  </section>
+  <div class="grid g2">
+    <section class="panel"><h2>Topics completed</h2>
+      <ul class="ev-local-list" id="ev-portfolio-topics"></ul>
+      <p class="muted" data-ev-empty="ev-portfolio-topics">No topics completed yet.</p></section>
+    <section class="panel"><h2>Problems solved</h2>
+      <ul class="ev-local-list" id="ev-portfolio-problems"></ul>
+      <p class="muted" data-ev-empty="ev-portfolio-problems">No problems solved yet.</p></section>
+  </div>
+</div>"""),
+        "/certificates": ("Certificates - EngineVerse", """
 <div data-ev-page="certificates">
-  <div class="section-head">
-    <div>
-      <div class="eyebrow">Completion Credentials</div>
-      <h1>Certificates &amp; mastery milestones</h1>
-    </div>
-    <a class="btn btn-ghost btn-sm" href="/programming">Language paths</a>
-  </div>
-  <div class="panel">
-    <h2>Earned &amp; in-progress certificates</h2>
-    <p class="muted">Complete topic tracks, coding sheets, or programming language paths and sync your snapshot to <code>authorsauravkushwaha/EngineVerse</code> to unlock verifiable completion certificates.</p>
-    <div id="ev-certificates-list" class="mt"></div>
-  </div>
-</div>
-""".strip(),
-        ),
+  <section class="page-hero">
+    <p class="ev-eyebrow">Platform · certificates</p>
+    <h1>Certificates</h1>
+    <p class="lead">Certificates carry a verification ID that anyone can check. That needs completion records on a
+      server, so this public copy cannot issue or verify them.</p>
+  </section>
+  <section class="panel">
+    <h2>What you can do here</h2>
+    <ul class="about-list">
+      <li>Track completed topics and solved problems on <a href="/dashboard">My progress</a>.</li>
+      <li>Print a summary of your work from the <a href="/portfolio">portfolio page</a>. It is clearly marked as
+        unverified.</li>
+      <li>Run your own EngineVerse server to issue verifiable certificates. See the <a href="/hosting">hosting page</a>.</li>
+    </ul>
+  </section>
+</div>"""),
+        "/login": ("Sign in - EngineVerse", _no_accounts_main(
+            "No sign-in needed", "This public copy of EngineVerse has no accounts.")),
+        "/register": ("Create an account - EngineVerse", _no_accounts_main(
+            "No account needed", "This public copy of EngineVerse has no accounts. Start learning straight away.")),
+        "/forgot-password": ("Password help - EngineVerse", _no_accounts_main(
+            "There are no passwords here", "This public copy of EngineVerse has no accounts, so there is nothing to reset.")),
+        "/reset-password": ("Password help - EngineVerse", _no_accounts_main(
+            "There are no passwords here", "This public copy of EngineVerse has no accounts, so there is nothing to reset.")),
+        "/logout": ("Sign out - EngineVerse", _no_accounts_main(
+            "Nothing to sign out of", "This public copy of EngineVerse has no accounts. To remove your progress from this browser, use Settings.")),
+        "/notifications": ("Notifications - EngineVerse", _no_accounts_main(
+            "No notifications on this copy", "Notifications need an account on a hosted EngineVerse server.")),
+        "/onboarding": ("Get started - EngineVerse", _no_accounts_main(
+            "Get started", "Set your branch in Settings, then open your stream to see the subjects for it.")),
     }
     count = 0
     for path, (title, main_raw) in pages_spec.items():
-        # The country-code lists are not written here; they are generated from the
-        # numbering-plan table the API validates against, on every page that shows
-        # one, so the hosted and exported selectors cannot drift apart.
-        main_raw = re.sub(
-            r"([ \t]*)__EV_COUNTRY_OPTIONS__", lambda m: country_option_markup(m.group(1)), main_raw
-        ).replace("__EV_PHONE_EXAMPLE__", phone_example())
-        rewritten_main = rewrite_html(main_raw, base)
+        rewritten_main = rewrite_html(main_raw.strip(), base)
         page_html = fill_shell(home_html, title, rewritten_main)
         target = output_path(site, path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -1657,7 +1193,7 @@ def reading_copy_controls(text: str) -> str:
     return text.replace("data-lab-mode-notice hidden", "data-lab-mode-notice")
 
 
-def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = None, apk_url: str = "", otp_api_url: str = "") -> str:
+def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = None, apk_url: str = "") -> str:
     text = reading_copy_controls(rewrite_html(text, base))
     text = text.replace('href="/explore?year=1"', f'href="{rewrite_url("/explore/first-year", base)}"', 1)
     # The year link may already have been rewritten before this replacement.
@@ -1673,7 +1209,7 @@ def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = 
     if dpp_dates:
         text = retarget_missing_dpp(text, base, dpp_dates)
     if "</body>" in text:
-        boot = live_boot(base, dpp_dates or [], apk_url=apk_url, otp_api_url=otp_api_url)
+        boot = live_boot(base, dpp_dates or [], apk_url=apk_url)
         text = text.replace("</body>", boot + "\n" + mirror_script() + "\n</body>", 1)
     return text
 
@@ -1869,7 +1405,7 @@ def fill_shell(home_html: str, title: str, main: str) -> str:
     return text
 
 
-def export(site: Path, base: str, app_url: str = "", apk_url: str = "", otp_api_url: str = "") -> int:
+def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
@@ -1901,11 +1437,11 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "", otp_api_
         if response.status_code != 200 or "text/html" not in response.headers.get("content-type", ""):
             failed.append(f"{path} -> {response.status_code}")
             continue
-        body = inject(response.text, base, search=(path == "/search"), dpp_dates=dpp_dates, apk_url=apk_url, otp_api_url=otp_api_url)
+        body = inject(response.text, base, search=(path == "/search"), dpp_dates=dpp_dates, apk_url=apk_url)
         if path.startswith("/practice/problems/") and path.count("/") == 3:
             body = enable_problem_editor(body)
         if path == "/install":
-            body = fill_shell(body, "Install EngineVerse", reading_copy_install_main(app_url, apk_url))
+            body = fill_shell(body, "Install EngineVerse", rewrite_html(reading_copy_install_main(app_url, apk_url), base))
         if path == "/streaks":
             body = re.sub(r'<p class="small muted" data-hosted-streak-notice>.*?</p>',
                           "", body, count=1, flags=re.S)
@@ -1922,29 +1458,31 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "", otp_api_
     if not home_html:
         raise SystemExit("Home page did not render. Nothing was published.")
 
-    written += write_account_pages(site, base, home_html, apk_url=apk_url)
+    from engineverse import catalog
 
-    hosting = fill_shell(home_html, "Use EngineVerse", hosting_main(app_url, apk_url))
+    branch_list = [(row["slug"], row["name"]) for row in catalog.list_branches()]
+    written += write_account_pages(site, base, home_html, apk_url=apk_url, branches=branch_list)
+
+    hosting = fill_shell(home_html, "Use EngineVerse", rewrite_html(hosting_main(app_url, apk_url), base))
     hosting_path = output_path(site, "/hosting")
     hosting_path.parent.mkdir(parents=True, exist_ok=True)
     hosting_path.write_text(hosting, encoding="utf-8")
     written += 1
 
     missing = client.get("/this-page-is-not-in-the-catalogue")
-    not_found = inject(missing.text, base, search=False, apk_url=apk_url, otp_api_url=otp_api_url) if missing.text else home_html
+    not_found = inject(missing.text, base, search=False, apk_url=apk_url) if missing.text else home_html
     (site / "404.html").write_text(not_found, encoding="utf-8")
 
     index = search_index(base)
     (site / "search-index.json").write_text(json.dumps(index, ensure_ascii=False), encoding="utf-8")
     write_tutor_corpus(site, base)
-    write_learner_vault(site)
     write_quiz_bank(site, base)
     write_coding_problems(site)
     write_studio_snapshot(site)
     write_workflows_catalog(site, base)
     write_swarm_corpus(site, base)
 
-    origin = "https://authorsauravkushwaha.github.io" + ("" if base == "/" else base.rstrip("/"))
+    origin = project.pages_origin() + ("" if base == "/" else base.rstrip("/"))
     locs = [origin + "/"]
     for path in sorted(site.rglob("index.html")):
         rel = path.relative_to(site).as_posix()
@@ -2070,7 +1608,7 @@ def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = F
             '<div class="callout warning" style="text-align:left"><span class="label">Not hosted yet</span>'
             'GitHub Pages cannot store accounts or run a judge. The operator has not configured '
             'a public HTTPS app origin.</div>'
-            f'<p><a class="btn btn-ghost" href="{repo}#hosting-the-full-website">'
+            f'<p><a class="btn btn-ghost" href="{repo}/blob/main/docs/DEPLOYMENT.md">'
             'How to host the full website</a></p>'
         )
         script = ""
@@ -2162,7 +1700,7 @@ def self_check() -> None:
     assert "Download signed" not in gate
     assert "Download signed" in gateway_page(
         "/EngineVerse/", "https://learn.example.org", "EngineVerse",
-        apk_url="https://github.com/authorsauravkushwaha/EngineVerse/releases/download/android-v1.0.0/EngineVerse.apk"
+        apk_url=project.release_download_prefix() + "android-v1.0.0/EngineVerse.apk"
     )
     # /apis is a page, not part of /api/. This boundary once silently dropped
     # the directory while exporting navigation links to it on every page.
@@ -2187,8 +1725,6 @@ def main() -> int:
     parser.add_argument("--skip-seed", action="store_true", help="reuse ENGINEVERSE_DB_PATH")
     parser.add_argument("--app-url", default=None,
                         help="full app HTTPS origin (default: $ENGINEVERSE_APP_URL)")
-    parser.add_argument("--otp-api-url", default=None,
-                        help="OTP delivery service HTTPS origin (default: $ENGINEVERSE_OTP_API_URL)")
     parser.add_argument("--apk-url", default=None,
                         help="versioned signed GitHub Release APK URL (default: $ENGINEVERSE_APK_URL)")
     parser.add_argument("--gateway", action="store_true",
@@ -2214,18 +1750,12 @@ def main() -> int:
     if (args.gateway or app_url) and not args.reading_copy:
         export_gateway(ROOT / args.out, base, app_url, apk_url=apk_url)
         return 0
-    try:
-        otp_api_url = normalise_app_url(
-            args.otp_api_url if args.otp_api_url is not None else os.environ.get("ENGINEVERSE_OTP_API_URL", "")
-        )
-    except SystemExit:
-        raise SystemExit("ENGINEVERSE_OTP_API_URL must be a public HTTPS origin (localhost HTTP only for development).") from None
     db_path = ROOT / "data" / "pages-export.sqlite"
     env = prepare_env(db_path)
     os.environ.update(env)
     if not args.skip_seed:
         seed(env, db_path)
-    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url, otp_api_url=otp_api_url)
+    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url)
     return 0
 
 

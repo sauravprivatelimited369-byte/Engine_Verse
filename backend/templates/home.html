@@ -28,7 +28,7 @@
           <a class="btn btn-primary btn-lg" href="/stream">Open my stream {{ icon("chevron", 15) }}</a>
           <a class="btn btn-ghost btn-lg" href="/explore">Explore engineering</a>
         {% else %}
-          <a class="btn btn-primary btn-lg" href="/register">Start learning free {{ icon("chevron", 15) }}</a>
+          <a class="btn btn-primary btn-lg" href="{{ '/explore' if static_export else '/register' }}">Start learning free {{ icon("chevron", 15) }}</a>
           <a class="btn btn-ghost btn-lg" href="/streams">Find my stream</a>
         {% endif %}
         <a class="hero-install" href="/install">{{ icon("download", 16) }} Android app</a>
@@ -408,15 +408,26 @@
       <div class="cta-panel-copy">
         <p class="ev-eyebrow">Zero-install web · Android · progress snapshots</p>
         <h2>Use it online or on your phone</h2>
-        <p>Solve DPPs and explore the labs in your browser. On the hosted app, signing in saves your progress
-          to its private database so it follows you between devices. Learners on the public static copy can
-          export a <em>progress-only</em> snapshot (no password or contact details) that a maintainer can save
-          to <code>authorsauravkushwaha/EngineVerse</code> — GitHub is not the account database.</p>
+        {% if static_export %}
+        <p>Solve DPPs, run code and explore the labs in your browser. This public copy has no accounts: your
+          progress is saved on this device only, and you can export it as a JSON file from Settings. A hosted
+          EngineVerse server adds accounts, so progress follows you between devices.</p>
+        {% else %}
+        <p>Solve DPPs and explore the labs in your browser. Signing in saves your progress to this server's
+          private database so it follows you between devices. You can download a copy of it from Settings at
+          any time.</p>
+        {% endif %}
       </div>
       <div class="cta-panel-actions">
-        <a class="btn btn-primary" href="/register">Create free account {{ icon("chevron", 14) }}</a>
+        {% if static_export %}
+        <a class="btn btn-primary" href="/explore">Start learning {{ icon("chevron", 14) }}</a>
         <a class="btn btn-ghost" href="/install">{{ icon("download", 15) }} Android &amp; install</a>
-        <a class="btn btn-soft" href="/settings">Progress snapshot</a>
+        <a class="btn btn-soft" href="/settings">Export my progress</a>
+        {% else %}
+        <a class="btn btn-primary" href="{{ '/stream' if user else '/register' }}">{{ 'Open my stream' if user else 'Create free account' }} {{ icon("chevron", 14) }}</a>
+        <a class="btn btn-ghost" href="/install">{{ icon("download", 15) }} Android &amp; install</a>
+        <a class="btn btn-soft" href="{{ '/settings#export' if user else '/login' }}">{{ 'Download my data' if user else 'Sign in' }}</a>
+        {% endif %}
       </div>
     </div>
   </section>
@@ -513,7 +524,7 @@
     {% if user %}
       <a class="btn btn-primary btn-lg" href="/stream">Open my stream {{ icon("chevron", 15) }}</a>
     {% else %}
-      <a class="btn btn-primary btn-lg" href="/register">Start learning free {{ icon("chevron", 15) }}</a>
+      <a class="btn btn-primary btn-lg" href="{{ '/explore' if static_export else '/register' }}">Start learning free {{ icon("chevron", 15) }}</a>
     {% endif %}
   </section>
 

@@ -10,7 +10,18 @@
     your own review history. <a href="/flashcards">Browse the public flashcards</a> if you only want to read.</p>
 </section>
 
-{% if not user %}
+{% if static_export %}
+  <div class="panel center gate-panel">
+    <span class="gate-icon" aria-hidden="true">{{ icon("cards", 24) }}</span>
+    <h2>Spaced repetition needs a hosted server</h2>
+    <p class="muted">A personal review schedule is stored with your account on a hosted EngineVerse server. This
+      public copy has no accounts, so it cannot keep one. You can still study every card.</p>
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-primary" href="/flashcards">Study the flashcards {{ icon("chevron", 14) }}</a>
+      <a class="btn btn-ghost" href="/planner">Plan revision in the study planner</a>
+    </div>
+  </div>
+{% elif not user %}
   <div class="panel center gate-panel">
     <span class="gate-icon" aria-hidden="true">{{ icon("cards", 24) }}</span>
     <h2>Sign in to start revising</h2>

@@ -66,6 +66,7 @@
         <textarea id="cb" name="body" required placeholder="Answer with reasoning, not just the answer."></textarea></div>
       <button class="btn btn-primary">Reply</button>
     </form>
+    {% elif static_export %}<div class="panel center"><p class="muted">This is a read-only copy of the discussion. Replies need a hosted EngineVerse server.</p></div>
     {% else %}<div class="panel center"><a class="btn btn-primary" href="/login">Sign in to reply</a></div>{% endif %}
   </article>
   <aside class="sidebar">

@@ -49,7 +49,7 @@
     <div class="stat dash-stat"><div class="n" data-streak-total>–</div><div class="l">Study days</div></div>
   </div>
   <p class="small muted mt" data-streak-note>A day counts when you open a topic, a practice set, a language
-    module, or a project on this device. Sign in to keep the same streak across devices.</p>
+    module, or a project on this device. {% if not static_export %}Sign in to keep the same streak across devices.{% endif %}</p>
 </section>
 
 <div class="quick-strip mb">

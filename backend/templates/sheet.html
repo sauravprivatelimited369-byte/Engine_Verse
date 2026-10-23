@@ -30,8 +30,9 @@
   {% endif %}
 </div>
 {% else %}
-<p class="small muted">Sign in to have your progress on this sheet tracked.
-  <a href="/login?next=/sheets/{{ sheet.slug }}">Sign in</a> · <a href="/register">Create an account</a></p>
+{% if static_export %}<p class="small muted" data-ev-sheet-progress>Problems you solve in the browser are marked here and saved on this device only.</p>
+{% else %}<p class="small muted">Sign in to have your progress on this sheet tracked.
+  <a href="/login?next=/sheets/{{ sheet.slug }}">Sign in</a> · <a href="/register">Create an account</a></p>{% endif %}
 {% endif %}
 
 <div class="panel">

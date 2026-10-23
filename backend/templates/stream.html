@@ -205,8 +205,9 @@
   <div class="grid g3">
     <a class="card" href="/flashcards">
       <span class="title">Flashcards</span>
-      <span class="desc">{{ cards.flashcards }} cards from this stream's subjects, with spaced repetition once you
-        sign in.</span></a>
+      <span class="desc">{{ cards.flashcards }} cards from this stream's subjects, {% if static_export %}to study in
+        order.{% else %}with spaced repetition once you
+        sign in.{% endif %}</span></a>
     <a class="card" href="/formulas">
       <span class="title">Formula centre</span>
       <span class="desc">{{ cards.formulas }} formulas from this stream, searchable by subject and category.</span></a>
@@ -223,7 +224,7 @@
     project briefs - {{ offsite_total }} optional external reading links exist under
     <a href="/resources/offsite">optional external reading</a>, and nothing in this hub needs them.
   </p>
-  {% if not user %}
+  {% if not user and not static_export %}
   <p class="small"><a class="btn btn-primary" href="/register">Create a free account</a> to track progress,
     keep a streak and have your own stream remembered.</p>
   {% endif %}

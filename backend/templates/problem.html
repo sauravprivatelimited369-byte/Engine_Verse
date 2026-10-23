@@ -76,6 +76,7 @@
         {{ '' if runnable_now else 'disabled title="Code execution is disabled on this server"' }}>Run</button>
       {% if user %}<button class="btn btn-primary" id="btn-submit" type="button"
         {{ '' if runnable_now else 'disabled title="Code execution is disabled on this server"' }}>Submit</button>
+      {% elif static_export %}<button class="btn btn-primary" id="btn-submit" type="button">Submit</button>
       {% else %}<a class="btn btn-primary" href="/login">Sign in to submit</a>{% endif %}
       <span class="tiny muted">Ctrl+Enter to run · Ctrl+Shift+B to submit</span>
     </div>

@@ -66,9 +66,6 @@
     clearTimeout(box._t);
     box._t = setTimeout(() => { box.style.opacity = "0"; }, 3200);
   }
-  // Page scripts (planner.js, pages-live.js) reuse the same toast.
-  window.EngineVerse = cfg;
-  cfg.toast = toast;
 
   // ------------------------------------------------------- mobile nav + menu
   // The panel is generated from the same navigation table as the desktop bar, so

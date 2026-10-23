@@ -55,8 +55,8 @@
     <p class="muted small">Set your branch and semester, then open your stream. It collects the subjects,
       notes, sheets and projects your branch actually has.</p>
     <p class="startlinks">
-      <a class="btn btn-soft btn-sm" href="{{ '/onboarding' if user else '/register' }}">
-        {{ 'Set my branch' if user else 'Create an account' }}</a>
+      <a class="btn btn-soft btn-sm" href="{{ '/onboarding' if user else ('/settings' if static_export else '/register') }}">
+        {{ 'Set my branch' if user or static_export else 'Create an account' }}</a>
       <a class="btn btn-ghost btn-sm" href="{{ '/stream' if user else '/streams' }}">My stream</a>
     </p>
   </div>
@@ -103,7 +103,7 @@
               {% if dest.blurb %}<span class="indexlist-desc">{{ dest.blurb }}</span>{% endif %}
             </span>
             {% if counts.get(dest.path) %}<span class="chip indexlist-count">{{ counts[dest.path] }}</span>{% endif %}
-            {% if dest.signed_in and not user %}<span class="chip indexlist-lock">sign in</span>{% endif %}
+            {% if dest.signed_in and not user and not static_export %}<span class="chip indexlist-lock">sign in</span>{% endif %}
           </a>
         </li>
         {% endfor %}

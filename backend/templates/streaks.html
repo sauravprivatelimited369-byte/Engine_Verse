@@ -58,7 +58,7 @@
     read, question you answer and problem you submit fills a square here.
     A separate static reading copy may show a browser-only streak; it is not imported into your account.</p>
   <div class="row" style="justify-content:center">
-    <a class="btn btn-primary" href="/register">Start your streak {{ icon("chevron", 14) }}</a>
+    <a class="btn btn-primary" href="{{ '/dpp' if static_export else '/register' }}">Start your streak {{ icon("chevron", 14) }}</a>
     <a class="btn btn-ghost" href="/dpp">Try today's DPP first</a>
   </div>
   <div class="streak-rules">

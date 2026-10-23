@@ -36,7 +36,10 @@
       {% for s in sets %}<a class="day-list-item {{ 'on' if s.date == active_date }}" href="/dpp/{{ s.date }}">{{ s.title or s.date }}</a>{% endfor %}
       <a class="small day-list-more" href="/dpp/archive">Browse the full archive {{ icon("chevron", 12) }}</a>
     </div></div>
-    {% if not user %}<div class="panel tight"><h2 class="h-sub">Track your progress</h2>
+    {% if static_export %}<div class="panel tight"><h2 class="h-sub">Track your progress</h2>
+      <p class="small muted">Answers are checked in your browser. Your streak and mistake notebook are saved on this device only.</p>
+      <a class="btn btn-soft btn-block btn-sm" href="/dashboard">My progress</a></div>
+    {% elif not user %}<div class="panel tight"><h2 class="h-sub">Track your progress</h2>
       <p class="small muted">Sign in to record answers, build a streak and get a mistake notebook.</p>
       <a class="btn btn-primary btn-block btn-sm" href="/register">Create a free account</a></div>{% endif %}
   </aside>

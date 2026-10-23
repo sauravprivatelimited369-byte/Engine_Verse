@@ -225,6 +225,12 @@ def _static_export() -> bool:
     return os.environ.get("ENGINEVERSE_STATIC_EXPORT", "") == "1"
 
 
+def _issues_url() -> str:
+    from engineverse import project
+
+    return project.issues_url()
+
+
 def _canonical_url(path: str) -> str:
     """Absolute public URL of a page, for <link rel="canonical"> and og:url."""
     clean = "/" + path.lstrip("/")
@@ -260,6 +266,7 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         # visitor; this flag swaps account controls for device-local progress.
         "static_export": _static_export(),
         "canonical_url": _canonical_url(request.url.path),
+        "issues_url": _issues_url(),
         # A signed-out visitor on an instance where sign-in is compulsory can
         # only reach the account pages, so the layout drops the navigation,
         # search and footer links that would each bounce back to /login.
