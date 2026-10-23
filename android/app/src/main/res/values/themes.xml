@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown by androidx.core.splashscreen while the first frame is prepared. -->
+    <style name="Theme.EngineVerse.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_light</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>
+        <item name="postSplashScreenTheme">@style/Theme.EngineVerse</item>
+    </style>
+
+    <!-- Compose draws everything; the window theme only sets system colours. -->
+    <style name="Theme.EngineVerse" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_light</item>
+    </style>
+</resources>

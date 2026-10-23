@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and lower. Progress and planner tasks are small and personal;
+     they are backed up with the user's own device backup, nothing else is. -->
+<full-backup-content>
+    <include domain="sharedpref" path="engineverse.xml" />
+</full-backup-content>

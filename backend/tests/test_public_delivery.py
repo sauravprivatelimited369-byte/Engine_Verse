@@ -13,12 +13,13 @@ from types import SimpleNamespace
 import pytest
 from starlette.testclient import TestClient
 
+from engineverse import project
 from engineverse.config import reload_settings
 from engineverse.distribution import normalise_apk_url
 from scripts import export_pages, verify_apk_release, verify_hosted_app, verify_pages, verify_twa
 
 ROOT = Path(__file__).resolve().parents[2]
-APK = "https://github.com/authorsauravkushwaha/EngineVerse/releases/download/android-v1.2.3/EngineVerse.apk"
+APK = project.release_download_prefix() + "android-v1.2.3/EngineVerse.apk"
 ORIGIN = "https://learn.example.org"
 FINGERPRINT = ":".join(["A1"] * 32)
 

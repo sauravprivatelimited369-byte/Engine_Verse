@@ -1,62 +1,65 @@
 name: GitHub Pages
 
-# Publishes the full interactive EngineVerse public site to GitHub Pages,
-# builds and signs the Android APK release (android-v1.0.0) so visitors can
-# install EngineVerse.apk on their phone directly from /install, and switches
-# to gateway mode if a separate ENGINEVERSE_APP_URL host is configured.
+# Builds the static EngineVerse reading copy, checks it, and deploys it to
+# GitHub Pages. Any failed check stops the build job, so nothing is deployed.
+#
+# The Android app is built by android-build.yml. This workflow never builds or
+# signs an APK; the install page links to a release only when the repository
+# variable ENGINEVERSE_APK_URL names one that verify_apk_release.py confirms.
+#
+# One-time repository setup (needs an admin):
+#   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+#   Settings -> Environments -> github-pages -> allow the branches below.
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      # Working branch: deploys now; main takes over once it is merged.
+      - arena/38eff4a6-engine-verse
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 env:
   ENGINEVERSE_APP_URL: ${{ vars.ENGINEVERSE_APP_URL }}
   ENGINEVERSE_APK_URL: ${{ vars.ENGINEVERSE_APK_URL }}
-  # OTP delivery service (services/otp). When set, signup / recovery /
-  # password-change codes are really emailed/texted instead of shown on
-  # the page. Set it under Settings -> Secrets and variables -> Actions.
-  ENGINEVERSE_OTP_API_URL: ${{ vars.ENGINEVERSE_OTP_API_URL }}
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 20 was enough before the browser-runtime bundles (~170 MB of pinned
-    # toolchains) and their end-to-end verification joined the export.
-    timeout-minutes: 35
+    # The browser-runtime bundles (~170 MB of pinned toolchains) and their
+    # end-to-end verification take most of this.
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-node@v6
         with:
-          distribution: temurin
-          java-version: "17"
+          node-version: "20"
 
       - name: Install
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          npm install --prefix .toolchain/jsdom jsdom@26
 
-      - name: Check navigation, labs, APK builder, GitHub storage and the exporter
+      - name: Check navigation, links, delivery rules and the exporter
         run: |
-          pytest backend/tests/test_navigation.py backend/tests/test_links.py \
-            backend/tests/test_capabilities.py backend/tests/test_public_delivery.py
-          python scripts/build_android_apk.py --self-check
-          python scripts/sync_learner_data.py --self-check
+          python -m pytest -q backend/tests/test_navigation.py backend/tests/test_links.py \
+            backend/tests/test_capabilities.py backend/tests/test_public_delivery.py \
+            backend/tests/test_pages_live_contract.py backend/tests/test_static_export_contract.py \
+            backend/tests/test_student_tools.py
           python scripts/export_pages.py --self-check
           python scripts/fetch_pyodide.py --self-check
           python scripts/fetch_browser_runtimes.py --self-check
@@ -66,32 +69,7 @@ jobs:
         if: env.ENGINEVERSE_APP_URL != ''
         run: python scripts/verify_hosted_app.py --url "$ENGINEVERSE_APP_URL"
 
-      - name: Build and publish signed Android APK release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          python scripts/build_android_apk.py --out "$RUNNER_TEMP/EngineVerse.apk" --version "v1.0.0"
-          tag="android-v1.0.0"
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" "$RUNNER_TEMP/EngineVerse.apk" \
-              "$RUNNER_TEMP/EngineVerse.apk.sha256" --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$tag" "$RUNNER_TEMP/EngineVerse.apk" \
-              "$RUNNER_TEMP/EngineVerse.apk.sha256" \
-              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
-              --title "EngineVerse Android v1.0.0" \
-              --notes "Signed Android APK for EngineVerse. Install on Android to use notes, language paths, coding problems, interactive labs, offline caching and GitHub progress sync."
-          fi
-          if [ -z "${ENGINEVERSE_APK_URL:-}" ]; then
-            echo "ENGINEVERSE_APK_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/EngineVerse.apk" >> "$GITHUB_ENV"
-          fi
-
-      - name: Check the Android asset before showing a download button
+      - name: Check the Android release before showing a download button
         if: env.ENGINEVERSE_APK_URL != ''
         run: python scripts/verify_apk_release.py --url "$ENGINEVERSE_APK_URL"
         env:
@@ -105,77 +83,72 @@ jobs:
           else
             python scripts/export_pages.py --out site --reading-copy
           fi
-          cp "$RUNNER_TEMP/EngineVerse.apk" site/EngineVerse.apk
-          cp "$RUNNER_TEMP/EngineVerse.apk.sha256" site/EngineVerse.apk.sha256
 
       - name: Bundle the CPython runtime for the browser Python compiler
-        # Pyodide (pinned in scripts/fetch_pyodide.py) is what makes Python
-        # on the static copy real CPython instead of an approximation. It is
-        # ~13 MiB of binaries, so it is fetched into the artifact here rather
-        # than committed. Non-fatal on purpose: if the registry is down, the
-        # site still deploys and browser Python honestly reports NOT RUN.
+        # Pyodide (pinned in scripts/fetch_pyodide.py) makes Python on the
+        # static copy real CPython. Non-fatal on purpose: if the registry is
+        # down the site still deploys and browser Python reports NOT RUN.
+        if: env.ENGINEVERSE_APP_URL == ''
         continue-on-error: true
         run: |
           python scripts/fetch_pyodide.py --out site/pyodide \
             || echo "::warning::Pyodide download failed - browser Python will report NOT RUN in this deployment"
 
       - name: Bundle the real language runtimes for the browser compiler
-        # Clang/OpenJDK/rustc/Roslyn/TypeScript/SQLite/GopherJS as pinned
-        # WebAssembly builds (scripts/fetch_browser_runtimes.py), so the
-        # static copy compiles and runs every language with no server.
-        # Non-fatal per language on purpose: a failed download is omitted
-        # from runtimes/manifest.json and that language alone honestly
-        # reports NOT RUN in this deployment.
+        # Pinned WebAssembly builds (scripts/fetch_browser_runtimes.py). A
+        # failed download is left out of runtimes/manifest.json and that
+        # language alone reports NOT RUN in this deployment.
+        if: env.ENGINEVERSE_APP_URL == ''
         continue-on-error: true
         run: |
           python scripts/fetch_browser_runtimes.py --out site/runtimes \
             || echo "::warning::Browser runtime download failed - affected languages will report NOT RUN in this deployment"
 
       - name: Verify every bundled browser runtime end-to-end
-        # Compiles and runs a real program (with stdin) per language
-        # through the shipped worker files. Only languages present in the
-        # manifest are exercised, so a partial fetch above still passes;
-        # a vendored runtime that cannot actually run fails the build.
+        # Compiles and runs a real program (with stdin) per language through
+        # the shipped worker files. A vendored runtime that cannot run fails.
+        if: env.ENGINEVERSE_APP_URL == ''
         run: node scripts/check_browser_runtimes.js site
 
-      - name: Refuse leaked demo passwords
+      - name: Check local progress, honest pages and the planner in the built site
+        if: env.ENGINEVERSE_APP_URL == ''
         run: |
-          if grep -R -n -E 'LearnBuild#2026!|TeachLearn#2026!|Str0ngPassphrase#42!' site; then
-            echo "refusing to publish demo passwords"
+          node scripts/check_static_site.js site
+          node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
+
+      - name: Refuse leaked demo passwords or tokens
+        run: |
+          if grep -R -n -E 'LearnBuild#2026!|TeachLearn#2026!|Str0ngPassphrase#42!|gh[pousr]_[A-Za-z0-9]{30,}' site; then
+            echo "refusing to publish a password or token"
             exit 1
           fi
 
-      - name: Check the account flows in the built site
-        # Sign-up, sign-in and the OTP steps of the published site all run in
-        # the browser, so a renamed id or a thrown error would only show up for
-        # a visitor. Run the shipped pages with the shipped runtime here, before
-        # the artefact is uploaded.
-        run: |
-          npm install --prefix .toolchain/jsdom jsdom@26
-          node scripts/check_auth_flow.js site
-
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
-      - name: Verify the published mode and exact commit
+      - name: Verify the published mode, exact commit and key pages
         shell: bash
         run: |
           if [ -n "$ENGINEVERSE_APP_URL" ]; then

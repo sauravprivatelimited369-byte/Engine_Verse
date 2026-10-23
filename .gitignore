@@ -60,3 +60,16 @@ pyodide/
 # OTP delivery service local state/secrets
 services/otp/.env
 services/otp/*.sqlite3
+
+# Android (native Gradle project in android/)
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+*.iml
+*.aab
+# The Gradle wrapper jar is part of the build and must be committed.
+!android/gradle/wrapper/gradle-wrapper.jar

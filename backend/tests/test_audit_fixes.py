@@ -187,19 +187,15 @@ class TestStaticRunnerHonestyContract:
         assert "Your code was not executed" in runtime
         assert "cannot run here" in runtime
 
-    def test_static_otp_copy_never_claims_delivery(self, runtime):
+    def test_static_copy_offers_no_otp_or_sign_in(self, runtime):
         for claim in ("OTP Sent", "Dispatched to", "Instant verification code",
-                      "Sent 6-digit"):
+                      "Sent 6-digit", "otp_api_url\")", "sendOtp", "verifyOtp"):
             assert claim not in runtime, claim
-        assert "no email or SMS can be sent from this page" in runtime
 
-    def test_github_snapshot_excludes_credential_hashes(self, runtime):
-        start = runtime.index("function toGithubSnapshot")
-        body = runtime[start:runtime.index("\n  }", start)]
-        assert 'password_sha256: ""' in body
-        assert 'email_sha256: ""' in body
-        assert 'phone_sha256: ""' in body
-        assert "password_changed_via_otp" not in body
+    def test_static_copy_uploads_nothing(self, runtime):
+        assert "toGithubSnapshot" not in runtime
+        assert "api.github.com" not in runtime
+        assert "fetch(\"https://" not in runtime
 
     def test_exporter_keeps_an_honest_runner_notice(self):
         from scripts import export_pages

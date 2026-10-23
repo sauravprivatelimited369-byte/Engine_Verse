@@ -13,38 +13,41 @@ REPO = Path(__file__).resolve().parents[2]
 PAGES_JS = (REPO / "backend/static/js/pages-live.js").read_text(encoding="utf-8")
 
 
-class TestRemoteSnapshotCannotSetCredentials:
-    """A registry snapshot is untrusted: merging it must never adopt hashes."""
+def _code_only(js: str) -> str:
+    """Strip comments so explanations of removed features do not count."""
+    js = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
+    return re.sub(r"(?m)^\s*//.*$", "", js)
 
-    def test_merge_preserves_only_local_credential_hashes(self):
-        merge = PAGES_JS[PAGES_JS.index("function mergeSnapshotIntoStore"):]
-        merge = merge[: merge.index("\n  }", merge.index("store.accounts[uname] = merged"))]
-        assert 'password_sha256: existing.password_sha256 || ""' in merge
-        assert 'email_sha256: existing.email_sha256 || ""' in merge
-        assert 'phone_sha256: existing.phone_sha256 || ""' in merge
-        assert "snapshot.password_sha256" not in merge
-        assert "snapshot.email_sha256" not in merge
-        assert "snapshot.phone_sha256" not in merge
 
-    def test_outgoing_snapshot_still_sends_empty_credential_fields(self):
-        snap = PAGES_JS[PAGES_JS.index("function toGithubSnapshot"):]
-        snap = snap[: snap.index("\n  }", snap.index("updated_at:"))]
-        assert 'password_sha256: ""' in snap
-        assert 'email_sha256: ""' in snap
+class TestNoCredentialsInTheStaticCopy:
+    """Issue #39 follow-up. The original defence (blank the hashes before a
+    registry snapshot) was superseded: the static copy no longer has accounts,
+    so there are no credentials to blank and no snapshot to send."""
+
+    def test_runtime_has_no_snapshot_or_credential_code(self):
+        code = _code_only(PAGES_JS)
+        for gone in ("mergeSnapshotIntoStore", "toGithubSnapshot", "password_sha256",
+                     "email_sha256", "phone_sha256", "api.github.com", "Authorization"):
+            assert gone not in code, gone
+
+    def test_imported_profiles_are_whitelisted(self):
+        body = PAGES_JS[PAGES_JS.index("function sanitizeProfile"):]
+        body = body[: body.index("\n  }\n")]
+        assert "const p = defaultProfile();" in body
+        # Fields are copied one by one; the raw object is never spread or assigned.
+        assert "...raw" not in body
+        assert "Object.assign(p, raw" not in body
+        assert "password" not in _code_only(body)
 
 
 class TestPublicRegistryBoundary:
-    def test_committed_registry_holds_no_credential_material(self):
-        data = json.loads((REPO / "data/learners/registry.json").read_text(encoding="utf-8"))
-        for username, rec in (data.get("learners") or {}).items():
-            for key in ("password_digest", "password_sha256", "email_sha256", "phone_sha256"):
-                assert rec.get(key, "") == "", f"{username}.{key} must be empty in the public registry"
-            assert not re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", json.dumps(rec))
-
-    def test_sync_workflow_never_triggers_on_public_issues(self):
-        wf = (REPO / ".github/workflows/learner-data-sync.yml").read_text(encoding="utf-8")
-        assert "issues:" not in wf
-        assert "workflow_dispatch" in wf
+    def test_public_learner_registry_and_sync_are_gone(self):
+        assert not (REPO / "data/learners/registry.json").exists()
+        assert not (REPO / ".github/workflows/learner-data-sync.yml").exists()
+        for wf in (REPO / ".github/workflows").glob("*.yml"):
+            text = wf.read_text(encoding="utf-8")
+            assert "sync_learner_data" not in text, wf.name
+            assert "data/learners" not in text, wf.name
 
 
 class TestSrsEaseCap:

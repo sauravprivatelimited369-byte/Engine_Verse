@@ -2778,6 +2778,12 @@
       });
     }
     document.getElementById("ev-export-json")?.addEventListener("click", () => {
+      // The Android app's viewer cannot save blob downloads; say so instead of
+      // reporting an export that did not happen.
+      if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
+        settingsStatus("Saving files is not available inside the EngineVerse Android app. Use \u201cOpen in browser\u201d (top right) to save this file.", "warn");
+        return;
+      }
       const blob = new Blob([JSON.stringify(exportProfilePayload(), null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

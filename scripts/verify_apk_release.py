@@ -9,9 +9,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+from engineverse import project  # noqa: E402
 from engineverse.distribution import normalise_apk_url  # noqa: E402
 
-REPOSITORY = "authorsauravkushwaha/EngineVerse"
+REPOSITORY = project.repository()
 
 
 def verify(url: str, *, run=subprocess.run) -> None:

@@ -1,0 +1,165 @@
+name: Android app
+
+# Builds the native Kotlin/Compose app in android/.
+#   * Every push or pull request that touches the app: unit tests, Android lint
+#     and a debug APK, uploaded as workflow artifacts (debug-signed, for testing).
+#   * Manual run with "release" ticked: a release APK signed with the keystore
+#     held in repository secrets, attached to a GitHub Release. Without those
+#     secrets the release job stops with an explanation; nothing is published.
+on:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-build.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-build.yml'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Also build a signed release APK and publish it to GitHub Releases'
+        required: false
+        default: false
+        type: boolean
+      version:
+        description: 'Release tag suffix (vMAJOR.MINOR.PATCH)'
+        required: false
+        default: 'v1.0.0'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: android
+
+jobs:
+  build:
+    name: Test, lint and build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Also validates gradle/wrapper/gradle-wrapper.jar against known checksums.
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Android lint
+        run: ./gradlew --no-daemon lintDebug
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Check the APK
+        run: |
+          set -euo pipefail
+          apk=$(ls app/build/outputs/apk/debug/*.apk)
+          ls -l "$apk"
+          sha256sum "$apk" | tee "$apk.sha256"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: engineverse-debug-apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/debug/*.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: engineverse-android-reports
+          path: |
+            android/app/build/reports/
+            android/app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  release:
+    name: Signed release APK
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Check version and signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must look like v1.2.3 (got '$VERSION')"; exit 1
+          fi
+          missing=""
+          for name in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Release signing secrets are not configured (missing:$missing). Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD under Settings > Secrets and variables > Actions. See android/README.md."
+            exit 1
+          fi
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ENGINEVERSE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ENGINEVERSE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ENGINEVERSE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export ENGINEVERSE_KEYSTORE_FILE="$RUNNER_TEMP/engineverse-release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$ENGINEVERSE_KEYSTORE_FILE"
+          trap 'rm -f "$ENGINEVERSE_KEYSTORE_FILE"' EXIT
+          ./gradlew --no-daemon assembleRelease
+          apk=$(ls app/build/outputs/apk/release/*.apk)
+          case "$apk" in *unsigned*) echo "::error::release APK is unsigned"; exit 1;; esac
+          cp "$apk" "$RUNNER_TEMP/EngineVerse.apk"
+          (cd "$RUNNER_TEMP" && sha256sum EngineVerse.apk > EngineVerse.apk.sha256)
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --print-certs "$RUNNER_TEMP/EngineVerse.apk"
+
+      - name: Publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-$VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$RUNNER_TEMP/EngineVerse.apk" "$RUNNER_TEMP/EngineVerse.apk.sha256" --clobber
+          else
+            gh release create "$tag" "$RUNNER_TEMP/EngineVerse.apk" "$RUNNER_TEMP/EngineVerse.apk.sha256" \
+              --target "$GITHUB_SHA" --title "EngineVerse Android $VERSION" \
+              --notes "Signed release build of the native EngineVerse Android app. Compare the SHA-256 in EngineVerse.apk.sha256 before installing."
+          fi

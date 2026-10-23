@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Same policy as backup_rules.xml: only the app's own
+     progress/planner preferences, never the WebView's cache or cookies. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="engineverse.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="engineverse.xml" />
+    </device-transfer>
+</data-extraction-rules>

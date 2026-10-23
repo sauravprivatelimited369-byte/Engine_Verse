@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EngineVerse mark (hexagon + M), from backend/static/icons/favicon.svg,
+     scaled into the 108dp adaptive-icon canvas inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.5"
+        android:scaleY="1.5"
+        android:translateX="6"
+        android:translateY="6">
+        <path
+            android:pathData="M32,16 L18,24 L18,40 L32,48 L46,40 L46,24 Z"
+            android:strokeColor="#4F6BFF"
+            android:strokeWidth="2.8"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M26,40 L26,26 L32,31.5 L38,26 L38,40"
+            android:strokeColor="#4F6BFF"
+            android:strokeWidth="2.8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>

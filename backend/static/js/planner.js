@@ -461,6 +461,10 @@
   // ---------------------------------------------------------------- import / export
   var dataStatus = $("[data-planner-data-status]");
   $("[data-planner-export]").addEventListener("click", function () {
+    if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
+      dataStatus.textContent = "Saving files is not available inside the EngineVerse Android app. Use \u201cOpen in browser\u201d (top right) to save this file.";
+      return;
+    }
     var payload = { format: FORMAT, version: 1, exported_at: new Date().toISOString(),
       tasks: state.tasks, exams: state.exams, focus: state.focus };
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });

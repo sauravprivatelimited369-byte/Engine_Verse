@@ -216,6 +216,8 @@ class TestResourceDirectory:
         """Nothing on a stream page should send a learner to another site."""
         response = client.get("/stream/computer-science")
         external = [
-            url for url in re.findall(r'href="(https?://[^"]+)"', response.text)
+            # Anchors only: <link rel="canonical"> names this page's own
+            # address for search engines and is not something a learner follows.
+            url for url in re.findall(r'<a\b[^>]*\bhref="(https?://[^"]+)"', response.text)
         ]
         assert external == [], external

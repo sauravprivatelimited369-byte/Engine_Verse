@@ -1520,6 +1520,15 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
     xml += [f"<url><loc>{html.escape(loc)}</loc></url>" for loc in locs]
     xml.append("</urlset>")
     (site / "sitemap.xml").write_text("\n".join(xml) + "\n", encoding="utf-8")
+    # Crawlers read robots.txt only at an origin's root. On a project Pages
+    # site (owner.github.io/<repo>/) this file is not that root, so it mainly
+    # serves a copy deployed on its own domain; it never blocks anything.
+    (site / "robots.txt").write_text(
+        "# EngineVerse static reading copy. Personal pages carry noindex.\n"
+        "User-agent: *\nAllow: /\n"
+        f"Sitemap: {origin}/sitemap.xml\n",
+        encoding="utf-8",
+    )
     if failed:
         raise SystemExit("Refusing to publish. These pages did not render:\n" + "\n".join(failed))
     assert_clean(site)

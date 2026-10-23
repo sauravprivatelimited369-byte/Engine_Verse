@@ -305,9 +305,9 @@ jobs:
         # sw.js is checked too: it is the other script the browser runs, and a
         # syntax error there breaks offline caching silently rather than loudly.
         run: |
-          node --check backend/static/js/app.js
-          node --check backend/static/js/engine3d.js
-          node --check backend/static/sw.js
+          for f in backend/static/js/*.js backend/static/sw.js scripts/*.js; do
+            node --check "$f"
+          done
 
       - name: The 3D renderer's maths is correct
         # Runs the real mesh builders under a DOM stub and asserts finite
@@ -332,13 +332,15 @@ jobs:
           pip install -r requirements.txt
           python scripts/export_pages.py --out site --reading-copy
 
-      - name: Sign up, verify the OTP, sign in and switch tabs in the exported site
-        # Runs the shipped pages with the shipped runtime and asserts the four
-        # promises a learner depends on: a new account needs its 6-digit code
-        # first, a verified learner signs in with the password alone, recovery
-        # and password change still ask for a code, and no tab brings back
-        # "Sign in / Start free" once a session exists.
-        run: node scripts/check_auth_flow.js site
+      - name: Local progress, export/import and honest pages in the exported site
+        # Runs the shipped pages with the shipped runtime under jsdom: old
+        # browser accounts are migrated and their secrets deleted, settings
+        # export/import validates its input, the personal pages render learner
+        # text as text, and no page posts to a server, links to "#" or asks a
+        # visitor to sign in. Then the study planner end to end.
+        run: |
+          node scripts/check_static_site.js site
+          node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
 
       - name: No CDN or third-party origins are referenced
         run: |

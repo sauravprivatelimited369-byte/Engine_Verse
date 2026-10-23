@@ -1720,12 +1720,12 @@
       const filename = (spec && spec.fileName) || "program.txt";
       const code = this.editor.getValue();
 
-      if (
-        window.EngineVerseAndroid &&
-        typeof window.EngineVerseAndroid.shareSourceFile === "function"
-      ) {
-        window.EngineVerseAndroid.shareSourceFile(filename, code);
-        toastMessage(`Sharing ${filename}…`);
+      // The Android app's viewer cannot save blob downloads (and exposes no
+      // JavaScript bridge), so copy the code and say what happened.
+      if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
+        this.copySource().then(() =>
+          toastMessage("Downloads are not available in the Android app. The code was copied instead.")
+        );
         return;
       }
 

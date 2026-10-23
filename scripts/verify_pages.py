@@ -16,6 +16,9 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 CAPABILITIES = ("apis", "studio", "workflows", "swarm")
+# Student tools and the device-local account pages every reading copy ships.
+STUDENT_PAGES = ("planner/", "opportunities/", "support/", "settings/", "dashboard/", "install/")
+DEFAULT_URL = "https://sauravprivatelimited369-byte.github.io/Engine_Verse/"
 
 
 def normalise_url(url: str) -> str:
@@ -97,6 +100,15 @@ def verify(url: str, sha: str, *, attempts: int = 12, delay: float = 15,
                 if capability != "apis" and 'data-lab-mode-notice hidden' in text:
                     raise ValueError(f"{capability}: backend-only controls are not disclosed")
                 print(f"HTTP 200 · valid headings and navigation · {url}{capability}/", flush=True)
+            for page in STUDENT_PAGES:
+                text = _fetch(url + page, sha, attempt, "text/html")
+                validate_page(text)
+                print(f"HTTP 200 · valid headings · {url}{page}", flush=True)
+            for meta, kind in (("sitemap.xml", "xml"), ("robots.txt", "text/plain")):
+                body = _fetch(url + meta, sha, attempt, kind)
+                if url.rstrip("/") not in body:
+                    raise ValueError(f"{meta} does not name this site's origin")
+                print(f"HTTP 200 · {url}{meta}", flush=True)
             for asset in ("static/css/capabilities.css", "static/js/capabilities.js"):
                 body = _fetch(url + asset, sha, attempt, "text/css" if asset.endswith(".css") else "javascript")
                 if not body.strip():
@@ -113,7 +125,7 @@ def verify(url: str, sha: str, *, attempts: int = 12, delay: float = 15,
 
 
 def self_check() -> None:
-    assert normalise_url("https://authorsauravkushwaha.github.io/EngineVerse") == "https://authorsauravkushwaha.github.io/EngineVerse/"
+    assert normalise_url(DEFAULT_URL.rstrip("/")) == DEFAULT_URL
     validate_page('<h1>Studio</h1><h2>Schema</h2><h3>Columns</h3><h2>SQL</h2>')
     for page in ('<h1>X</h1><h3>Skipped</h3>', '<h1>X</h1><h1>Y</h1>'):
         try:
@@ -134,7 +146,7 @@ def self_check() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", default="https://authorsauravkushwaha.github.io/EngineVerse/")
+    parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--sha", default=os.environ.get("GITHUB_SHA", ""))
     parser.add_argument("--attempts", type=int, default=12)
     parser.add_argument("--delay", type=float, default=15)

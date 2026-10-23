@@ -484,6 +484,11 @@
   $$("[data-n8n-export]").forEach(button => button.addEventListener("click", () => {
     const blueprint = blueprints.find(item => item.slug === button.dataset.n8nExport);
     if (!blueprint) return;
+    if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
+      const say = window.EV && typeof window.EV.toast === "function" ? window.EV.toast : window.alert;
+      say("Saving files is not available inside the EngineVerse Android app. Use \u201cOpen in browser\u201d (top right) to save this file.");
+      return;
+    }
     const blob = new Blob([JSON.stringify(blueprint.n8n, null, 2) + "\n"], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = make("a");

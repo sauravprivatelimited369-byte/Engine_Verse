@@ -363,25 +363,3 @@ class TestCodeLabSnippetsAndAndroidBuild:
         deleted = signed_in.delete(f"/api/codelab/snippets/{snippet_id}", headers={"X-CSRF-Token": token})
         assert deleted.status_code == 200
         assert signed_in.get("/api/codelab/snippets").json()["snippets"] == []
-
-    def test_android_webview_apk_self_check_includes_soft_input_and_share_bridge(self):
-        from scripts import build_android_apk
-
-        proc = subprocess.run(
-            [sys.executable, str(REPO_ROOT / "scripts" / "build_android_apk.py"), "--self-check"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-        )
-        assert proc.returncode == 0, proc.stderr
-        cfg = build_android_apk.validate_config(
-            start_url="https://learn.example.org",
-            package="org.engineverse.app",
-            version="v1.0.0",
-            version_code=1,
-        )
-        manifest_xml = build_android_apk.generate_manifest(cfg)
-        activity_java = build_android_apk.generate_main_activity(cfg)
-        assert 'android:windowSoftInputMode="adjustResize"' in manifest_xml
-        assert "shareSourceFile" in activity_java
-        assert "EngineVerseAndroid" in activity_java

@@ -1,21 +1,16 @@
-"""Identity rules: the browser copy and the server copy must agree.
+"""Identity rules for the hosted app's sign-up and sign-in.
 
 The complaint this file exists for is that sign-in accepted a fake Gmail address
-and a made-up mobile number. The fix lives in two places:
-``engineverse/security/{email,phone}_rules.py`` for the hosted app, and the
-``EV-IDENTITY-RULES`` block in ``static/js/pages-live.js`` for the exported
-GitHub Pages copy, which has no server to fall back on. Two implementations of
-one rule drift unless something checks, so the parity tests below run the *same
-fixtures* through both and compare verdicts, not merely the fact that each side
-has a test. The JS block is extracted verbatim rather than paraphrased: a test
-that restates the code under test proves nothing.
+and a made-up mobile number. The rules live in
+``engineverse/security/{email,phone}_rules.py``.
+
+The static GitHub Pages copy used to carry a JavaScript copy of these rules for
+its browser-side accounts. Those accounts were removed (the copy keeps progress
+on the device and asks for no email or phone), so there is one implementation
+and the last test checks that the browser copy did not quietly come back.
 """
 from __future__ import annotations
 
-import json
-import re
-import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -23,11 +18,6 @@ import pytest
 from engineverse.security import email_rules, phone_rules, validators
 
 JS_PATH = Path(__file__).resolve().parents[2] / "backend" / "static" / "js" / "pages-live.js"
-BLOCK_RE = re.compile(
-    r"// === BEGIN EV-IDENTITY-RULES ===\n(?P<body>.*?)\n  // === END EV-IDENTITY-RULES ===",
-    re.S,
-)
-requires_node = pytest.mark.skipif(not shutil.which("node"), reason="node required for the JS parity check")
 
 # (value, accepted). Accepted rows are what real learners type and must never be
 # refused; refused rows are what the single-regex check used to wave through.
@@ -73,53 +63,6 @@ PHONE_CASES = [
     ("abc", "+91", False),
     ("", "+91", False),
 ]
-
-
-def _js_rules_block() -> str:
-    match = BLOCK_RE.search(JS_PATH.read_text(encoding="utf-8"))
-    assert match, "pages-live.js lost its EV-IDENTITY-RULES markers"
-    return match.group("body")
-
-
-def _policy() -> dict:
-    """Exactly what ``scripts/export_pages.py`` puts in the boot blob."""
-    return {"email": email_rules.policy(), "phone": phone_rules.policy()}
-
-
-def _run_node(program: str) -> list[dict]:
-    if shutil.which("node") is None:  # pragma: no cover - guarded by the marker too
-        pytest.skip("node required")
-    result = subprocess.run(["node", "-e", program], capture_output=True, text=True, timeout=120)
-    assert result.returncode == 0, f"node harness failed: {result.stderr[-3000:]}"
-    return json.loads(result.stdout)
-
-
-def _browser(kind: str, cases: list, policy: dict | None) -> list[dict]:
-    """Verdicts from the browser rules for the same fixtures the server gets.
-
-    ``policy=None`` means "no policy was injected", the state of a page cached by
-    the service worker next to a newer script, which has to fall back safely.
-    """
-    call = "IDENTITY.email(item)" if kind == "email" else "IDENTITY.phone(item[0], item[1])"
-    return _run_node(
-        """
-const config = %s;
-%s
-const cases = %s;
-const out = [];
-for (const item of cases) {
-  const r = %s;
-  out.push({ ok: !!r.ok, value: r.ok ? r.value : "", error: r.ok ? "" : (r.error || "") });
-}
-console.log(JSON.stringify(out));
-"""
-        % (
-            json.dumps({"identity": policy} if policy is not None else {}),
-            _js_rules_block(),
-            json.dumps(cases),
-            call,
-        )
-    )
 
 
 # --- the rules themselves ---------------------------------------------------
@@ -188,60 +131,6 @@ def test_blank_identifier_is_refused_with_a_message() -> None:
 # --- the two copies agree ---------------------------------------------------
 
 
-@pytest.mark.parametrize("value,accepted", EMAIL_CASES)
-@requires_node
-def test_browser_email_rules_match_the_server(value: str, accepted: bool) -> None:
-    verdict = _browser("email", [value], _policy())[0]
-    assert verdict["ok"] is accepted, verdict
-    if accepted:
-        assert verdict["value"] == validators.validate_email(value, "email")
-    else:
-        # A refusal that does not say why looks like a broken page, and a broken
-        # page gets JavaScript switched off - which is how we got here.
-        assert verdict["error"].strip()
-
-
-@pytest.mark.parametrize("number,country_code,accepted", PHONE_CASES)
-@requires_node
-def test_browser_phone_rules_match_the_server(number: str, country_code: str, accepted: bool) -> None:
-    verdict = _browser("phone", [[number, country_code]], _policy())[0]
-    assert verdict["ok"] is accepted, verdict
-    if accepted:
-        assert verdict["value"] == validators.normalize_phone_with_country_code(number, country_code, "phone")
-    else:
-        assert verdict["error"].strip()
-
-
-@requires_node
-def test_fallback_table_refuses_the_same_fakes() -> None:
-    """Without an injected policy the JS uses its own constants - not a stub.
-
-    This is the combination that a stale cache produces: an exported page from
-    before this change, run with a newer script or none at all. The fake values
-    still have to be refused, or the fix only works on pages that were exported
-    after it.
-    """
-    refused = [value for value, accepted in EMAIL_CASES if not accepted]
-    assert all(not v["ok"] for v in _browser("email", refused, None)), "fallback table is too permissive"
-    good = [value for value, accepted in EMAIL_CASES if accepted]
-    assert all(v["ok"] for v in _browser("email", good, None)), "fallback table locks out real addresses"
-
-    bad = [[number, code] for number, code, accepted in PHONE_CASES if not accepted]
-    assert all(not v["ok"] for v in _browser("phone", bad, None)), "fallback table is too permissive"
-
-
-@requires_node
-def test_extracted_block_is_self_contained() -> None:
-    """The rules may not quietly grow a dependency on the rest of the runtime.
-
-    The block is what the parity harness can run at all; if it starts calling
-    ``toast`` or reading the DOM, the test silently stops comparing anything
-    useful. So the block is executed here with no other globals in scope.
-    """
-    verdicts = _browser("email", ["asha@example.com"], _policy())
-    assert verdicts == [{"ok": True, "value": "asha@example.com", "error": ""}]
-
-
 # --- wiring -----------------------------------------------------------------
 
 
@@ -263,36 +152,8 @@ def test_email_policy_carries_the_lists_a_browser_cannot_rebuild() -> None:
     assert policy["disposable"], "the burner list is the only layer that catches a well-formed temp inbox"
 
 
-def test_exported_pages_inject_the_policy(tmp_path: Path) -> None:
-    """``pages-live.js`` reads ``config.identity``; the export has to provide it.
-
-    Without this the browser falls back to its own table forever and the two
-    copies diverge the moment a plan or a domain list is edited on the server.
-    """
-    import sys
-
-    repo = Path(__file__).resolve().parents[2]
-    sys.path.insert(0, str(repo / "scripts"))
-    import export_pages  # noqa: PLC0415 - shared with the export, not the app
-
-    blob = export_pages.live_boot("/", [], "")
-    payload = json.loads(re.search(r'id="ev-live">(.*?)</script>', blob, re.S).group(1))
-    assert payload["identity"]["phone"]["plans"]["+91"]["nsn"] == "^[1-9][0-9]{9}$"
-    assert "gmial.com" in payload["identity"]["email"]["typos"]
-
-
-def test_exported_selectors_are_generated_not_written_by_hand(tmp_path: Path) -> None:
-    """Every ``country_code`` select on an exported page offers the selectable plans.
-
-    Five hand-typed lists used to disagree with each other and with the server.
-    """
-    import sys
-
-    repo = Path(__file__).resolve().parents[2]
-    sys.path.insert(0, str(repo / "scripts"))
-    import export_pages  # noqa: PLC0415
-
-    markup = export_pages.country_option_markup()
-    assert markup.count("<option") == len(phone_rules.SELECTOR_PLANS)
-    for plan in phone_rules.SELECTOR_PLANS:
-        assert f'value="{plan.code}"' in markup
+def test_the_static_runtime_collects_no_identity() -> None:
+    """The Pages copy has no accounts, so it has no email or phone rules either."""
+    source = JS_PATH.read_text(encoding="utf-8")
+    assert "EV-IDENTITY-RULES" not in source
+    assert "country_code" not in source

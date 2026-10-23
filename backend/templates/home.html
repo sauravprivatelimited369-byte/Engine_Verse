@@ -17,7 +17,7 @@
 
     <div class="hero-copy">
       <span class="hero-badge"><span class="live-dot" aria-hidden="true"></span>
-        Free · self-hosted · no trackers</span>
+        {{ 'Free · open source · no trackers' if static_export else 'Free · self-hosted · no trackers' }}</span>
       <h1 class="hero-title" id="ev-hero-title">Master engineering<br>for the <span class="grad">real world</span>.</h1>
       <p class="hero-lead">Notes, judged coding practice, daily problem sets, formula sheets, flashcards,
         projects and placement preparation for every engineering stream — in one place, so you can
@@ -37,7 +37,11 @@
       <ul class="hero-proof" aria-label="What you get">
         <li>{{ icon("check", 14) }} No ZIP, no setup — read and practise in the browser</li>
         <li>{{ icon("check", 14) }} Real judged problems, not multiple-choice guesses</li>
+        {% if static_export %}
+        <li>{{ icon("check", 14) }} Progress stays in this browser, with JSON export and import</li>
+        {% else %}
         <li>{{ icon("check", 14) }} One account keeps progress across devices</li>
+        {% endif %}
       </ul>
 
       <details class="hero-fineprint">
@@ -426,7 +430,7 @@
         {% else %}
         <a class="btn btn-primary" href="{{ '/stream' if user else '/register' }}">{{ 'Open my stream' if user else 'Create free account' }} {{ icon("chevron", 14) }}</a>
         <a class="btn btn-ghost" href="/install">{{ icon("download", 15) }} Android &amp; install</a>
-        <a class="btn btn-soft" href="{{ '/settings#export' if user else '/login' }}">{{ 'Download my data' if user else 'Sign in' }}</a>
+        {% if user %}<a class="btn btn-soft" href="/settings#export">Download my data</a>{% endif %}
         {% endif %}
       </div>
     </div>
