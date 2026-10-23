@@ -57,6 +57,17 @@ release.
 
 ### Fixed
 
+- **The CodeLab mobile view switcher is a valid tablist again.** The Run button
+  sat inside the element with `role="tablist"`, which is a child a tablist may
+  not contain (axe `aria-required-children`, severity critical). The three tabs
+  now live in their own `.cl-mobile-tabs` wrapper and Run is their sibling, with
+  the same layout and keyboard behaviour.
+- **The static-site import checks no longer race the file reader.** They slept
+  for a fixed 50 ms after handing a file to the settings importer and then read
+  the status line, which failed intermittently on a loaded CI runner and passed
+  on a laptop. They now wait for the expected line, up to three seconds.
+- The assistant's `X-EngineVerse-Page` header is reduced to printable ASCII
+  before it is sent upstream, so a crafted page path cannot inject a header.
 - **CodeLab and the compiler page no longer look dead.** Four separate faults
   were behind "the compiler is not working at all, and CodeLab only runs one
   language":
