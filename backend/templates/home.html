@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}{{ brand.site_name }} — {{ brand.tagline }}{% endblock %}
-
 {% from "_icons.html" import icon %}
 
 {% block head %}
@@ -25,263 +24,202 @@
 {% endblock %}
 
 {% block content %}
-<section class="ev-feed" id="ev-feed">
+{# Homepage: editorial, content-first. Every number below comes from the
+   catalogue (site.*) and every row links to a real page. No testimonials,
+   user counts or invented progress. #}
+<div class="home">
 
-  <!-- ------------------------------------------------------------------ hero
-       One job above the fold: say what this is, show the study loop, and give
-       a visitor a single obvious way in. The panel on the right is a real
-       tour of the four daily actions - every row is a working link, and no
-       figure on it invents progress the visitor has not made. -->
-  <section class="home-hero ev-reveal" id="ev-hero" aria-labelledby="ev-hero-title">
-    <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
-    <span class="hero-glow hero-glow-b" aria-hidden="true"></span>
-    <span class="hero-grid-lines" aria-hidden="true"></span>
-
+  <section class="home-hero" aria-labelledby="ev-hero-title">
     <div class="hero-copy">
-      <span class="hero-badge"><span class="live-dot" aria-hidden="true"></span>
-        {{ 'Free · open source · no trackers' if static_export else 'Free · self-hosted · no trackers' }}</span>
-      <h1 class="hero-title" id="ev-hero-title">Master engineering<br>for the <span class="grad">real world</span>.</h1>
-      <p class="hero-lead">Notes, judged coding practice, daily problem sets, formula sheets, flashcards,
-        projects and placement preparation for every engineering stream — in one place, so you can
-        stop tab-hopping and start building.</p>
-
+      <p class="ev-eyebrow">Notes · Practice sheets · Progress</p>
+      <h1 class="hero-title" id="ev-hero-title">Learn with purpose.<br>Practise with confidence.</h1>
+      <p class="hero-lead">Your study notes, practice activities, and learning progress — organised in one place.</p>
       <div class="hero-actions">
         {% if user %}
-          <a class="btn btn-primary btn-lg" href="/stream">Open my stream {{ icon("chevron", 15) }}</a>
-          <a class="btn btn-ghost btn-lg" href="/explore">Explore engineering</a>
+          <a class="btn btn-primary btn-lg" href="/dpp">Start practising {{ icon("chevron", 15) }}</a>
+          <a class="btn btn-ghost btn-lg" href="/explore">Explore notes</a>
         {% else %}
-          <a class="btn btn-primary btn-lg" href="{{ '/explore' if static_export else '/register' }}">Start learning free {{ icon("chevron", 15) }}</a>
-          <a class="btn btn-ghost btn-lg" href="/streams">Find my stream</a>
+          <a class="btn btn-primary btn-lg" href="/dpp">Start practising {{ icon("chevron", 15) }}</a>
+          <a class="btn btn-ghost btn-lg" href="/explore">Explore notes</a>
         {% endif %}
-        <a class="hero-install" href="/install">{{ icon("download", 16) }} Android app</a>
       </div>
-
       <ul class="hero-proof" aria-label="What you get">
-        <li>{{ icon("check", 14) }} No ZIP, no setup — read and practise in the browser</li>
-        <li>{{ icon("check", 14) }} Real judged problems, not multiple-choice guesses</li>
+        <li>{{ icon("check", 14) }} Read and practise in the browser — no download, no setup</li>
+        <li>{{ icon("check", 14) }} Judged coding problems with real test cases</li>
         {% if static_export %}
-        <li>{{ icon("check", 14) }} Progress stays in this browser, with JSON export and import</li>
+        <li>{{ icon("check", 14) }} Progress stays in this browser; export or import it as JSON any time</li>
         {% else %}
         <li>{{ icon("check", 14) }} One account keeps progress across devices</li>
         {% endif %}
       </ul>
-
       <details class="hero-fineprint">
         <summary>What runs where?</summary>
-        <p>Accounts and progress follow you between devices on the hosted app. The public static copy
-          keeps progress on this device and runs JavaScript and real CPython (WebAssembly) in the browser.
-          The <a href="/compiler">compiler page</a> runs every language on the hosted judge. See
-          <a href="/install">what works where</a>.</p>
+        <p>On this public copy, code runs in your browser (WebAssembly) and progress is kept on this device.
+          A hosted EngineVerse server adds accounts and a server-side judge. See <a href="/install">what works where</a>.</p>
       </details>
     </div>
 
-    <aside class="hero-panel" aria-label="A preview of the four-step daily study loop. Every row links to a real page.">
+    <aside class="hero-panel" aria-label="Your study desk for today — every row opens a real page">
       <div class="hp-head">
-        <span class="hp-dots" aria-hidden="true"><i></i><i></i><i></i></span>
         <span class="hp-title">Study desk</span>
-        <span class="chip accent hp-live">Today</span>
+        <span class="tiny muted"><span data-local-date>Today</span> · about 65 minutes</span>
       </div>
-
-      <div class="hp-today">
-        <div class="hp-ring" aria-hidden="true">
-          <span class="hp-ring-core"><b>65</b><span>min</span></span>
-        </div>
-        <div>
-          <strong>Your four-step loop</strong>
-          <p class="tiny muted">Practise → revise → code → learn. About an hour, in this order.</p>
-        </div>
-      </div>
-
       <div class="hp-list">
         <a class="hp-row" href="/dpp">
-          <span class="hp-ico hp-ico-a">{{ icon("target", 17) }}</span>
-          <span class="hp-text"><strong>Today's DPP</strong><span>Mixed set for <span data-local-date>today</span> · ~30 min</span></span>
+          <span class="hp-ico">{{ icon("target", 17) }}</span>
+          <span class="hp-text"><strong>Today's practice set (DPP)</strong><span>Mixed set for <span data-local-date>today</span> · ~30 min</span></span>
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
         <a class="hp-row" href="/revision">
-          <span class="hp-ico hp-ico-b">{{ icon("cards", 17) }}</span>
+          <span class="hp-ico">{{ icon("cards", 17) }}</span>
           <span class="hp-text"><strong>Due flashcards</strong><span>Spaced repetition · ~10 min</span></span>
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
         {% if sample_problems %}
         <a class="hp-row" href="/practice/problems/{{ sample_problems[0].slug }}">
-          <span class="hp-ico hp-ico-c">{{ icon("terminal", 17) }}</span>
+          <span class="hp-ico">{{ icon("terminal", 17) }}</span>
           <span class="hp-text"><strong>{{ sample_problems[0].title }}</strong><span>Judged coding · {{ sample_problems[0].difficulty }}</span></span>
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
         {% endif %}
         {% if featured_topics %}
         <a class="hp-row" href="/topics/{{ featured_topics[0].slug }}">
-          <span class="hp-ico hp-ico-d">{{ icon("book", 17) }}</span>
-          <span class="hp-text"><strong>{{ featured_topics[0].title }}</strong><span>Read · {{ featured_topics[0].est_minutes }} min · {{ featured_topics[0].subject }}</span></span>
+          <span class="hp-ico">{{ icon("book", 17) }}</span>
+          <span class="hp-text"><strong>{{ featured_topics[0].title }}</strong><span>Notes · {{ featured_topics[0].est_minutes }} min read · {{ featured_topics[0].subject }}</span></span>
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
         {% endif %}
+        <a class="hp-row" href="/dashboard">
+          <span class="hp-ico">{{ icon("chart", 17) }}</span>
+          <span class="hp-text"><strong>My progress</strong><span>{{ 'Saved on this device' if static_export else 'Streak, XP and completed topics' }}</span></span>
+          <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
+        </a>
       </div>
-
-      <p class="hp-foot">{{ icon("spark", 14) }} Every row opens a real page. Nothing here is a mock-up.</p>
+      <p class="hp-foot">Every row opens a real page. Nothing here is a mock-up.</p>
     </aside>
-
-    <span class="hero-float hero-float-a" aria-hidden="true">{{ icon("check", 13) }} Judged runner</span>
-    <span class="hero-float hero-float-b" aria-hidden="true">{{ icon("flame", 13) }} Daily streak</span>
   </section>
 
-  <!-- ------------------------------------------------------------- what's inside -->
-  <section class="hero-stats ev-reveal" aria-label="What is inside {{ brand.site_name }}">
-    <div class="hero-stat ev-count">
-      <div class="n" data-target="{{ site.branches }}">0</div><div class="l">Branches</div>
-    </div>
-    <div class="hero-stat ev-count">
-      <div class="n" data-target="{{ site.subjects }}">0</div><div class="l">Subjects</div>
-    </div>
-    <div class="hero-stat ev-count">
-      <div class="n" data-target="{{ site.topics }}">0</div><div class="l">Topics</div>
-    </div>
-    <div class="hero-stat ev-count">
-      <div class="n" data-target="{{ site.questions }}">0</div><div class="l">Questions</div>
-    </div>
-    <div class="hero-stat ev-count">
-      <div class="n" data-target="{{ site.problems }}">0</div><div class="l">Coding problems</div>
-    </div>
-    <div class="hero-stat ev-count">
-      <div class="n" data-target="{{ site.projects }}">0</div><div class="l">Projects</div>
-    </div>
+  <section class="hero-stats" aria-label="What is inside {{ brand.site_name }}">
+    <div class="hero-stat"><div class="n">{{ site.branches }}</div><div class="l">Branches</div></div>
+    <div class="hero-stat"><div class="n">{{ site.subjects }}</div><div class="l">Subjects</div></div>
+    <div class="hero-stat"><div class="n">{{ site.topics }}</div><div class="l">Topics</div></div>
+    <div class="hero-stat"><div class="n">{{ site.questions }}</div><div class="l">Questions</div></div>
+    <div class="hero-stat"><div class="n">{{ site.problems }}</div><div class="l">Coding problems</div></div>
+    <div class="hero-stat"><div class="n">{{ site.projects }}</div><div class="l">Projects</div></div>
   </section>
 
-  <!-- ------------------------------------------------------------ today's plan
-       This is the section that replaced the old "Stories" circles. It earns the
-       space by being the actual daily loop: four real tasks, in the order that
-       works, with honest time estimates and working links. The checkboxes are
-       the learner's own ticks for today, kept on this device and reset daily.
-       Signing in is the only thing that records a real streak. -->
-  <section class="section plan-section ev-reveal" id="ev-today-plan" aria-labelledby="ev-plan-title">
+  <section class="section plan-section" id="ev-today-plan" aria-labelledby="ev-plan-title">
     <div class="plan-shell">
       <div class="plan-head">
         <div>
-          <p class="ev-eyebrow">Study plan · <span data-local-date>today</span> · about 65 minutes</p>
+          <p class="ev-eyebrow">Today's plan · <span data-local-date>today</span> · about 65 minutes</p>
           <h2 id="ev-plan-title">Four steps. One solid study day.</h2>
-          <p class="section-sub">Practise, revise, fix, learn — in that order. Tick each step off as you
-            finish it. Short on time? Step one alone still counts.</p>
+          <p class="section-sub">Practise, revise, code, learn — in that order. Tick each step off as you finish it. Short on time? Step one alone still counts.</p>
         </div>
         <div class="plan-progress" data-plan-progress-box>
           <div class="plan-progress-meta">
             <span class="chip accent" data-plan-summary aria-live="polite">0 of 4 done</span>
             <span class="tiny muted">resets tomorrow</span>
           </div>
-          <div class="bar plan-bar" role="progressbar" aria-label="Study plan progress"
-               aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" data-plan-progressbar>
+          <div class="bar plan-bar" role="progressbar" aria-label="Study plan progress" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" data-plan-progressbar>
             <span data-plan-bar style="width:0%"></span>
           </div>
         </div>
       </div>
-
       <ol class="plan-board">
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">01</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("target", 20) }}</span>
-          <div class="plan-body">
-            <h3>Solve today's DPP</h3>
-            <p>A fresh mixed set for today's date — the fastest way to keep concepts warm across subjects.</p>
-          </div>
-          <div class="plan-side">
-            <span class="chip">~30 min</span>
+          <div class="plan-body"><h3>Solve today's DPP</h3>
+            <p>A fresh mixed set for today's date — the fastest way to keep concepts warm across subjects.</p></div>
+          <div class="plan-side"><span class="chip">~30 min</span>
             <a class="plan-go" href="/dpp">Start the set {{ icon("chevron", 13) }}</a>
-            <label class="plan-check">
-              <input type="checkbox" data-plan-step="dpp" aria-label="Mark today's DPP as done">
-              <span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span>
-              <span>Done</span>
-            </label>
-          </div>
+            <label class="plan-check"><input type="checkbox" data-plan-step="dpp" aria-label="Mark today's DPP as done"><span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span><span>Done</span></label></div>
         </li>
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">02</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("cards", 20) }}</span>
-          <div class="plan-body">
-            <h3>Revise due flashcards</h3>
-            <p>Spaced repetition shows each card just before you would forget it. Ten minutes here saves hours later.</p>
-          </div>
-          <div class="plan-side">
-            <span class="chip">~10 min</span>
+          <div class="plan-body"><h3>Revise due flashcards</h3>
+            <p>Spaced repetition shows each card just before you would forget it. Ten minutes here saves hours later.</p></div>
+          <div class="plan-side"><span class="chip">~10 min</span>
             <a class="plan-go" href="/revision">Review cards {{ icon("chevron", 13) }}</a>
-            <label class="plan-check">
-              <input type="checkbox" data-plan-step="revise" aria-label="Mark flashcards as done">
-              <span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span>
-              <span>Done</span>
-            </label>
-          </div>
+            <label class="plan-check"><input type="checkbox" data-plan-step="revise" aria-label="Mark flashcards as done"><span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span><span>Done</span></label></div>
         </li>
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">03</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("terminal", 20) }}</span>
-          <div class="plan-body">
-            <h3>Code one problem</h3>
-            <p>{% if sample_problems %}Try “{{ sample_problems[0].title }}” ({{ sample_problems[0].difficulty }}) in the judged practice area.{% else %}One judged problem in the practice area, run and tested right in your browser.{% endif %}</p>
-          </div>
-          <div class="plan-side">
-            <span class="chip">~15 min</span>
+          <div class="plan-body"><h3>Code one problem</h3>
+            <p>{% if sample_problems %}Try “{{ sample_problems[0].title }}” ({{ sample_problems[0].difficulty }}) in the judged practice area.{% else %}One judged problem in the practice area, run and tested right in your browser.{% endif %}</p></div>
+          <div class="plan-side"><span class="chip">~15 min</span>
             <a class="plan-go" href="{% if sample_problems %}/practice/problems/{{ sample_problems[0].slug }}{% else %}/practice{% endif %}">Open problem {{ icon("chevron", 13) }}</a>
-            <label class="plan-check">
-              <input type="checkbox" data-plan-step="code" aria-label="Mark the coding problem as done">
-              <span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span>
-              <span>Done</span>
-            </label>
-          </div>
+            <label class="plan-check"><input type="checkbox" data-plan-step="code" aria-label="Mark the coding problem as done"><span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span><span>Done</span></label></div>
         </li>
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">04</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("book", 20) }}</span>
-          <div class="plan-body">
-            <h3>Learn one new topic</h3>
-            <p>{% if featured_topics %}Start with “{{ featured_topics[0].title }}” — {{ featured_topics[0].est_minutes }} minutes, with notes and a worked example.{% else %}Pick any topic from the catalogue and read it end to end — notes, example and all.{% endif %}</p>
-          </div>
-          <div class="plan-side">
-            <span class="chip">{% if featured_topics %}~{{ featured_topics[0].est_minutes }} min{% else %}~15 min{% endif %}</span>
+          <div class="plan-body"><h3>Learn one new topic</h3>
+            <p>{% if featured_topics %}Start with “{{ featured_topics[0].title }}” — {{ featured_topics[0].est_minutes }} minutes, with notes and a worked example.{% else %}Pick any topic from the catalogue and read it end to end.{% endif %}</p></div>
+          <div class="plan-side"><span class="chip">{% if featured_topics %}~{{ featured_topics[0].est_minutes }} min{% else %}~15 min{% endif %}</span>
             <a class="plan-go" href="{% if featured_topics %}/topics/{{ featured_topics[0].slug }}{% else %}/explore{% endif %}">Read the topic {{ icon("chevron", 13) }}</a>
-            <label class="plan-check">
-              <input type="checkbox" data-plan-step="learn" aria-label="Mark the new topic as done">
-              <span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span>
-              <span>Done</span>
-            </label>
-          </div>
+            <label class="plan-check"><input type="checkbox" data-plan-step="learn" aria-label="Mark the new topic as done"><span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span><span>Done</span></label></div>
         </li>
       </ol>
-      <p class="tiny muted plan-note">These ticks stay on this device and start clean tomorrow. Signed-in
-        learners get the same plan, personalised, on <a href="/today">Today's plan</a> — with their real
-        streak and due cards.</p>
+      <p class="tiny muted plan-note">These ticks stay on this device and start clean tomorrow. Signed-in learners get the same plan, personalised, on <a href="/today">Today's plan</a>.</p>
     </div>
   </section>
 
+  <section class="section" aria-labelledby="ev-how-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">How it works</p>
+      <h2 id="ev-how-title">Learn → Practise → Review</h2>
+      <p class="section-sub">The same loop for every topic, so you always know what to do next.</p>
+    </div></div>
+    <ol class="how-grid">
+      <li class="how-step">
+        <span class="how-num" aria-hidden="true">1</span>
+        <h3>Learn</h3>
+        <p>Read the notes: definition, intuition, a diagram and a worked example — written to be finished, not skimmed.</p>
+        <a href="/explore">Browse the notes {{ icon("chevron", 13) }}</a>
+      </li>
+      <li class="how-step">
+        <span class="how-num" aria-hidden="true">2</span>
+        <h3>Practise</h3>
+        <p>Answer questions and run judged coding problems. Wrong answers are kept in your mistake notebook, not lost.</p>
+        <a href="/practice">Open practice {{ icon("chevron", 13) }}</a>
+      </li>
+      <li class="how-step">
+        <span class="how-num" aria-hidden="true">3</span>
+        <h3>Review</h3>
+        <p>Flashcards return on a spaced-repetition schedule, and your progress page shows what is actually sticking.</p>
+        <a href="/revision">Review due cards {{ icon("chevron", 13) }}</a>
+      </li>
+    </ol>
+  </section>
+
   {% if trending %}
-  <section class="section ev-ticker-sec ev-reveal" aria-label="Trending searches">
+  <section class="section ev-ticker-sec" aria-label="Trending searches">
     <div class="between" style="margin-bottom:10px">
       <p class="ev-eyebrow" style="margin:0">Trending this week</p>
       <a class="small section-link" href="/explore">Browse everything {{ icon("chevron", 13) }}</a>
     </div>
     <div class="ev-ticker-track">
       {% for t in trending %}
-      <a class="ev-ticker-item" href="/search?q={{ t.query | urlencode }}"
-         aria-label="Search for {{ t.query }} — searched {{ t.hits }} times this week">
-        <span aria-hidden="true">{{ icon("search", 13) }}</span>{{ t.query }}
-        <span class="ev-ticker-count">{{ t.hits }}</span>
-      </a>
+      <a class="ev-ticker-item" href="/search?q={{ t.query | urlencode }}" aria-label="Search for {{ t.query }} — searched {{ t.hits }} times this week">
+        <span aria-hidden="true">{{ icon("search", 13) }}</span>{{ t.query }}<span class="ev-ticker-count">{{ t.hits }}</span></a>
       {% endfor %}
     </div>
   </section>
   {% endif %}
 
-  <!-- ------------------------------------------------------------- choose a path -->
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">Start where you are</p>
-        <h2>Choose your engineering path</h2>
-        <p class="section-sub">Every branch has its own subjects, notes, question bank and project ideas.</p>
-      </div>
-      <a class="section-link" href="/explore">All {{ site.branches }} branches {{ icon("chevron", 13) }}</a>
-    </div>
+  <section class="section" aria-labelledby="ev-paths-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">Start where you are</p>
+      <h2 id="ev-paths-title">Choose your engineering path</h2>
+      <p class="section-sub">Every branch has its own subjects, notes, question bank and project ideas.</p>
+    </div><a class="section-link" href="/explore">All {{ site.branches }} branches {{ icon("chevron", 13) }}</a></div>
     <div class="tiles path-grid">
       {% for branch in paths[:12] %}
-        <a class="tile path-tile" href="/branches/{{ branch.slug }}" style="--tile-c: {{ branch.color or '#4f7cff' }}">
+        <a class="tile path-tile" href="/branches/{{ branch.slug }}" style="--tile-c: {{ branch.color or '#2563eb' }}">
           <span class="tile-mark">{{ branch.short }}</span>
           <span class="nm">{{ branch.name }}</span>
           <span class="ct">{{ branch.subject_count or 0 }} subject{{ '' if (branch.subject_count or 0) == 1 else 's' }}</span>
@@ -289,271 +227,153 @@
         </a>
       {% endfor %}
     </div>
-    {# Every active branch stays one click from the homepage: the twelve tiles
-       above are the common paths, and this collapsed list carries the rest so
-       no branch (or its study hub) is discoverable only through the sitemap. #}
     <details class="branch-all">
       <summary>All {{ site.branches }} branches</summary>
-      <div class="branch-all-grid">
-        {% for branch in paths %}
-          <a href="/branches/{{ branch.slug }}">{{ branch.name }}</a>
-        {% endfor %}
-      </div>
+      <div class="branch-all-grid">{% for branch in paths %}<a href="/branches/{{ branch.slug }}">{{ branch.name }}</a>{% endfor %}</div>
     </details>
     {% if branches %}
       <div class="chips-row">
-        {% for group in branches %}
-          <a class="chip" href="/explore">{{ group.name }}</a>
-        {% endfor %}
+        {% for group in branches %}<a class="chip" href="/explore">{{ group.name }}</a>{% endfor %}
         <a class="chip accent" href="/explore?year=1">First year</a>
       </div>
     {% endif %}
   </section>
 
-  <!-- ------------------------------------------------------------- learn by subject -->
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">The catalogue</p>
-        <h2>Learn by subject</h2>
-        <p class="section-sub">Pick a subject and go straight to its notes, questions and projects.</p>
-      </div>
-      <a class="section-link" href="/explore">All subjects</a>
-    </div>
+  <section class="section" aria-labelledby="ev-subjects-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">The catalogue</p>
+      <h2 id="ev-subjects-title">Learn by subject</h2>
+      <p class="section-sub">Pick a subject and go straight to its notes, questions and projects.</p>
+    </div><a class="section-link" href="/explore">All subjects</a></div>
     <div class="grid g3 subject-grid">
-      {% for subject in popular_subjects[:9] %}
-        {% include "_subject_card.html" %}
-      {% endfor %}
+      {% for subject in popular_subjects[:9] %}{% include "_subject_card.html" %}{% endfor %}
     </div>
   </section>
 
   {% if first_year %}
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">Shared foundation</p>
-        <h2>First year engineering</h2>
-        <p class="section-sub">The subjects most colleges teach before the branch splits. Pick a university curriculum later — the notes are already here.</p>
-      </div>
-      <a class="section-link" href="/explore?year=1">All first-year subjects {{ icon("chevron", 13) }}</a>
-    </div>
+  <section class="section" aria-labelledby="ev-fy-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">Shared foundation</p>
+      <h2 id="ev-fy-title">First year engineering</h2>
+      <p class="section-sub">The subjects most colleges teach before the branch splits.</p>
+    </div><a class="section-link" href="/explore?year=1">All first-year subjects {{ icon("chevron", 13) }}</a></div>
     <div class="grid g3 subject-grid">
-      {% for subject in first_year[:6] %}
-        {% include "_subject_card.html" %}
-      {% endfor %}
+      {% for subject in first_year[:6] %}{% include "_subject_card.html" %}{% endfor %}
     </div>
-    {% if first_year | length > 6 %}
-      <p class="tiny muted grid-more"><a href="/explore?year=1">See all {{ first_year | length }} first-year subjects</a></p>
-    {% endif %}
+    {% if first_year | length > 6 %}<p class="tiny muted grid-more"><a href="/explore?year=1">See all {{ first_year | length }} first-year subjects</a></p>{% endif %}
   </section>
   {% endif %}
 
-  <!-- ------------------------------------------------------------- start coding -->
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">Code, then prove it</p>
-        <h2>Start coding</h2>
-        <p class="section-sub">Judged problems with real test cases — run them in the browser or on the hosted judge.</p>
-      </div>
-      <a class="section-link" href="/programming">Learn a language {{ icon("chevron", 13) }}</a>
-    </div>
+  <section class="section" aria-labelledby="ev-code-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">Code, then prove it</p>
+      <h2 id="ev-code-title">Start coding</h2>
+      <p class="section-sub">Judged problems with real test cases — run them in the browser or on the hosted judge.</p>
+    </div><a class="section-link" href="/programming">Learn a language {{ icon("chevron", 13) }}</a></div>
     <div class="grid g3">
       {% for problem in sample_problems %}
         <a class="card problem-card" href="/practice/problems/{{ problem.slug }}">
-          <div class="card-top">
-            <span class="chip diff-{{ problem.difficulty }}">{{ problem.difficulty }}</span>
-            <span class="card-arrow" aria-hidden="true">{{ icon("chevron", 14) }}</span>
-          </div>
+          <div class="card-top"><span class="chip diff-{{ problem.difficulty }}">{{ problem.difficulty }}</span><span class="card-arrow" aria-hidden="true">{{ icon("chevron", 14) }}</span></div>
           <span class="title">{{ problem.title }}</span>
           <span class="desc">{{ problem.statement | excerpt(130) }}</span>
-          <div class="tags">
-            {% for t in (problem.topics | fromjson([]))[:2] %}<span class="chip">{{ t }}</span>{% endfor %}
-          </div>
+          <div class="tags">{% for t in (problem.topics | fromjson([]))[:2] %}<span class="chip">{{ t }}</span>{% endfor %}</div>
         </a>
       {% endfor %}
     </div>
   </section>
 
-  <!-- ------------------------------------------------------------- featured topics -->
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">Popular right now</p>
-        <h2>Featured topics</h2>
-        <p class="section-sub">Definition, intuition, a worked example and where engineers actually use it.</p>
-      </div>
-      <a class="section-link" href="/explore">Open the catalogue {{ icon("chevron", 13) }}</a>
-    </div>
+  <section class="section" aria-labelledby="ev-topics-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">From the notes</p>
+      <h2 id="ev-topics-title">Featured topics</h2>
+      <p class="section-sub">Definition, intuition, a worked example and where engineers actually use it.</p>
+    </div><a class="section-link" href="/explore">Open the catalogue {{ icon("chevron", 13) }}</a></div>
     <div class="grid g3">
       {% for topic in featured_topics %}
         <a class="card topic-card" href="/topics/{{ topic.slug }}">
-          <div class="tags">
-            <span class="chip">{{ topic.subject }}</span>
-            <span class="chip diff-{{ topic.difficulty }}">{{ topic.difficulty }}</span>
-          </div>
+          <div class="tags"><span class="chip">{{ topic.subject }}</span><span class="chip diff-{{ topic.difficulty }}">{{ topic.difficulty }}</span></div>
           <span class="title">{{ topic.title }}</span>
           <span class="desc">{{ topic.summary | excerpt(150) }}</span>
-          <span class="card-foot"><span class="tiny muted">{{ topic.est_minutes }} min read</span>
-            <span class="card-arrow" aria-hidden="true">{{ icon("chevron", 14) }}</span></span>
+          <span class="card-foot"><span class="tiny muted">{{ topic.est_minutes }} min read</span><span class="card-arrow" aria-hidden="true">{{ icon("chevron", 14) }}</span></span>
         </a>
       {% endfor %}
     </div>
   </section>
 
-  <!-- ------------------------------------------------------------- build projects -->
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">Portfolio, not promises</p>
-        <h2>Build something real</h2>
-        <p class="section-sub">Projects with architecture, steps, a résumé line and the interview questions that follow.</p>
-      </div>
-      <a class="section-link" href="/projects">All projects {{ icon("chevron", 13) }}</a>
-    </div>
+  <section class="section" aria-labelledby="ev-projects-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">Portfolio, not promises</p>
+      <h2 id="ev-projects-title">Build something real</h2>
+      <p class="section-sub">Projects with architecture, steps, a résumé line and the interview questions that follow.</p>
+    </div><a class="section-link" href="/projects">All projects {{ icon("chevron", 13) }}</a></div>
     <div class="grid g3">
       {% for project in sample_projects %}
         <a class="card project-card" href="/projects/{{ project.slug }}">
-          <div class="card-top">
-            <span class="chip accent">{{ project.difficulty }}</span>
-            <span class="chip">{{ project.est_hours }} h</span>
-          </div>
+          <div class="card-top"><span class="chip accent">{{ project.difficulty }}</span><span class="chip">{{ project.est_hours }} h</span></div>
           <span class="title">{{ project.title }}</span>
           <span class="desc">{{ project.summary | excerpt(140) }}</span>
-          <div class="tags">
-            {% for tech in (project.tech | fromjson([]))[:3] %}<span class="chip">{{ tech }}</span>{% endfor %}
-          </div>
+          <div class="tags">{% for tech in (project.tech | fromjson([]))[:3] %}<span class="chip">{{ tech }}</span>{% endfor %}</div>
         </a>
       {% endfor %}
     </div>
   </section>
 
-  <!-- ------------------------------------------------------------- install panel -->
-  <section class="section ev-reveal">
+  <section class="section" aria-labelledby="ev-features-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">What's inside</p>
+      <h2 id="ev-features-title">Three tools, one workspace</h2>
+    </div></div>
+    <div class="feature-list">
+      <article class="feature-row">
+        <span class="pillar-mark" aria-hidden="true">{{ icon("book", 20) }}</span>
+        <div><h3>Notes</h3><p>Structured notes for every subject — definition, intuition, diagram, derivation and a worked example, at four depths.</p></div>
+        <a href="/explore">Browse notes {{ icon("chevron", 13) }}</a>
+      </article>
+      <article class="feature-row">
+        <span class="pillar-mark" aria-hidden="true">{{ icon("target", 20) }}</span>
+        <div><h3>Practice sheets</h3><p>Daily problem sets, question banks and judged coding sheets. Mistakes are saved to a notebook so you can revisit them.</p></div>
+        <a href="/practice">Open practice sheets {{ icon("chevron", 13) }}</a>
+      </article>
+      <article class="feature-row">
+        <span class="pillar-mark" aria-hidden="true">{{ icon("chart", 20) }}</span>
+        <div><h3>Progress{% if not static_export %} &amp; leaderboard{% endif %}</h3>
+          <p>{% if static_export %}Your streak, XP and completed topics, saved on this device and exportable as JSON. The leaderboard runs on the hosted app, which needs accounts.{% else %}Your streak, XP and completed topics — plus a leaderboard on this hosted instance so you can see where you stand.{% endif %}</p></div>
+        <a href="/dashboard">{{ 'My progress' if static_export else 'Progress & leaderboard' }} {{ icon("chevron", 13) }}</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ev-install-title">
     <div class="cta-panel between">
       <div class="cta-panel-copy">
-        <p class="ev-eyebrow">Zero-install web · Android · progress snapshots</p>
-        <h2>Use it online or on your phone</h2>
+        <p class="ev-eyebrow">Web · Android · Your data stays yours</p>
+        <h2 id="ev-install-title">Use it online or on your phone</h2>
         {% if static_export %}
-        <p>Solve DPPs, run code and explore the labs in your browser. This public copy has no accounts: your
-          progress is saved on this device only, and you can export it as a JSON file from Settings. A hosted
-          EngineVerse server adds accounts, so progress follows you between devices.</p>
+        <p>Solve practice sets, run code and read the notes in your browser. This public copy has no accounts: progress is saved on this device only, and you can export it as JSON from Settings.</p>
         {% else %}
-        <p>Solve DPPs and explore the labs in your browser. Signing in saves your progress to this server's
-          private database so it follows you between devices. You can download a copy of it from Settings at
-          any time.</p>
+        <p>Solve practice sets and read the notes in your browser. Signing in saves your progress to this server so it follows you between devices; you can download a copy from Settings at any time.</p>
         {% endif %}
       </div>
       <div class="cta-panel-actions">
-        {% if static_export %}
-        <a class="btn btn-primary" href="/explore">Start learning {{ icon("chevron", 14) }}</a>
-        <a class="btn btn-ghost" href="/install">{{ icon("download", 15) }} Android &amp; install</a>
-        <a class="btn btn-soft" href="/settings">Export my progress</a>
-        {% else %}
-        <a class="btn btn-primary" href="{{ '/stream' if user else '/register' }}">{{ 'Open my stream' if user else 'Create free account' }} {{ icon("chevron", 14) }}</a>
-        <a class="btn btn-ghost" href="/install">{{ icon("download", 15) }} Android &amp; install</a>
-        {% if user %}<a class="btn btn-soft" href="/settings#export">Download my data</a>{% endif %}
-        {% endif %}
+        <a class="btn btn-primary" href="/dpp">Start practising {{ icon("chevron", 14) }}</a>
+        <a class="btn btn-ghost" href="/explore">Explore notes</a>
+        <a class="btn btn-soft" href="/install">{{ icon("download", 15) }} Android &amp; install</a>
       </div>
     </div>
   </section>
 
   {% if cyber_security_subject %}
-  <section class="section ev-reveal">
+  <section class="section" aria-labelledby="ev-cs-title">
     <div class="cta-panel between">
       <div class="cta-panel-copy">
         <p class="ev-eyebrow">New path</p>
-        <h2>Cyber Security notes are public</h2>
+        <h2 id="ev-cs-title">Cyber Security notes are public</h2>
         <p>Start the defensive security path — read the notes and practise without creating an account.</p>
       </div>
-      <div class="cta-panel-actions">
-        <a class="btn btn-primary" href="/subjects/{{ cyber_security_subject.slug }}">Open Cyber Security notes</a>
-      </div>
+      <div class="cta-panel-actions"><a class="btn btn-primary" href="/subjects/{{ cyber_security_subject.slug }}">Open Cyber Security notes</a></div>
     </div>
   </section>
   {% endif %}
 
-  <!-- ------------------------------------------------------------- why engineverse -->
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">The full loop</p>
-        <h2>Why {{ brand.site_name }}</h2>
-        <p class="section-sub">Learn, then prove you can use it. Every feature exists to move you from reading to doing.</p>
-      </div>
-    </div>
-    <div class="grid g3 pillars">
-      <article class="card">
-        <span class="pillar-mark" aria-hidden="true">{{ icon("book", 20) }}</span>
-        <h3>Learn</h3>
-        <p class="desc">High-quality notes: definition, intuition, diagram, derivation, worked example and the place engineers actually use it.</p>
-      </article>
-      <article class="card">
-        <span class="pillar-mark" aria-hidden="true">{{ icon("target", 20) }}</span>
-        <h3>Practice</h3>
-        <p class="desc">Daily practice problems, quizzes and a sandboxed coding judge. Wrong answers land in a mistake notebook.</p>
-      </article>
-      <article class="card">
-        <span class="pillar-mark" aria-hidden="true">{{ icon("hammer", 20) }}</span>
-        <h3>Build</h3>
-        <p class="desc">Real-world projects with architecture, steps, a résumé line and the interview questions that follow.</p>
-      </article>
-      <article class="card">
-        <span class="pillar-mark" aria-hidden="true">{{ icon("refresh", 20) }}</span>
-        <h3>Revise</h3>
-        <p class="desc">Formula sheets, flashcards on a spaced-repetition schedule, and a path back through whatever you got wrong.</p>
-      </article>
-      <article class="card">
-        <span class="pillar-mark" aria-hidden="true">{{ icon("trophy", 20) }}</span>
-        <h3>Compete</h3>
-        <p class="desc">Streaks, badges, engineering ranks and leaderboards. Motivation, not a game pretending to be a classroom.</p>
-      </article>
-      <article class="card">
-        <span class="pillar-mark" aria-hidden="true">{{ icon("briefcase", 20) }}</span>
-        <h3>Get hired</h3>
-        <p class="desc">Branch-specific interview prep, projects you can defend, and a public portfolio that is not a PDF.</p>
-      </article>
-    </div>
-  </section>
-
-  <!-- ------------------------------------------------------------- one loop -->
-  <section class="section ev-reveal">
-    <div class="section-head">
-      <div>
-        <p class="ev-eyebrow">One path through every topic</p>
-        <h2>One loop, every topic</h2>
-      </div>
-    </div>
-    <ol class="loop">
-      <li><a href="/explore"><b>Learn</b><span>Notes</span></a></li>
-      <li><a href="/explore"><b>Understand</b><span>Intuition</span></a></li>
-      <li><a href="{% if featured_topics %}/topics/{{ featured_topics[0].slug }}{% else %}/explore{% endif %}"><b>Visualize</b><span>Diagrams</span></a></li>
-      <li><a href="/dpp"><b>Practice</b><span>DPP</span></a></li>
-      <li><a href="/revision"><b>Revise</b><span>Cards</span></a></li>
-      <li><a href="/projects"><b>Build</b><span>Projects</span></a></li>
-      <li><a href="/practice"><b>Test</b><span>Problems</span></a></li>
-      <li><a href="/placements"><b>Improve</b><span>Interviews</span></a></li>
-    </ol>
-  </section>
-
-  <!-- ------------------------------------------------------------- finale -->
-  <section class="finale ev-reveal">
-    <span class="finale-glow" aria-hidden="true"></span>
-    <p class="ev-eyebrow">No card. No trial timer.</p>
-    <h2>Your engineering journey starts here.</h2>
-    <p class="finale-points">
-      <span>Learn the concepts.</span>
-      <span>Solve the problems.</span>
-      <span>Build the projects.</span>
-      <span>Become industry ready.</span>
-    </p>
-    {% if user %}
-      <a class="btn btn-primary btn-lg" href="/stream">Open my stream {{ icon("chevron", 15) }}</a>
-    {% else %}
-      <a class="btn btn-primary btn-lg" href="{{ '/explore' if static_export else '/register' }}">Start learning free {{ icon("chevron", 15) }}</a>
-    {% endif %}
-  </section>
-
-</section>
-
+</div>
 {% endblock %}

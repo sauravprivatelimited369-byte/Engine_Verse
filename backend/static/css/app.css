@@ -3789,6 +3789,7 @@ body:has(.topbar.open)::after {
 [hidden] { display: none !important; }
 
 
+
 /* --------------------------------------------------------------- share row
    A small, quiet control above the content. The status line is always part of
    the layout (role="status" only announces when it changes) so the page does
@@ -3802,3 +3803,173 @@ body:has(.topbar.open)::after {
 }
 .share .btn { box-shadow: none; }
 .share .tiny { min-height: 1.2em; }
+
+
+/* ===========================================================================
+   GLASSMORPHISM DESIGN SYSTEM (site-wide, 2026 redesign)
+   Frosted glass over a calm, tinted canvas: translucent surfaces, a 1px
+   top highlight, soft diffuse shadow and backdrop blur. Restraint is the
+   point — one blue accent, deep-navy ink, no neon, no gradient headlines.
+   This layer re-skins the tokens and shared surfaces so every page
+   (notes, practice, dashboard, planner…) inherits the same glass identity.
+   =========================================================================== */
+:root {
+  --bg: #0a1120;
+  --bg-2: #0d1628;
+  --surface: #111c33;
+  --panel: #111c33;
+  --panel-2: #0d1729;
+  --well: rgba(255, 255, 255, .05);
+  --text: #eef2fb;
+  --text-2: #c2cee6;
+  --muted: #93a5c4;
+  --accent: #4f7cff;
+  --accent-2: #7aa5ff;
+  --accent-3: #4f7cff;
+  --grad: linear-gradient(135deg, var(--accent), var(--accent));
+  --grad-3: linear-gradient(120deg, var(--accent), var(--accent));
+  --glass: rgba(17, 28, 51, .58);
+  --glass-strong: rgba(15, 25, 46, .82);
+  --glass-edge: rgba(255, 255, 255, .14);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .14);
+  --glass-shadow: 0 1px 2px rgba(2, 6, 17, .28), 0 20px 44px -24px rgba(2, 6, 17, .75);
+  --neu: var(--glass-shadow);
+  --neu-sm: 0 1px 2px rgba(2, 6, 17, .22), 0 10px 26px -18px rgba(2, 6, 17, .65);
+  --neu-lg: 0 2px 6px rgba(2, 6, 17, .3), 0 32px 70px -32px rgba(2, 6, 17, .85);
+  --r-sm: 10px; --r: 14px; --r-lg: 18px; --radius: 18px;
+}
+[data-theme="light"] {
+  --bg: #f4f1ea;
+  --bg-2: #ece7db;
+  --surface: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #faf8f3;
+  --well: rgba(16, 28, 54, .045);
+  --text: #101c33;
+  --text-2: #3c4c68;
+  --muted: #61708c;
+  --glass: rgba(255, 255, 255, .62);
+  --glass-strong: rgba(255, 255, 255, .86);
+  --glass-edge: rgba(16, 28, 54, .12);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .75);
+  --glass-shadow: 0 1px 2px rgba(16, 28, 54, .06), 0 20px 44px -26px rgba(16, 28, 54, .35);
+  --neu: var(--glass-shadow);
+  --neu-sm: 0 1px 2px rgba(16, 28, 54, .05), 0 10px 26px -20px rgba(16, 28, 54, .3);
+  --neu-lg: 0 2px 4px rgba(16, 28, 54, .06), 0 32px 70px -34px rgba(16, 28, 54, .4);
+}
+/* The canvas the glass floats on: two very soft tints, fixed, no animation. */
+body {
+  background:
+    radial-gradient(900px 480px at 85% -80px, color-mix(in srgb, var(--accent) 10%, transparent), transparent 65%),
+    radial-gradient(760px 420px at -120px 30%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--bg), var(--bg-2));
+  background-attachment: fixed;
+}
+/* Shared glass surface: translucent fill + blur + highlight edge. */
+.topbar-inner, .navmenu, .menu-pop, .card, a.card, .tile, a.tile, .panel,
+.hero-panel, .plan-shell, .cta-panel, .preview, .finale, .form-panel,
+.mobilenav, .bottomnav, .footer-cta-band, .modal, .sheet, .well-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-hi), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar-inner, .navmenu, .menu-pop, .card, a.card, .tile, a.tile, .panel,
+  .hero-panel, .plan-shell, .cta-panel, .preview, .finale, .form-panel,
+  .mobilenav, .bottomnav, .footer-cta-band, .modal, .sheet, .well-card {
+    background: var(--glass-strong);
+  }
+}
+.topbar { background: transparent; }
+input, select, textarea, .searchbox {
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-hi);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+}
+.chip, .btn-ghost, .btn-soft, .iconbtn, .logo-mark, .hp-ico, .plan-icon, .pillar-mark {
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-hi);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+}
+.btn-primary { background: var(--btn); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--accent) 65%, transparent); }
+.card:hover, a.card:hover, .tile:hover, a.tile:hover { transform: translateY(-2px); }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------- homepage */
+.home .section { margin: 48px 0; }
+.home-hero {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+  gap: clamp(24px, 4vw, 48px); align-items: center;
+  margin: 8px 0 16px; padding: clamp(8px, 2vw, 24px) 0 8px;
+  background: none; border: 0; box-shadow: none; overflow: visible;
+}
+.hero-glow, .hero-grid-lines, .finale-glow, .hero-float, .hp-dots, .live-dot { display: none !important; }
+.hero-title {
+  font-family: var(--display); font-size: clamp(2.1rem, 4.4vw, 3.3rem);
+  font-weight: 650; line-height: 1.08; letter-spacing: -.035em; margin: 0 0 14px;
+}
+.hero-title .grad { background: none; -webkit-text-fill-color: currentColor; color: var(--accent-ink); filter: none; }
+.ev-eyebrow {
+  font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent-ink); margin: 0 0 10px;
+}
+.hero-panel { border-radius: var(--r-lg); padding: 16px; }
+.hp-head { padding: 2px 2px 12px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+.hp-today { background: var(--well); }
+.hp-row { background: var(--glass); border: 1px solid var(--glass-edge); box-shadow: var(--glass-hi); }
+.hp-ico-b, .hp-ico-c, .hp-ico-d { color: var(--accent-ink); background: var(--glass); border-color: var(--glass-edge); }
+.plan-shell, .cta-panel { background: var(--glass); border-radius: var(--r-lg); }
+.plan-board { background: var(--glass); }
+.plan-bar > span { background: var(--accent); }
+.path-tile::after { display: none; }
+.finale { border-radius: var(--r-lg); background: var(--glass); }
+.footer { background: transparent; }
+.footer-cta-band { border-radius: var(--r-lg); }
+
+/* Learn → Practise → Review */
+.how-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.how-step {
+  padding: 20px; border-radius: var(--r-lg);
+  background: var(--glass); border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-hi), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+}
+.how-num {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; margin-bottom: 12px;
+  border-radius: 50%; font-family: var(--display); font-weight: 650; font-size: .85rem;
+  color: var(--accent-ink); background: var(--glass); border: 1px solid var(--glass-edge);
+}
+.how-step h3 { margin: 0 0 6px; }
+.how-step p { color: var(--text-2); font-size: .92rem; margin: 0 0 12px; }
+.how-step a { font-size: .86rem; font-weight: 620; display: inline-flex; gap: 4px; align-items: center; }
+
+/* Feature rows: distinct from cards — a ruled list, not a card grid. */
+.feature-list { border-top: 1px solid var(--line); }
+.feature-row {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 16px; align-items: center;
+  padding: 20px 4px; border-bottom: 1px solid var(--line);
+}
+.feature-row h3 { margin: 0 0 4px; }
+.feature-row p { margin: 0; color: var(--text-2); font-size: .92rem; max-width: 65ch; }
+.feature-row > a { font-size: .86rem; font-weight: 620; white-space: nowrap; display: inline-flex; gap: 4px; align-items: center; }
+
+@media (max-width: 1024px) { .home-hero { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+  .how-grid { grid-template-columns: 1fr; }
+  .feature-row { grid-template-columns: 44px minmax(0, 1fr); }
+  .feature-row > a { grid-column: 2; }
+  .home .section { margin: 36px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  html { scroll-behavior: auto; }
+}
+

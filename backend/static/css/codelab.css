@@ -849,3 +849,13 @@
     height: 50dvh;
   }
 }
+
+/* Glassmorphism (2026 redesign): inherit the frosted-glass surfaces defined
+   in app.css so this page family matches the rest of the site. */
+.lab-step, .lab-graph li, .lab-pairing, .lab-quote, .academy-section fieldset {
+  background: var(--glass, rgba(255,255,255,.62));
+  border: 1px solid var(--glass-edge, rgba(16,28,54,.12));
+  box-shadow: var(--glass-hi, inset 0 1px 0 rgba(255,255,255,.6));
+  -webkit-backdrop-filter: blur(14px) saturate(145%);
+  backdrop-filter: blur(14px) saturate(145%);
+}

@@ -15,7 +15,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ brand.site_name }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
-  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f3f5fa{% else %}#070b14{% endif %}">
+  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f4f1ea{% else %}#0a1120{% endif %}">
   <script nonce="{{ request.state.csp_nonce }}">
     // Runs before first paint: a stored theme preference wins over the site
     // default. Sign-in state is never guessed from browser storage: on the
@@ -38,7 +38,7 @@
           theme = saved;
         }
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "light" ? "#f3f5fa" : "#070b14");
+        if (meta) meta.setAttribute("content", theme === "light" ? "#f4f1ea" : "#0a1120");
       } catch (e) { /* storage blocked - fall back to the server default */ }
     })();
   </script>
