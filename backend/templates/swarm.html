@@ -17,7 +17,7 @@
 </section>
 <section class="section panel" aria-labelledby="swarm-task-title">
 <h2 id="swarm-task-title">Give the swarm a task</h2>
-<p class="callout warning" data-lab-mode-notice hidden>This is a static reading copy. The seeded review below is readable; running a new simulation requires a self-hosted EngineVerse backend.</p>
+<p class="callout warning" data-lab-mode-notice hidden>This is a static reading copy. The seeded review below is readable; running a new simulation requires a self-hosted {{ brand.site_name }} backend.</p>
 <form id="swarm-form" action="/api/swarm/simulate" method="post" data-live-only>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="swarm-prompt">Engineering task or review question</label><textarea id="swarm-prompt" name="prompt" minlength="4" maxlength="400" required rows="3" data-live-control>{{ prompt }}</textarea>

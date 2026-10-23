@@ -1,4 +1,4 @@
-/* EngineVerse front-end.
+/* Forge front-end.
  * Vanilla JS, no dependencies, no CDN. Everything here is progressive
  * enhancement: every feature has a working no-JS path via plain HTML forms.
  */
@@ -515,7 +515,7 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
           (result && result.via) || (cplLang && cplLang.dataset.judge) || "disabled";
         const lines = [`Run refused — nothing was executed (${judgeName}).`];
         if (status === "unsupported_language") {
-          lines.push("", `${row.name || "This language"} has no runtime in this copy of EngineVerse.`);
+          lines.push("", `${row.name || "This language"} has no runtime in this copy of Forge.`);
         }
         if (result && result.stderr) lines.push("", String(result.stderr).slice(0, 4000));
         cplOutput.innerHTML = `<div class="verdict ${status}">Not run</div>` +

@@ -28,11 +28,11 @@ def verify(url: str, *, run=subprocess.run) -> None:
         raise ValueError("The Android GitHub Release cannot be read")
     release = json.loads(result.stdout)
     if release.get("isDraft") is not False or not any(
-        isinstance(asset, dict) and asset.get("name") == "EngineVerse.apk"
+        isinstance(asset, dict) and asset.get("name") in {"Forge.apk", "EngineVerse.apk"}
         and isinstance(asset.get("size"), int) and asset["size"] > 0
         for asset in release.get("assets", [])
     ):
-        raise ValueError("The Android GitHub Release has no public nonempty EngineVerse.apk asset")
+        raise ValueError("The Android GitHub Release has no public nonempty Forge.apk asset")
     print("Verified the versioned signed APK release asset exists.")
 
 

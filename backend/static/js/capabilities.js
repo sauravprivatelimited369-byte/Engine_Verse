@@ -1,6 +1,6 @@
 /* Public directory, data studio, declarative workflows and evidence swarm.
  * Runs against the FastAPI backend when hosted on a server, and executes
- * directly in the browser against the exported EngineVerse catalogue snapshots
+ * directly in the browser against the exported Forge catalogue snapshots
  * on the public GitHub Pages website and Android APK. */
 (() => {
   "use strict";
@@ -44,7 +44,7 @@
       node.hidden = false;
       node.className = "callout info mb";
       node.innerHTML = "<span class=\"label\">Live Browser Execution Active</span> " +
-        "Running directly in your browser against the verified EngineVerse catalogue snapshot — no local install required.";
+        "Running directly in your browser against the verified Forge catalogue snapshot — no local install required.";
     });
   }
 
@@ -202,7 +202,7 @@
         clipped_cells: 0,
         elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
         plan: [{ detail: "SCAN branches b" }, { detail: "SEARCH subjects s USING INDEX (branch_id)" }, { detail: "SEARCH topics t USING INDEX (subject_id)" }],
-        disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+        disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
       };
     }
 
@@ -228,7 +228,7 @@
         clipped_cells: 0,
         elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
         plan: [{ detail: "SCAN coding_problems" }, { detail: "USE TEMP B-TREE FOR GROUP BY" }],
-        disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+        disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
       };
     }
 
@@ -252,7 +252,7 @@
         clipped_cells: 0,
         elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
         plan: [{ detail: "SCAN programming_languages l" }, { detail: "LEFT JOIN language_stages, language_modules, coding_problem_stubs" }],
-        disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+        disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
       };
     }
 
@@ -276,7 +276,7 @@
         clipped_cells: 0,
         elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
         plan: [{ detail: "MATERIALIZE section_counts" }, { detail: "SCAN topics t" }],
-        disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+        disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
       };
     }
 
@@ -299,7 +299,7 @@
         clipped_cells: 0,
         elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
         plan: [{ detail: "SCAN questions q" }, { detail: "USE TEMP B-TREE FOR GROUP BY" }],
-        disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+        disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
       };
     }
 
@@ -353,7 +353,7 @@
         clipped_cells: 0,
         elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
         plan: [{ detail: `SCAN ${tableName}` }],
-        disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+        disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
       };
     }
 
@@ -397,7 +397,7 @@
         clipped_cells: 0,
         elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
         plan: [{ detail: `SCAN ${tableName}` }],
-        disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+        disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
       };
     }
 
@@ -413,7 +413,7 @@
       clipped_cells: 0,
       elapsed_ms: Math.max(1, Math.round(performance.now() - t0)),
       plan: [{ detail: `SCAN ${tableName}` }],
-      disclosure: "Executed in-browser against the verified EngineVerse public catalogue snapshot."
+      disclosure: "Executed in-browser against the verified Forge public catalogue snapshot."
     };
   }
 
@@ -486,7 +486,7 @@
     if (!blueprint) return;
     if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
       const say = window.EV && typeof window.EV.toast === "function" ? window.EV.toast : window.alert;
-      say("Saving files is not available inside the EngineVerse Android app. Use \u201cOpen in browser\u201d (top right) to save this file.");
+      say("Saving files is not available inside the Forge Android app. Use \u201cOpen in browser\u201d (top right) to save this file.");
       return;
     }
     const blob = new Blob([JSON.stringify(blueprint.n8n, null, 2) + "\n"], { type: "application/json" });
@@ -679,7 +679,7 @@
         }
         if (ev.type === "complete") {
           completed = true;
-          $("#workflow-status").textContent = `${ev.result.steps.length} steps executed against the EngineVerse catalogue.`;
+          $("#workflow-status").textContent = `${ev.result.steps.length} steps executed against the Forge catalogue.`;
         }
       };
       try {
@@ -801,7 +801,7 @@
 
     return {
       grounded: sources.length > 0,
-      disclosure: "MiroFish Multi-Agent Evidence Review · Executed in-browser over verified EngineVerse engineering notes.",
+      disclosure: "MiroFish Multi-Agent Evidence Review · Executed in-browser over verified Forge engineering notes.",
       message: `Synthesized ${agents.length} specialist engineering perspectives across ${sources.length} published catalogue sources.`,
       matched_terms: terms.slice(0, 10),
       agents,

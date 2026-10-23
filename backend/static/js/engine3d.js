@@ -1,4 +1,4 @@
-/* EngineVerse 3D — a self-contained WebGL renderer for engineering models.
+/* Forge 3D — a self-contained WebGL renderer for engineering models.
  *
  * There is no three.js here and nothing is fetched from a CDN: the platform is
  * self-hosted, so the linear algebra, the mesh generators and the shading all

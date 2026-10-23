@@ -306,10 +306,10 @@ def n8n_export(slug: str) -> dict:
         nodes.append({"id": str(uuid5(NAMESPACE_URL, f"engineverse:{slug}:{node.id}")), "name": node.label,
                       "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [(index + 1) * 260, 0],
                       "parameters": {"method": "GET", "url": url, "options": {"timeout": 10000}},
-                      "notes": f"EngineVerse allowlisted operator: {node.operator}. Dependencies are recomputed read-only by the server.", "notesInFlow": True})
+                      "notes": f"Forge allowlisted operator: {node.operator}. Dependencies are recomputed read-only by the server.", "notesInFlow": True})
         if index + 1 < len(workflow.nodes):
             connections[node.label] = {"main": [[{"node": workflow.nodes[index + 1].label, "type": "main", "index": 0}]]}
-    return {"name": "EngineVerse · " + workflow.name, "nodes": nodes, "connections": connections,
+    return {"name": "Forge · " + workflow.name, "nodes": nodes, "connections": connections,
             "active": False, "settings": {"executionOrder": "v1"}, "pinData": {},
             "meta": {"templateCredsSetupCompleted": False}}
 

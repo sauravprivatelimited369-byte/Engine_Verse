@@ -30,7 +30,7 @@ a noisy percentage. The thresholds are constants at the top of `outcomes.py`.
 ## What this does not claim
 
 - **No causal inference.** A rising trend shows a learner improving while
-  using EngineVerse; it does not prove EngineVerse caused the improvement.
+  using Forge; it does not prove Forge caused the improvement.
   There is no control group, no pre-registration, and no adjustment for
   question difficulty or self-selection.
 - **No cross-learner ranking.** First-attempt accuracy depends on which

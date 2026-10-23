@@ -27,7 +27,7 @@ this deliberately small directory has 12 engineering/developer APIs in five
 categories. Each entry contains HTTPS endpoint and documentation metadata,
 `auth`, `cors`, paired `topic_slug` and `project_slug`, an engineering exercise,
 provider caveats and cURL/Python/JavaScript examples. API keys are never stored
-or used by EngineVerse. External availability and CORS are not live-monitored.
+or used by Forge. External availability and CORS are not live-monitored.
 
 The HTML page and JSON endpoint accept the same AND-combined filters:
 
@@ -71,7 +71,7 @@ private schema. Adding a table or column requires an explicit projection change.
 The policy matrix distinguishes provider/native row-level controls from the
 application's existing route authorization. SQLite has no native Postgres RLS.
 The matrix describes the access boundary; it does not claim that a provider's
-policies were applied or audit every route in EngineVerse.
+policies were applied or audit every route in Forge.
 
 ### SQL execution boundary
 
@@ -83,7 +83,7 @@ and `EXPLAIN QUERY PLAN` output. A SELECT-only CTE or compound SELECT is support
 
 1. Parses a single SELECT and resolves only allowed public tables/CTE references.
 2. Copies the referenced, explicit public projections into a disposable SQLite
-   database, even when EngineVerse itself is backed by PostgreSQL.
+   database, even when Forge itself is backed by PostgreSQL.
 3. Reproduces public catalogue indexes; these plans are teaching plans, not
    measurements of production performance.
 4. Enables `query_only` and installs an authorizer that denies writes,
@@ -147,7 +147,7 @@ Inspired by [`666ghj/MiroFish`](https://github.com/666ghj/MiroFish) and [`vxcont
 five deterministic review lenses: systems architect, quantitative analyst,
 implementation engineer, safety/reliability reviewer and learning/delivery coach.
 They are not real specialists and do not make an external model call. Alongside
-the lab, PentAGI-style security verification patterns inform EngineVerse's
+the lab, PentAGI-style security verification patterns inform Forge's
 scoped 6-digit OTP verification (required only for new-user registration,
 password recovery, and password change via Gmail or mobile number with country
 code) and multi-layer session persistence (`localStorage`, `sessionStorage`,

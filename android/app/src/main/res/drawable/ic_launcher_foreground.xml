@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- EngineVerse mark (hexagon + M), from backend/static/icons/favicon.svg,
-     scaled into the 108dp adaptive-icon canvas inside the 66dp safe zone. -->
+<!-- FORGE mark (anvil + hammer spark), from backend/static/icons/favicon.svg,
+     scaled into the 108dp adaptive-icon canvas inside the 66dp safe zone.
+     Keep in step with the SVG; scripts/gen_brand_icons.py covers the PNGs. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -12,15 +13,10 @@
         android:translateX="6"
         android:translateY="6">
         <path
-            android:pathData="M32,16 L18,24 L18,40 L32,48 L46,40 L46,24 Z"
-            android:strokeColor="#FFFFFF"
-            android:strokeWidth="2.8"
-            android:strokeLineJoin="round" />
+            android:pathData="M45,6.5 L47,11.3 L52,13.3 L47,15.3 L45,20.1 L43,15.3 L38,13.3 L43,11.3 Z"
+            android:fillColor="#FBBF24" />
         <path
-            android:pathData="M26,40 L26,26 L32,31.5 L38,26 L38,40"
-            android:strokeColor="#FFFFFF"
-            android:strokeWidth="2.8"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
+            android:pathData="M11,24.5 H36 Q43.5,26.8 50.5,29.4 Q43.5,31.6 36,32.8 H32.5 V37.8 L35.8,40.6 V43.8 H41 V49.6 H16 V43.8 H21.2 V40.6 L24.5,37.8 V32.8 H11 Z"
+            android:fillColor="#FFF7ED" />
     </group>
 </vector>

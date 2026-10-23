@@ -51,7 +51,7 @@ MAX_PROMPT_CHARS = 400
 MAX_SOURCES = 15
 MAX_EXCERPT_CHARS = 520
 DISCLOSURE = (
-    "Deterministic multi-persona simulation assembled only from EngineVerse's public seeded catalogue. "
+    "Deterministic multi-persona simulation assembled only from Forge's public seeded catalogue. "
     "No external model or autonomous agents are running. Quotes are evidence; the cross-agent trade-offs "
     "are review prompts, not predictions, expert approval or safety advice. Check the source and its review state."
 )

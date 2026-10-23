@@ -13,7 +13,7 @@ endpoint, because anyone can POST the victim's address and read the link back.
 Configure with::
 
     ENGINEVERSE_SMTP_URL=smtp://user:password@mail.internal:587/?tls=1
-    ENGINEVERSE_MAIL_FROM="EngineVerse <no-reply@example.org>"
+    ENGINEVERSE_MAIL_FROM="Forge <no-reply@example.org>"
 """
 from __future__ import annotations
 

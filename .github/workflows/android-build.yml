@@ -56,7 +56,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: |
+          set +e
+          ./gradlew --no-daemon testDebugUnitTest > /tmp/gradle-unit.log 2>&1
+          code=$?
+          tail -n 80 /tmp/gradle-unit.log
+          if [ "$code" -ne 0 ]; then
+            # Surface the actual failure in the checks API: raw job logs are
+            # not always readable where maintainers work, annotations are.
+            { awk '/What went wrong/{f=1} f&&c<14{print;c++}' /tmp/gradle-unit.log; grep -E "^e: |error:|Execution failed|Unresolved|aapt2|AAPT|e: file" /tmp/gradle-unit.log | head -n 12; } | while IFS= read -r line; do
+              esc=$(printf '%s' "$line" | sed 's/%/%25/g')
+              echo "::error title=Unit tests::${esc}"
+            done
+          fi
+          exit "$code"
 
       - name: Android lint
         run: ./gradlew --no-daemon lintDebug
@@ -175,9 +188,9 @@ jobs:
           ./gradlew --no-daemon assembleRelease
           apk=$(ls app/build/outputs/apk/release/*.apk)
           case "$apk" in *unsigned*) echo "::error::release APK is unsigned"; exit 1;; esac
-          cp "$apk" "$RUNNER_TEMP/EngineVerse.apk"
-          (cd "$RUNNER_TEMP" && sha256sum EngineVerse.apk > EngineVerse.apk.sha256)
-          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --print-certs "$RUNNER_TEMP/EngineVerse.apk"
+          cp "$apk" "$RUNNER_TEMP/Forge.apk"
+          (cd "$RUNNER_TEMP" && sha256sum Forge.apk > Forge.apk.sha256)
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --print-certs "$RUNNER_TEMP/Forge.apk"
 
       - name: Publish to GitHub Releases
         env:
@@ -186,9 +199,9 @@ jobs:
           set -euo pipefail
           tag="android-$VERSION"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$RUNNER_TEMP/EngineVerse.apk" "$RUNNER_TEMP/EngineVerse.apk.sha256" --clobber
+            gh release upload "$tag" "$RUNNER_TEMP/Forge.apk" "$RUNNER_TEMP/Forge.apk.sha256" --clobber
           else
-            gh release create "$tag" "$RUNNER_TEMP/EngineVerse.apk" "$RUNNER_TEMP/EngineVerse.apk.sha256" \
-              --target "$GITHUB_SHA" --title "EngineVerse Android $VERSION" \
-              --notes "Signed release build of the native EngineVerse Android app. Compare the SHA-256 in EngineVerse.apk.sha256 before installing."
+            gh release create "$tag" "$RUNNER_TEMP/Forge.apk" "$RUNNER_TEMP/Forge.apk.sha256" \
+              --target "$GITHUB_SHA" --title "Forge Android $VERSION" \
+              --notes "Signed release build of the native Forge Android app. Compare the SHA-256 in Forge.apk.sha256 before installing."
           fi

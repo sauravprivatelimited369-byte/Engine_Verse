@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Public post | [issue #39](https://github.com/authorsauravkushwaha/EngineVerse/issues/39), opened 2026-10-16 by the pre-fix static-copy sync flow |
+| Public post | [issue #39](https://github.com/authorsauravkushwaha/Forge/issues/39), opened 2026-10-16 by the pre-fix static-copy sync flow |
 | What was exposed | a non-empty `password_sha256` — `SHA-256("engineverse-v1:sauravkushwaha:<password>")` |
 | Still public? | **No — body replaced 2026-10-19 02:18 UTC.** Verified via API: `state=closed`, `state_reason=not_planned`, body is `docs/INCIDENT_ISSUE_39_REPLACEMENT_BODY.md`; `scan_public_credentials.py` now reports 0 findings (45 issues/PRs checked) |
 | Other posts? | none. Issues/PRs searched by exact value and by each field name; only #39 matched, zero comments. PR #44 mentions field *names* in prose, never a value — verified again post-redaction |
@@ -23,7 +23,7 @@ permanently public regardless of what the issue shows afterwards.
 ### Fastest: run the `Redact Public Issue` workflow (one click)
 
 1. Open **Actions → Redact Public Issue → Run workflow**:
-   <https://github.com/authorsauravkushwaha/EngineVerse/actions/workflows/redact-public-issue.yml>.
+   <https://github.com/authorsauravkushwaha/Forge/actions/workflows/redact-public-issue.yml>.
 2. Leave `issue` at `39`, type `redact-and-close` in `confirm`, run it.
 3. The job reads the issue first and **refuses to write unless it still
    contains a digest-shaped credential value**, replaces the body with
@@ -34,9 +34,9 @@ permanently public regardless of what the issue shows afterwards.
 The same script can be run locally with a token that has `issues: write`:
 
 ```bash
-python3 scripts/redact_public_issue.py --repo authorsauravkushwaha/EngineVerse \
+python3 scripts/redact_public_issue.py --repo authorsauravkushwaha/Forge \
   --issue 39 --dry-run                       # inspect, no write
-python3 scripts/redact_public_issue.py --repo authorsauravkushwaha/EngineVerse \
+python3 scripts/redact_public_issue.py --repo authorsauravkushwaha/Forge \
   --issue 39 --confirm redact-and-close      # redact + close
 ```
 
@@ -44,7 +44,7 @@ The by-hand alternatives below do the same thing without the workflow.
 
 ### In the GitHub UI
 
-1. Open <https://github.com/authorsauravkushwaha/EngineVerse/issues/39>.
+1. Open <https://github.com/authorsauravkushwaha/Forge/issues/39>.
 2. **Edit** the issue body (the `…` menu → *Edit*).
 3. Select all and replace it with the text in
    [`docs/INCIDENT_ISSUE_39_REPLACEMENT_BODY.md`](INCIDENT_ISSUE_39_REPLACEMENT_BODY.md).
@@ -55,9 +55,9 @@ The by-hand alternatives below do the same thing without the workflow.
 ### With the `gh` CLI, from a machine where you are signed in as the owner
 
 ```bash
-gh issue edit 39 --repo authorsauravkushwaha/EngineVerse \
+gh issue edit 39 --repo authorsauravkushwaha/Forge \
   --body-file docs/INCIDENT_ISSUE_39_REPLACEMENT_BODY.md
-gh issue close 39 --repo authorsauravkushwaha/EngineVerse --reason "not planned"
+gh issue close 39 --repo authorsauravkushwaha/Forge --reason "not planned"
 ```
 
 If `gh` reports `Resource not accessible by integration`, the token in use is
@@ -67,7 +67,7 @@ an App token without `issues: write`; sign in with an owner token
 ### After redacting
 
 ```bash
-python3 scripts/scan_public_credentials.py --repo authorsauravkushwaha/EngineVerse
+python3 scripts/scan_public_credentials.py --repo authorsauravkushwaha/Forge
 ```
 
 Expected: `No digest-shaped credential value found` — **now the observed result post-2026-10-19 02:18 UTC** (`45 issue(s)/PR(s) checked, 0 findings`). Closed issues are still scanned (`state=all`), so closing without redacting would not clear this.
@@ -78,7 +78,7 @@ The digest is fast SHA-256 over a known username, so the only unknown is the
 password itself. That is offline-cracking territory: assume it will be
 recovered if it is weak or reused.
 
-1. **Everywhere it was reused**, starting with a hosted EngineVerse account:
+1. **Everywhere it was reused**, starting with a hosted Forge account:
    change it there. The hosted app stores scrypt hashes, which were not leaked —
    but a reused password is compromised regardless of how it was stored.
 2. **The device-local reading copy / APK account** `@sauravkushwaha` uses the

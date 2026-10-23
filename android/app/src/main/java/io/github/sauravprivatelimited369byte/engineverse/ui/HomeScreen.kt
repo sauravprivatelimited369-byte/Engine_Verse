@@ -38,7 +38,7 @@ fun HomeScreen(store: AppStore, catalog: Catalog, navigate: (String) -> Unit, op
     val recent = store.completedTopics.takeLast(3).reversed().mapNotNull { catalog.topic(it) }
 
     ScreenScaffold(
-        title = "EngineVerse",
+        title = "FORGE",
         actions = {
             IconButton(onClick = { navigate(Routes.SETTINGS) }) {
                 Icon(painterResource(R.drawable.ic_tune), contentDescription = "Settings")
@@ -59,7 +59,7 @@ fun HomeScreen(store: AppStore, catalog: Catalog, navigate: (String) -> Unit, op
                 ) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            "Learn engineering. Practise. Build.",
+                            "Where engineers are made.",
                             style = MaterialTheme.typography.headlineSmall,
                             modifier = Modifier.semantics { heading() },
                         )
