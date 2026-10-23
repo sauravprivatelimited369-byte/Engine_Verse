@@ -17,9 +17,9 @@
   <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
   <meta name="theme-color" content="{% if brand.theme == 'light' %}#f3f5fa{% else %}#070b14{% endif %}">
   <script nonce="{{ request.state.csp_nonce }}">
-    // Runs before first paint: a stored preference wins over the site default,
-    // and an active learner session marks html[data-ev-signed-in="true"] so the
-    // "Sign in / Start free" buttons never flash when switching tabs.
+    // Runs before first paint: a stored theme preference wins over the site
+    // default. Sign-in state is never guessed from browser storage: on the
+    // server it comes from the session, and the static copy has no accounts.
     (function () {
       // Reveal-on-scroll may only hide sections when this script (and so
       // scroll.js) can run; the CSS gates the hidden state on html.js.
@@ -34,25 +34,6 @@
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", theme === "light" ? "#f3f5fa" : "#070b14");
       } catch (e) { /* storage blocked - fall back to the server default */ }
-      try {
-        var signedIn = {{ 'true' if user else 'false' }};
-        if (!signedIn) {
-          var raw = localStorage.getItem("ev:learner-store:v2") || sessionStorage.getItem("ev:learner-store:v2");
-          if (!raw && typeof window.name === "string" && window.name.indexOf("EV_STORE:") === 0) {
-            raw = window.name.slice(9);
-          }
-          if (raw) {
-            var parsed = JSON.parse(raw);
-            if (parsed && parsed.currentUser) signedIn = true;
-          }
-          if (!signedIn && (localStorage.getItem("ev:session:user") || sessionStorage.getItem("ev:session:user") || /(?:^|;\s*)ev_live_user=([^;\s]+)/.test(document.cookie || ""))) {
-            signedIn = true;
-          }
-        }
-        if (signedIn) {
-          document.documentElement.setAttribute("data-ev-signed-in", "true");
-        }
-      } catch (e) {}
     })();
   </script>
   <meta name="color-scheme" content="dark light">
@@ -71,6 +52,9 @@
   <meta property="og:title" content="{% block og_title %}{{ brand.site_name }}{% endblock %}">
   <meta property="og:description" content="{{ brand.tagline }}">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ brand.site_name }}">
+  {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">
+  <meta property="og:url" content="{{ canonical_url }}">{% endif %}
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}"{% if gated %} data-signin-gate{% endif %}>
@@ -155,6 +139,13 @@
           <span class="whoami-name">{{ user.username }}</span>
           <span class="whoami-label">Profile</span>
         </a>
+      {% elif static_export %}
+        {# The static GitHub Pages copy has no accounts. Progress is kept on
+           this device only; pages-live.js fills in the streak and XP. #}
+        <a class="btn btn-ghost" href="/dashboard" data-ev-local-progress title="Progress saved on this device">
+          <span aria-hidden="true">{{ icon("flame", 15, true) }}</span><span data-ev-local-streak>0</span>
+          <span class="sr-only">day streak ·</span> My progress</a>
+        <a class="btn btn-primary btn-cta" href="/explore">Start learning <span aria-hidden="true">{{ icon("chevron", 14) }}</span></a>
       {% else %}
         <a class="btn btn-ghost{{ ' on' if path == '/login' }}" href="/login" data-ev-anon-auth>Sign in</a>
         <a class="btn btn-primary btn-cta" href="/register" data-ev-anon-auth>{{ 'Create account' if gated else 'Start free' }} <span aria-hidden="true">{{ icon("chevron", 14) }}</span></a>
@@ -206,7 +197,8 @@
 <script nonce="{{ request.state.csp_nonce }}">
   window.EngineVerse = {
     csrf: "{{ csrf_token }}",
-    user: {{ 'true' if user else 'false' }} || document.documentElement.getAttribute("data-ev-signed-in") === "true"
+    user: {{ 'true' if user else 'false' }},
+    staticCopy: {{ 'true' if static_export else 'false' }}
   };
   // Wire up the footer language picker once i18n is ready.
   (function () {

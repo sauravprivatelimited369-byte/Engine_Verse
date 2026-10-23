@@ -9,20 +9,12 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+  // Only the server knows whether a session exists: base.html sets
+  // window.EngineVerse.user from the authenticated request. The static Pages
+  // copy has no accounts (#ev-live pages are handled by pages-live.js), so no
+  // browser-side value - localStorage, cookies, attributes - is trusted here.
   function isSignedIn() {
-    if (cfg.user || (window.EngineVerse && window.EngineVerse.user)) return true;
-    if (document.documentElement.getAttribute("data-ev-signed-in") === "true") return true;
-    try {
-      const sUser = localStorage.getItem("ev:session:user") || sessionStorage.getItem("ev:session:user");
-      if (sUser) return true;
-      const raw = localStorage.getItem("ev:learner-store:v2") || sessionStorage.getItem("ev:learner-store:v2");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.currentUser) return true;
-      }
-      if (/(?:^|;\s*)ev_live_user=([^;\s]+)/.test(document.cookie || "")) return true;
-    } catch (_) {}
-    return false;
+    return Boolean(cfg.user);
   }
 
   // ---------------------------------------------------------------- API ----
@@ -74,6 +66,9 @@
     clearTimeout(box._t);
     box._t = setTimeout(() => { box.style.opacity = "0"; }, 3200);
   }
+  // Page scripts (planner.js, pages-live.js) reuse the same toast.
+  window.EngineVerse = cfg;
+  cfg.toast = toast;
 
   // ------------------------------------------------------- mobile nav + menu
   // The panel is generated from the same navigation table as the desktop bar, so

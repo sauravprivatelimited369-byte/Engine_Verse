@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Body, Form, Query, Request
@@ -35,7 +36,6 @@ from engineverse import (
     studio,
     workflows,
     swarm,
-    github_storage,
 )
 from engineverse.security import rbac, ratelimit
 from engineverse.security.audit import record
@@ -1190,64 +1190,76 @@ async def judge_status(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# GitHub & BaaS learner progress sync
+# Data portability: a signed-in learner can download their own progress
 # ---------------------------------------------------------------------------
+#
+# This replaces the former "GitHub learner vault" endpoints. Those wrote learner
+# snapshots into data/learners/registry.json - a file inside the public source
+# repository - and GET /api/sync/snapshot?username=... returned any learner's
+# progress without authentication. Progress now stays in the private database;
+# the only export is the authenticated learner's own record.
 
-@router.get("/sync/status")
-async def api_sync_status(request: Request):
-    return JSONResponse(github_storage.sync_status())
-
-
-# Credential/identifier field names that must never leave the server in a
-# sync response. New records store them empty (see github_storage), but a
-# registry file written by an older version could still carry values.
-_SYNC_PRIVATE_KEYS = frozenset({"password_digest", "password_sha256", "email_sha256", "phone_sha256"})
-
-
-def _safe_snapshot(entry: dict) -> dict:
-    return {k: v for k, v in entry.items() if k not in _SYNC_PRIVATE_KEYS}
-
-
-@router.get("/sync/snapshot")
-async def api_sync_snapshot_get(request: Request, username: str = Query("", max_length=32)):
-    viewer = current_user(request)
-    if username.strip():
-        registry = github_storage.load_registry()
-        entry = (registry.get("learners") or {}).get(username.strip().lower())
-        if not entry:
-            return fail("No synced learner record found for that username.", 404)
-        return ok(snapshot=_safe_snapshot(entry), repository=github_storage.DEFAULT_REPO)
-    if viewer is None:
-        return fail("Sign in or pass ?username= to inspect a synced snapshot.", 401)
-    snap = github_storage.build_db_user_snapshot(viewer.id)
-    return ok(snapshot=_safe_snapshot(snap), repository=github_storage.DEFAULT_REPO)
-
-
-@router.post("/sync/snapshot")
-async def api_sync_snapshot_post(request: Request):
-    """Save the *signed-in* learner's progress snapshot to the local registry.
-
-    The snapshot is always built from this server's database for the
-    authenticated viewer. A client-supplied snapshot is never trusted:
-    accepting one let an unauthenticated caller write arbitrary progress
-    (and formerly a password digest) for any username into a file that is
-    published from the public repository.
-    """
-    # ratelimit.check (not the nonexistent ratelimit.allow this handler used
-    # to call - that AttributeError made every POST here a 500).
-    if not ratelimit.check(f"sync:{client_ip(request)}", 30, 60).allowed:
-        return fail("Too many sync requests. Wait a minute.", 429)
-    viewer = current_user(request)
-    if viewer is None:
-        return fail("Sign in to save a progress snapshot.", 401)
-    try:
-        raw_snap = github_storage.build_db_user_snapshot(viewer.id)
-        merged = github_storage.save_snapshot_to_registry(raw_snap)
-    except github_storage.LearnerSyncError as exc:
-        return fail(str(exc), 422)
-    return ok(
-        snapshot=_safe_snapshot(merged),
-        repository=github_storage.DEFAULT_REPO,
-        message="Progress snapshot saved. It contains progress only - no password or contact details.",
+@router.get("/me/export")
+async def export_my_progress(request: Request):
+    viewer = require_user(request)
+    if not ratelimit.check(f"export:{viewer.id}", 10, 3600).allowed:
+        return fail("Too many export requests. Try again later.", 429)
+    prof = db.query_one(
+        "SELECT full_name, headline, bio, branch_id, semester_id FROM profiles WHERE user_id = ?",
+        viewer.id,
+    ) or {}
+    topics = [
+        row["slug"]
+        for row in db.query(
+            "SELECT t.slug FROM user_progress up JOIN topics t ON t.id = up.topic_id "
+            "WHERE up.user_id = ? AND up.status = 'completed' ORDER BY t.slug",
+            viewer.id,
+        )
+    ]
+    solved = [
+        row["slug"]
+        for row in db.query(
+            "SELECT DISTINCT p.slug FROM coding_submissions cs JOIN coding_problems p ON p.id = cs.problem_id "
+            "WHERE cs.user_id = ? AND cs.is_accepted = 1 ORDER BY p.slug",
+            viewer.id,
+        )
+    ]
+    bookmarks = [
+        f"{row['entity_type']}:{row['entity_id']}"
+        for row in db.query(
+            "SELECT entity_type, entity_id FROM bookmarks WHERE user_id = ? ORDER BY entity_type, entity_id",
+            viewer.id,
+        )
+    ]
+    activity = {
+        row["day"]: int(row.get("xp") or 0)
+        for row in db.query("SELECT day, xp FROM activity WHERE user_id = ? ORDER BY day", viewer.id)
+        if row.get("day")
+    }
+    record("account.export", actor_id=viewer.id, ip=client_ip(request))
+    payload = {
+        "format": "engineverse-progress-export",
+        "version": 1,
+        "exported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "username": viewer.username,
+        "profile": {
+            "full_name": prof.get("full_name") or "",
+            "headline": prof.get("headline") or "",
+            "bio": prof.get("bio") or "",
+            "branch_id": prof.get("branch_id") or "",
+            "semester_id": prof.get("semester_id") or "",
+        },
+        "stats": progress.user_stats(viewer.id),
+        "completed_topics": topics,
+        "solved_problems": solved,
+        "bookmarks": bookmarks,
+        "activity": activity,
+    }
+    return JSONResponse(
+        payload,
+        headers={
+            "Content-Disposition": 'attachment; filename="engineverse-progress.json"',
+            "Cache-Control": "no-store",
+        },
     )
 

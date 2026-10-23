@@ -1469,6 +1469,40 @@ async def about_page(request: Request):
     return render(request, "about.html", stats=catalog.site_stats())
 
 
+@router.get("/opportunities")
+async def opportunities_page(request: Request):
+    from engineverse import opportunities
+
+    return render(
+        request, "opportunities.html",
+        items=opportunities.all_opportunities(),
+        categories=opportunities.category_counts(),
+        regions=opportunities.REGIONS,
+        last_reviewed=opportunities.LAST_REVIEWED,
+    )
+
+
+@router.get("/planner")
+async def planner_page(request: Request):
+    # Entirely client-side: tasks, exam dates and focus sessions live in this
+    # browser's localStorage and never reach the server, so the page renders the
+    # same on the FastAPI deployment and on the static GitHub Pages copy.
+    return render(request, "planner.html")
+
+
+@router.get("/support")
+async def support_page(request: Request):
+    from engineverse import project
+
+    return render(
+        request, "support.html",
+        issues_url=project.issues_url(),
+        new_issue_url=project.issues_url() + "/new/choose",
+        security_url=project.security_advisory_url(),
+        repo_url=project.repo_url(),
+    )
+
+
 @router.get("/sitemap.xml", include_in_schema=False)
 async def sitemap():
     from fastapi.responses import Response

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Help and contact — {{ brand.site_name }}{% endblock %}
+{% block description %}How to get help with {{ brand.site_name }}, report a bug, suggest content or responsibly disclose a security issue.{% endblock %}
+{% block content %}
+
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Platform · help and contact</p>
+  <h1>Help and contact</h1>
+  <p class="lead">{{ brand.site_name }} is an open-source project. Questions, bug reports and content suggestions
+    are all handled in the open on GitHub, so you can follow what happens to them.</p>
+</section>
+
+<div class="grid g2 about-grid">
+  <section class="panel" id="help" aria-labelledby="h-help">
+    <span class="about-mark" aria-hidden="true">{{ icon("info", 18) }}</span>
+    <h2 id="h-help">Find your way around</h2>
+    <ul class="about-list">
+      <li><a href="/explore">Explore subjects</a> to browse every branch, subject and topic.</li>
+      <li><a href="/practice">Practice</a> has problems, question banks and the daily practice paper.</li>
+      <li><a href="/programming">Programming</a> and the <a href="/compiler">online compiler</a> run code in
+        your browser. Each language page explains what it can and cannot run.</li>
+      <li><a href="/planner">Study planner</a> keeps tasks, exam countdowns and focus sessions on this device.</li>
+      <li><a href="/install">Install the app</a> to use {{ brand.site_name }} offline or on Android.</li>
+      <li><a href="/about">About {{ brand.site_name }}</a> explains how the notes are written and checked.</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="bug" aria-labelledby="h-bug">
+    <span class="about-mark" aria-hidden="true">{{ icon("eraser", 18) }}</span>
+    <h2 id="h-bug">Report a bug or a wrong answer</h2>
+    <p>Open an issue on GitHub. A good report includes:</p>
+    <ul class="about-list">
+      <li>The page URL, and what you expected compared with what you saw.</li>
+      <li>Your browser, or app version, and your device.</li>
+      <li>Steps to reproduce the problem, plus a screenshot if it helps.</li>
+    </ul>
+    <p class="support-warn"><strong>Never paste passwords, one-time codes, phone numbers or other personal data
+      into a public issue.</strong></p>
+    <p><a class="btn btn-primary btn-sm" href="{{ new_issue_url }}" rel="noopener noreferrer" target="_blank">Open an issue
+      <span class="sr-only">on GitHub, opens in a new tab</span></a>
+      <a class="btn btn-ghost btn-sm" href="{{ issues_url }}" rel="noopener noreferrer" target="_blank">See existing issues
+      <span class="sr-only">on GitHub, opens in a new tab</span></a></p>
+    {% if not static_export %}
+    <p class="muted">No GitHub account? Use the <a href="#site-feedback">feedback form</a> at the bottom of every
+      page instead. It goes straight to the site's maintainers.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" id="suggest" aria-labelledby="h-suggest">
+    <span class="about-mark" aria-hidden="true">{{ icon("spark", 18) }}</span>
+    <h2 id="h-suggest">Suggest content</h2>
+    <p>Missing a subject, topic, practice problem, open-access book or recurring opportunity? Open an issue that
+      describes it and links to a reliable source. Content is reviewed before it is published. We do not link to
+      pirated books or videos.</p>
+    <p><a class="btn btn-soft btn-sm" href="{{ new_issue_url }}" rel="noopener noreferrer" target="_blank">Suggest something
+      <span class="sr-only">on GitHub, opens in a new tab</span></a></p>
+  </section>
+
+  <section class="panel" id="security" aria-labelledby="h-security">
+    <span class="about-mark" aria-hidden="true">{{ icon("cog", 18) }}</span>
+    <h2 id="h-security">Report a security issue privately</h2>
+    <p>Please <strong>do not</strong> open a public issue for a vulnerability. Report it privately through GitHub's
+      security advisory form instead, so it can be fixed before details are public. The full policy is in
+      <a href="{{ repo_url }}/blob/main/SECURITY.md" rel="noopener noreferrer" target="_blank">SECURITY.md<span class="sr-only"> (opens in a new tab)</span></a>.</p>
+    <p><a class="btn btn-soft btn-sm" href="{{ security_url }}" rel="noopener noreferrer" target="_blank">Report a vulnerability
+      <span class="sr-only">privately on GitHub, opens in a new tab</span></a></p>
+  </section>
+
+  <section class="panel" id="contribute" aria-labelledby="h-contribute">
+    <span class="about-mark" aria-hidden="true">{{ icon("code", 18) }}</span>
+    <h2 id="h-contribute">Contribute</h2>
+    <p>The source code, contribution guide and code of conduct are all in the
+      <a href="{{ repo_url }}" rel="noopener noreferrer" target="_blank">GitHub repository<span class="sr-only"> (opens in a new tab)</span></a>.
+      Fixes to notes and new practice questions are especially welcome.</p>
+  </section>
+
+  <section class="panel" id="data" aria-labelledby="h-data">
+    <span class="about-mark" aria-hidden="true">{{ icon("database", 18) }}</span>
+    <h2 id="h-data">Your data</h2>
+    {% if static_export %}
+    <p>This copy of {{ brand.site_name }} has no accounts. Your progress, planner and settings are stored only in
+      this browser. You can export or delete them at any time on the <a href="/settings">settings page</a>.</p>
+    {% else %}
+    <p>Signed-in learners can download a copy of their progress from their account settings. The
+      <a href="/privacy">privacy notice</a> explains what is stored and for how long.</p>
+    {% endif %}
+    <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
+  </section>
+</div>
+{% endblock %}

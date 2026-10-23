@@ -221,6 +221,23 @@ def navigation_context(path: str, signed_in: bool) -> dict[str, Any]:
     }
 
 
+def _static_export() -> bool:
+    return os.environ.get("ENGINEVERSE_STATIC_EXPORT", "") == "1"
+
+
+def _canonical_url(path: str) -> str:
+    """Absolute public URL of a page, for <link rel="canonical"> and og:url."""
+    clean = "/" + path.lstrip("/")
+    if _static_export():
+        from engineverse import project
+
+        tail = clean.lstrip("/")
+        if tail and not tail.endswith("/"):
+            tail += "/"
+        return project.pages_url() + tail
+    return get_settings().site_url.rstrip("/") + clean
+
+
 def base_context(request: Request, **extra: Any) -> dict[str, Any]:
     viewer = current_user(request)
     context: dict[str, Any] = {
@@ -239,6 +256,10 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         "login_otp_required": get_settings().login_otp_required,
         "signin_required": get_settings().signin_required,
         "apk_url": get_settings().approved_apk_url,
+        # The GitHub Pages export renders these same templates as a signed-out
+        # visitor; this flag swaps account controls for device-local progress.
+        "static_export": _static_export(),
+        "canonical_url": _canonical_url(request.url.path),
         # A signed-out visitor on an instance where sign-in is compulsory can
         # only reach the account pages, so the layout drops the navigation,
         # search and footer links that would each bounce back to /login.

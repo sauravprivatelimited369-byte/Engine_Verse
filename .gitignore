@@ -10,11 +10,8 @@ venv/
 htmlcov/
 coverage.xml
 
-# Local database + runtime state (keep the GitHub learner vault tracked)
+# Local database + runtime state (never commit learner data)
 data/*
-!data/learners/
-data/learners/*
-!data/learners/registry.json
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal

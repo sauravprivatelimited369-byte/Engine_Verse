@@ -435,6 +435,11 @@ PROGRESS = Section(
             signed_in=True, icon="sun",
         ),
         Destination(
+            "Study planner", "/planner",
+            "Tasks, deadlines, exam countdowns and a focus timer. Saved on this device only.",
+            icon="calendar",
+        ),
+        Destination(
             "Streaks and heatmap", "/streaks",
             "Six months of study days, your current streak and your XP history.",
             icon="flame",
@@ -475,6 +480,11 @@ COMMUNITY = Section(
             "Placement prep", "/placements",
             "Interview sets, company patterns and the sheet that covers them.",
             icon="briefcase",
+        ),
+        Destination(
+            "Opportunities", "/opportunities",
+            "Hackathons, open-source programmes, scholarships and contests, linked to their official pages.",
+            icon="trophy",
         ),
         Destination(
             "About EngineVerse", "/about",
@@ -571,6 +581,8 @@ EXTRA_FOOTER_SECTIONS: tuple[Section, ...] = (
                         icon="download"),
             Destination("Offline help", "/offline",
                         "What still works when the connection does not.", minor=True),
+            Destination("Help and contact", "/support",
+                        "Report a problem, suggest content, or disclose a security issue."),
             Destination("Privacy", "/privacy",
                         "What is stored, and what never leaves this server."),
             Destination("Terms", "/terms",
