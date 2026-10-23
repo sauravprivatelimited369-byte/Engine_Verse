@@ -202,7 +202,7 @@
         reasons.hidden = true;
         yes.textContent = helpful ? "Thanks" : "Yes";
         no.textContent = helpful ? "No" : "Thanks";
-        postFeedback(helpful, code, text);
+        postFeedback(helpful, code);
       }
       yes.addEventListener("click", () => vote(true, ""));
       no.addEventListener("click", () => {
@@ -223,7 +223,7 @@
       return row;
     }
 
-    async function postFeedback(helpful, code, answerText) {
+    async function postFeedback(helpful, code) {
       const endpoint = root.dataset.feedbackEndpoint || "/api/assistant/feedback";
       // Aggregate only: no answer text, no account, no session id.
       const body = { helpful, code };
@@ -236,8 +236,7 @@
       } catch (_) {
         /* Feedback is optional; a failed vote must not disturb the answer. */
       }
-      // Nothing about the answer text is sent or stored beyond this tab.
-      void answerText;
+      // The answer itself is never part of the request.
     }
 
     function mapFailure(status, data) {
