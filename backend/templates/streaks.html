@@ -53,10 +53,15 @@
     <span class="hm"></span><span class="hm l1"></span><span class="hm l2"></span><span class="hm"></span><span class="hm l1"></span><span class="hm"></span><span class="hm l2"></span>
   </div>
   <h2>Your heatmap starts with one day.</h2>
+  {% if static_export %}
+  <p>Every topic you complete, question you answer and problem you solve in this browser fills a square here.
+    Your streak is saved on this device only.</p>
+  {% else %}
   <p data-hosted-streak-notice>On this hosted site, <a href="/register">create a free account</a> or
     <a href="/login">sign in</a> to keep your streak and practice history across devices. Every topic you
     read, question you answer and problem you submit fills a square here.
     A separate static reading copy may show a browser-only streak; it is not imported into your account.</p>
+  {% endif %}
   <div class="row" style="justify-content:center">
     <a class="btn btn-primary" href="{{ '/dpp' if static_export else '/register' }}">Start your streak {{ icon("chevron", 14) }}</a>
     <a class="btn btn-ghost" href="/dpp">Try today's DPP first</a>

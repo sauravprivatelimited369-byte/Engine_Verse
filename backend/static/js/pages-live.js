@@ -1,9 +1,10 @@
-/* EngineVerse Live Browser Runtime + GitHub Learner Vault Sync + Multi-Language Code Judge.
+/* EngineVerse static-copy runtime: local progress, quizzes and the browser code judge.
  *
- * Powers the public GitHub Pages deployment and the Android APK without requiring
- * visitors to clone the repository or run a local server. Also syncs learner
- * profiles, XP, streaks, completed topics, and solved coding problems directly
- * with `authorsauravkushwaha/EngineVerse` (`data/learners/registry.json`).
+ * Runs only on pages exported by scripts/export_pages.py (they carry the
+ * #ev-live boot block). The static GitHub Pages copy has no accounts and no
+ * server: progress, streaks and the mistake notebook are kept in this browser's
+ * localStorage and never uploaded. Learners move them between devices with the
+ * JSON export and import on the settings page.
  */
 (() => {
   "use strict";
@@ -19,15 +20,12 @@
   }
 
   const BASE = config.base || "/";
-  const GH_REPO = config.githubRepo || "authorsauravkushwaha/EngineVerse";
-  const GH_VAULT_PATH = config.githubVaultPath || "data/learners/registry.json";
   const MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
   ];
   const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const STREAK_KEY = "ev:streak:v1";
-  const STORE_KEY = "ev:learner-store:v2";
 
   const pad = (n) => (n < 10 ? "0" + n : String(n));
   const isoOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -56,9 +54,8 @@
   // `escapeHtml` is published by app.js as window.EV.escapeHtml, but this file
   // must also work when it is loaded on its own (the Android wrapper and the
   // offline shell load scripts individually). An earlier revision called it
-  // without ever defining it, so *every* call threw a ReferenceError: the OTP
-  // code was never shown, the account icon was never inserted and the boot
-  // sequence stopped half way. Keep a local definition and prefer the shared
+  // without ever defining it, so *every* call threw a ReferenceError and the
+  // boot sequence stopped half way. Keep a local definition and prefer the shared
   // one when app.js has already run.
   // ---------------------------------------------------------------------------
   const escapeHtml = (value) =>
@@ -68,24 +65,12 @@
           ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
         );
 
-  // One control can have more than one accepted id: the exported markup and
-  // this runtime ship independently, and a service-worker cache can pair an
-  // older page with a newer script. Look up the current id first and fall back
-  // to the spellings earlier exports used instead of binding nothing at all.
-  const firstEl = (...ids) => {
-    for (const id of ids) {
-      const el = document.getElementById(id);
-      if (el) return el;
-    }
-    return null;
-  };
-
   const reportRuntimeProblem = (label, error) => {
     if (window.console?.warn) window.console.warn(`[EngineVerse] ${label} failed`, error);
   };
 
   // Runs one boot step in isolation: a failure on a single page must not take
-  // the rest of the runtime (account icon, OTP steps, judges) down with it.
+  // the rest of the runtime (progress, quizzes, judges) down with it.
   const safely = (label, fn) => {
     try {
       const result = fn();
@@ -100,36 +85,20 @@
   };
 
   // ---------------------------------------------------------------------------
-  // SHA-256 helper (WebCrypto with pure-JS fallback) for GitHub Vault auth
+  // Local learner profile (this browser only)
+  //
+  // The static copy has no accounts and no server. Progress lives in a single
+  // localStorage record and is never uploaded. Earlier versions kept password
+  // hashes, OTP challenges, a GitHub personal access token and a "GitHub learner
+  // vault" in the browser; migrateLegacyStores() copies the progress fields out
+  // of those layers once and then deletes them.
   // ---------------------------------------------------------------------------
-  async function sha256Hex(message) {
-    const text = String(message || "");
-    if (window.crypto?.subtle) {
-      const buf = new TextEncoder().encode(text);
-      const digest = await window.crypto.subtle.digest("SHA-256", buf);
-      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    }
-    // Minimal deterministic fallback if subtle is unavailable on non-HTTPS file://
-    let h1 = 0xdeadbeef ^ text.length, h2 = 0x41c6ce57 ^ text.length;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text.charCodeAt(i);
-      h1 = Math.imul(h1 ^ ch, 2654435761);
-      h2 = Math.imul(h2 ^ ch, 1597334677);
-    }
-    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-    const hex = (h1 >>> 0).toString(16).padStart(8, "0") + (h2 >>> 0).toString(16).padStart(8, "0");
-    return hex.repeat(4);
-  }
+  const PROFILE_KEY = "ev:local-profile:v1";
+  const PROFILE_FORMAT = "engineverse-local-progress";
+  const LEGACY_STORE_KEY = "ev:learner-store:v2";
+  const LEGACY_KEYS = [LEGACY_STORE_KEY, "ev:session:user", "ev:explicit_logout", "ev:otp_api_url"];
+  const LIMITS = { topics: 2000, problems: 1000, questions: 5000, bookmarks: 500, mistakes: 100, days: 3660 };
 
-  async function hashPasswordDigest(username, password) {
-    const cleanUser = String(username || "").trim().toLowerCase();
-    return sha256Hex(`engineverse-v1:${cleanUser}:${password}`);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Learner Store + Streak Store (localStorage + GitHub Vault Sync)
-  // ---------------------------------------------------------------------------
   const readStreak = () => {
     try {
       const raw = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}");
@@ -143,794 +112,168 @@
   };
 
   const writeStreak = (days) => {
-    const clean = Array.from(new Set(days)).sort();
+    const clean = Array.from(new Set(days.filter((x) => typeof x === "string" && parseIso(x)))).sort()
+      .slice(-LIMITS.days);
     try {
       localStorage.setItem(STREAK_KEY, JSON.stringify({ days: clean }));
     } catch (_) {
-      /* private mode */
+      /* private mode: the streak lasts for this page only */
     }
     return clean;
   };
 
-  function defaultProfile(overrides = {}) {
-    const todayIso = isoOf(new Date());
-    return Object.assign({
-      username: "guest",
-      display_name: "EngineVerse Learner",
-      email: "",
-      phone: "",
-      country_code: "+91",
-      otp_verified: true,
-      otp_channel: "email",
-      branch: "cse",
-      year_of_study: 1,
-      bio: "Learning core engineering and programming on EngineVerse.",
+  const nowStamp = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  const cleanText = (value, max) =>
+    String(value == null ? "" : value).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
+  const cleanSlug = (value) => {
+    const s = String(value == null ? "" : value).trim().toLowerCase();
+    return /^[a-z0-9][a-z0-9._:-]{0,119}$/.test(s) ? s : "";
+  };
+  const cleanSlugList = (value, max) =>
+    Array.isArray(value) ? Array.from(new Set(value.map(cleanSlug).filter(Boolean))).slice(0, max) : [];
+  const cleanInt = (value, max) => {
+    const n = Math.floor(Number(value));
+    return Number.isFinite(n) && n > 0 ? Math.min(n, max) : 0;
+  };
+  // Only same-site paths are kept, so an imported file cannot plant a
+  // javascript: or off-site link in the mistake notebook.
+  const cleanLocalPath = (value) => {
+    const s = String(value == null ? "" : value).trim();
+    return /^\/(?!\/)[A-Za-z0-9/_.~%-]*(\?[A-Za-z0-9=&_.%-]*)?$/.test(s) ? s.slice(0, 300) : "";
+  };
+
+  function defaultProfile() {
+    return {
+      display_name: "",
+      branch: "",
+      year_of_study: 0,
+      bio: "",
       xp: 0,
       level: 1,
-      // A new account has no study days yet. Showing "1" here invented a
-      // streak before the learner had read a single page.
       streak_days: 0,
       longest_streak: 0,
       activity_days: [],
       completed_topics: [],
       solved_problems: [],
+      solved_questions: [],
       completed_projects: [],
       bookmarks: [],
       quiz_attempts: 0,
       quiz_correct: 0,
       mistakes: [],
-      community_posts: [],
-      notifications: [
-        { title: "Welcome to EngineVerse", body: "Full browser execution and GitHub learner vault sync are active.", ts: todayIso }
-      ],
-      password_sha256: "",
-      updated_at: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
-    }, overrides);
+      srs_xp_day: "",
+      updated_at: nowStamp(),
+    };
   }
 
-  // ---------------------------------------------------------------------------
-  // Multi-Layer Synchronized Learner Database (localStorage + sessionStorage +
-  // Cookie + window.name + IndexedDB + BroadcastChannel)
-  //Inspired by Supabase Auth/Realtime & Appwrite Account/Databases persistence.
-  // ---------------------------------------------------------------------------
-  const SESSION_USER_KEY = "ev:session:user";
-  const IDB_NAME = "EngineVerseVaultDB";
-  const IDB_STORE = "kv";
-  let authChannel = null;
-  try {
-    if (typeof BroadcastChannel !== "undefined") {
-      authChannel = new BroadcastChannel("ev_auth_sync");
-    }
-  } catch (_) {}
+  // Whitelist every field. Anything else - including the password, email,
+  // phone and token fields older versions stored - is dropped.
+  function sanitizeProfile(raw) {
+    const p = defaultProfile();
+    if (!raw || typeof raw !== "object") return p;
+    p.display_name = cleanText(raw.display_name === "EngineVerse Learner" ? "" : raw.display_name, 60);
+    p.branch = cleanText(raw.branch, 60);
+    p.year_of_study = Math.min(cleanInt(raw.year_of_study, 5), 5);
+    p.bio = cleanText(raw.bio === "Learning core engineering and programming on EngineVerse." ? "" : raw.bio, 240);
+    p.xp = cleanInt(raw.xp, 10000000);
+    p.quiz_attempts = cleanInt(raw.quiz_attempts, 1000000);
+    p.quiz_correct = cleanInt(raw.quiz_correct, 1000000);
+    if (p.quiz_correct > p.quiz_attempts) p.quiz_attempts = p.quiz_correct;
+    p.streak_days = cleanInt(raw.streak_days, LIMITS.days);
+    p.longest_streak = Math.max(cleanInt(raw.longest_streak, LIMITS.days), p.streak_days);
+    p.activity_days = Array.isArray(raw.activity_days)
+      ? Array.from(new Set(raw.activity_days.filter((d) => typeof d === "string" && parseIso(d)))).sort().slice(-LIMITS.days)
+      : [];
+    p.completed_topics = cleanSlugList(raw.completed_topics, LIMITS.topics);
+    p.solved_problems = cleanSlugList(raw.solved_problems, LIMITS.problems);
+    p.solved_questions = cleanSlugList(raw.solved_questions, LIMITS.questions);
+    p.completed_projects = cleanSlugList(raw.completed_projects, LIMITS.topics);
+    p.bookmarks = cleanSlugList(raw.bookmarks, LIMITS.bookmarks);
+    p.srs_xp_day = typeof raw.srs_xp_day === "string" && parseIso(raw.srs_xp_day) ? raw.srs_xp_day : "";
+    p.mistakes = Array.isArray(raw.mistakes)
+      ? raw.mistakes.filter((m) => m && typeof m === "object").slice(0, LIMITS.mistakes).map((m) => ({
+          id: cleanSlug(m.id) || cleanText(m.id, 80),
+          stem: cleanText(m.stem, 1200),
+          correctLabel: cleanText(m.correctLabel, 300),
+          explanation: cleanText(m.explanation, 2000),
+          topicTitle: cleanText(m.topicTitle, 160),
+          topicUrl: cleanLocalPath(m.topicUrl),
+          ts: typeof m.ts === "string" && parseIso(m.ts) ? m.ts : "",
+        })).filter((m) => m.id && m.stem)
+      : [];
+    p.level = Math.max(1, Math.floor(p.xp / 250) + 1);
+    p.updated_at = typeof raw.updated_at === "string" ? cleanText(raw.updated_at, 30) : nowStamp();
+    return p;
+  }
 
-  function readCookieUser() {
+  function readProfile() {
     try {
-      const m = /(?:^|;\s*)ev_live_user=([^;\s]+)/.exec(document.cookie || "");
-      return m ? decodeURIComponent(m[1]).trim().toLowerCase() : "";
+      const raw = localStorage.getItem(PROFILE_KEY);
+      return raw ? sanitizeProfile(JSON.parse(raw)) : null;
     } catch (_) {
-      return "";
-    }
-  }
-
-  function writeCookieUser(username) {
-    try {
-      const clean = String(username || "").trim().toLowerCase();
-      if (clean && clean !== "guest") {
-        document.cookie = `ev_live_user=${encodeURIComponent(clean)}; path=/; max-age=2592000; SameSite=Lax`;
-      } else {
-        document.cookie = "ev_live_user=; path=/; max-age=0; SameSite=Lax";
-      }
-    } catch (_) {}
-  }
-
-  function idbWriteStore(store) {
-    try {
-      if (typeof indexedDB === "undefined") return;
-      const req = indexedDB.open(IDB_NAME, 1);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(IDB_STORE)) {
-          db.createObjectStore(IDB_STORE);
-        }
-      };
-      req.onsuccess = () => {
-        try {
-          const db = req.result;
-          const tx = db.transaction(IDB_STORE, "readwrite");
-          tx.objectStore(IDB_STORE).put(JSON.stringify(store), STORE_KEY);
-        } catch (_) {}
-      };
-    } catch (_) {}
-  }
-
-  function idbRestoreIfNeeded(onRestored) {
-    try {
-      if (typeof indexedDB === "undefined") return;
-      const req = indexedDB.open(IDB_NAME, 1);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(IDB_STORE)) {
-          db.createObjectStore(IDB_STORE);
-        }
-      };
-      req.onsuccess = () => {
-        try {
-          const db = req.result;
-          const tx = db.transaction(IDB_STORE, "readonly");
-          const getReq = tx.objectStore(IDB_STORE).get(STORE_KEY);
-          getReq.onsuccess = () => {
-            if (!getReq.result) return;
-            try {
-              const idbStore = JSON.parse(getReq.result);
-              const current = loadStore();
-              let changed = false;
-              if (idbStore.accounts && typeof idbStore.accounts === "object") {
-                for (const [k, acc] of Object.entries(idbStore.accounts)) {
-                  if (!current.accounts[k]) {
-                    current.accounts[k] = acc;
-                    changed = true;
-                  }
-                }
-              }
-              if (!current.currentUser && idbStore.currentUser && !sessionStorage.getItem("ev:explicit_logout")) {
-                current.currentUser = idbStore.currentUser;
-                changed = true;
-              }
-              if (changed) {
-                saveStore(current, { skipBroadcast: true });
-                if (typeof onRestored === "function") onRestored();
-              }
-            } catch (_) {}
-          };
-        } catch (_) {}
-      };
-    } catch (_) {}
-  }
-
-  function syncGlobalAuthFlag(currentUser) {
-    const signedIn = Boolean(currentUser && currentUser !== "guest");
-    if (signedIn) {
-      document.documentElement.setAttribute("data-ev-signed-in", "true");
-    } else {
-      document.documentElement.removeAttribute("data-ev-signed-in");
-    }
-    if (!window.EngineVerse) window.EngineVerse = { csrf: "", user: signedIn };
-    else window.EngineVerse.user = signedIn;
-  }
-
-  function loadStore() {
-    const parseCandidate = (str) => {
-      if (!str) return null;
-      try {
-        const obj = JSON.parse(str);
-        return obj && typeof obj === "object" ? obj : null;
-      } catch (_) {
-        return null;
-      }
-    };
-    let lsObj = null;
-    let ssObj = null;
-    let wnObj = null;
-    try { lsObj = parseCandidate(localStorage.getItem(STORE_KEY)); } catch (_) {}
-    try { ssObj = parseCandidate(sessionStorage.getItem(STORE_KEY)); } catch (_) {}
-    try {
-      if (typeof window.name === "string" && window.name.indexOf("EV_STORE:") === 0) {
-        wnObj = parseCandidate(window.name.slice(9));
-      }
-    } catch (_) {}
-
-    const accounts = {};
-    [wnObj, ssObj, lsObj].forEach((cand) => {
-      if (cand && cand.accounts && typeof cand.accounts === "object") {
-        for (const [uname, acc] of Object.entries(cand.accounts)) {
-          accounts[uname] = Object.assign({}, accounts[uname] || {}, acc);
-        }
-      }
-    });
-
-    let explicitLogout = false;
-    try { explicitLogout = sessionStorage.getItem("ev:explicit_logout") === "1"; } catch (_) {}
-
-    let currentUser =
-      (lsObj && lsObj.currentUser) ||
-      (ssObj && ssObj.currentUser) ||
-      (wnObj && wnObj.currentUser) ||
-      null;
-
-    if (!currentUser && !explicitLogout) {
-      try {
-        currentUser =
-          localStorage.getItem(SESSION_USER_KEY) ||
-          sessionStorage.getItem(SESSION_USER_KEY) ||
-          readCookieUser() ||
-          null;
-      } catch (_) {
-        currentUser = readCookieUser() || null;
-      }
-    }
-    if (currentUser === "guest" || currentUser === "") currentUser = null;
-    if (currentUser && !accounts[currentUser]) {
-      accounts[currentUser] = defaultProfile({ username: currentUser, display_name: currentUser });
-    }
-
-    const baseObj = lsObj || ssObj || wnObj || {};
-    syncGlobalAuthFlag(currentUser);
-    return {
-      currentUser: currentUser || null,
-      accounts,
-      otpChallenges: baseObj.otpChallenges && typeof baseObj.otpChallenges === "object" ? baseObj.otpChallenges : {},
-      githubRepo: baseObj.githubRepo || GH_REPO,
-      githubToken: baseObj.githubToken || "",
-      webhookUrl: baseObj.webhookUrl || "",
-      lastSyncAt: baseObj.lastSyncAt || "",
-    };
-  }
-
-  function saveStore(store, opts = {}) {
-    const cleanUser = store.currentUser && store.currentUser !== "guest" ? String(store.currentUser).toLowerCase() : null;
-    store.currentUser = cleanUser;
-    const serialized = JSON.stringify(store);
-    try {
-      localStorage.setItem(STORE_KEY, serialized);
-      if (cleanUser) localStorage.setItem(SESSION_USER_KEY, cleanUser);
-      else localStorage.removeItem(SESSION_USER_KEY);
-    } catch (_) {}
-    try {
-      sessionStorage.setItem(STORE_KEY, serialized);
-      if (cleanUser) {
-        sessionStorage.setItem(SESSION_USER_KEY, cleanUser);
-        sessionStorage.removeItem("ev:explicit_logout");
-      } else {
-        sessionStorage.removeItem(SESSION_USER_KEY);
-      }
-    } catch (_) {}
-    try {
-      window.name = "EV_STORE:" + serialized;
-    } catch (_) {}
-    writeCookieUser(cleanUser || "");
-    idbWriteStore(store);
-    syncGlobalAuthFlag(cleanUser);
-    if (!opts.skipBroadcast && authChannel) {
-      try {
-        authChannel.postMessage({ type: "ev_store_sync", currentUser: cleanUser, ts: Date.now() });
-      } catch (_) {}
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Scoped 6-Digit OTP Engine (Gmail/email & Mobile Number with Country Code)
-  // Required ONLY for: (1) new user signup, (2) forgot password, (3) change password.
-  // ---------------------------------------------------------------------------
-  // === BEGIN EV-IDENTITY-RULES ===
-  // Mirror of backend/engineverse/security/email_rules.py and phone_rules.py.
-  //
-  // The exported site has no server, so this copy is the only check those pages
-  // get - which is also why it must not drift: a learner told by the browser
-  // that `asha@gmail` is fine gets a page that silently does nothing. The
-  // *policy* (plan table, typo map, burner list) is injected into the boot blob
-  // by scripts/export_pages.py from the Python module, so both sides read one
-  // source; what lives here is the algorithm. FALLBACK_IDENTITY_POLICY exists
-  // for the case the export was cached by the service worker next to a newer
-  // script (or an older one) - it is a real table, not a permissive stub.
-  //
-  // Neither side can ask DNS from a static page, so a well-formed address at a
-  // domain that does not exist is refused by the hosted app and tolerated here;
-  // the 6-digit code is what both of them can actually verify.
-  //
-  // backend/tests/test_identity_validation.py lifts this block into node and
-  // runs the same fixtures through it and through Python.
-  const FALLBACK_IDENTITY_POLICY = {
-    email: {
-      maxLength: 254,
-      localRe: "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$",
-      labelRe: "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$",
-      tldRe: "^[A-Za-z]{2,}$",
-      localMaxLength: 64,
-      reservedTlds: ["example", "test", "invalid", "localhost", "local"],
-      reservedDomains: ["example.com", "example.net", "example.org"],
-      providers: ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "rediffmail.com"],
-      // Real providers that look like typos of one. Refusing these is how the
-      // first cut of this check locked people out, so they are exempted on both
-      // sides, from the exported policy where possible and from this list when
-      // a cached page is paired with a newer script.
-      lookalikes: ["mail.com", "gmx.com", "zoho.com", "me.com", "mc.com", "juno.com", "proton.me", "fastmail.com", "tutanota.com", "web.de", "gmx.de", "yandex.ru"],
-      typos: {
-        "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gnail.com": "gmail.com",
-        "gmail.co": "gmail.com", "gmail.con": "gmail.com", "gmail.vom": "gmail.com",
-        "hotmial.com": "hotmail.com", "hotmai.com": "hotmail.com", "outlok.com": "outlook.com",
-        "yahooo.com": "yahoo.com", "yaho.com": "yahoo.com",
-      },
-      disposable: ["mailinator.com", "10minutemail.com", "guerrillamail.com", "temp-mail.org", "yopmail.com"],
-    },
-    phone: {
-      minDigits: 8,
-      maxDigits: 15,
-      // nsn = the digits after the country code, trunk prefix already removed.
-      plans: {
-        "+91": { label: "India", nsn: "^[1-9][0-9]{9}$", example: "+91 98765 43210" },
-        "+1": { label: "United States / Canada", nsn: "^[2-9][0-9]{2}[2-9][0-9]{6}$", example: "+1 415 555 2671" },
-        "+44": { label: "United Kingdom", nsn: "^(?:1[0-9]{8,9}|2[23478][0-9]{7,8}|7[1-9][0-9]{8})$", example: "+44 7911 123456" },
-        "+61": { label: "Australia", nsn: "^[2-9][0-9]{8}$", example: "+61 412 345 678" },
-        "+49": { label: "Germany", nsn: "^[1-9][0-9]{5,11}$", example: "+49 151 23456789" },
-        "+33": { label: "France", nsn: "^[1-9][0-9]{8}$", example: "+33 6 12 34 56 78" },
-        "+65": { label: "Singapore", nsn: "^[3689][0-9]{7}$", example: "+65 8123 4567" },
-        "+971": { label: "United Arab Emirates", nsn: "^[2-9][0-9]{7,8}$", example: "+971 50 123 4567" },
-        "+81": { label: "Japan", nsn: "^[5789][0-9]{8,9}$", example: "+81 90 1234 5678" },
-        "+82": { label: "South Korea", nsn: "^[1-6][0-9]{7,9}$", example: "+82 10 1234 5678" },
-        "+86": { label: "China", nsn: "^[1-9][0-9]{9,10}$", example: "+86 138 1234 5678" },
-        "+55": { label: "Brazil", nsn: "^[1-9][0-9]{8,10}$", example: "+55 11 96123 4567" },
-        "+27": { label: "South Africa", nsn: "^[1-9][0-9]{8}$", example: "+27 82 123 4567" },
-        "+234": { label: "Nigeria", nsn: "^[1-9][0-9]{7,9}$", example: "+234 801 234 5678" },
-        "+7": { label: "Russia / Kazakhstan", nsn: "^[3489][0-9]{9}$", example: "+7 912 345 67 89" },
-      },
-    },
-  };
-
-  function makeIdentityRules(policy) {
-    const emailPolicy = policy.email || {};
-    const phonePolicy = policy.phone || {};
-    const localRe = new RegExp(emailPolicy.localRe || FALLBACK_IDENTITY_POLICY.email.localRe);
-    const labelRe = new RegExp(emailPolicy.labelRe || FALLBACK_IDENTITY_POLICY.email.labelRe);
-    const tldRe = new RegExp(emailPolicy.tldRe || FALLBACK_IDENTITY_POLICY.email.tldRe);
-    const maxLength = emailPolicy.maxLength || 254;
-    const localMaxLength = emailPolicy.localMaxLength || 64;
-    const providers = emailPolicy.providers || [];
-    const typos = emailPolicy.typos || {};
-    const disposable = new Set(emailPolicy.disposable || []);
-    const plans = phonePolicy.plans || {};
-    const minDigits = phonePolicy.minDigits || 8;
-    const maxDigits = phonePolicy.maxDigits || 15;
-    const PHONE_CHARS = /^[0-9 +.()-]*$/;
-    const reservedDomains = new Set(emailPolicy.reservedDomains || []);
-    const reservedSuffixes = new Set(emailPolicy.reservedTlds || []);
-    const lookalikes = new Set(emailPolicy.lookalikes || []);
-
-    function isReserved(domain, labels) {
-      if (reservedDomains.has(domain)) return true;
-      if (reservedSuffixes.has(labels[labels.length - 1])) return true;
-      return /\.(?:local|internal|intranet|lan|home|corp)$/.test(domain);
-    }
-
-    // Bounded Levenshtein, same limit as email_rules.edit_distance: past two
-    // edits a domain is not a typo, it is a different domain.
-    function distance(left, right) {
-      if (left === right) return 0;
-      if (Math.abs(left.length - right.length) > 2) return 3;
-      let previous = Array.from({ length: right.length + 1 }, (_, i) => i);
-      for (let i = 1; i <= left.length; i += 1) {
-        const current = [i];
-        let best = i;
-        for (let j = 1; j <= right.length; j += 1) {
-          const cost = left[i - 1] === right[j - 1] ? 0 : 1;
-          const value = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
-          current.push(value);
-          best = Math.min(best, value);
-        }
-        if (best > 2) return 3;
-        previous = current;
-      }
-      return previous[right.length];
-    }
-
-    function nearMiss(domain) {
-      if (lookalikes.has(domain) || providers.includes(domain)) return "";
-      let best = "";
-      let bestDistance = 3;
-      for (const provider of providers) {
-        const d = distance(domain, provider);
-        if (d > 0 && d < bestDistance) {
-          best = provider;
-          bestDistance = d;
-        }
-      }
-      return best;
-    }
-
-    function email(raw) {
-      // Lowercased up front, like email_rules.parse(): the store keys lookups on
-      // the address, so `Asha@Example.COM` and `asha@example.com` have to be the
-      // same account here exactly as they are on the server.
-      const text = String(raw || "").trim().toLowerCase();
-      if (!text) return { ok: false, error: "Enter your Gmail or email address." };
-      if (text.length > maxLength) {
-        return { ok: false, error: `An email address is at most ${maxLength} characters. Yours is ${text.length}.` };
-      }
-      if ((text.match(/@/g) || []).length !== 1) {
-        return { ok: false, error: "An email address has one @ sign, for example you@gmail.com." };
-      }
-      const at = text.indexOf("@");
-      const local = text.slice(0, at).trim();
-      const domain = text.slice(at + 1).trim().replace(/\.+$/, "").toLowerCase();
-      if (!local) return { ok: false, error: "Add the part before the @, for example saurav@gmail.com." };
-      if (local.length > localMaxLength) {
-        return { ok: false, error: `The part before the @ is limited to ${localMaxLength} characters.` };
-      }
-      if (!localRe.test(local)) {
-        return { ok: false, error: `The part before the @ has a character an email address cannot start or end with, or two dots in a row: ${local}` };
-      }
-      if (!domain) return { ok: false, error: "Add the domain after the @, for example gmail.com." };
-      if (/^\[[0-9.]+\]$/.test(domain)) return { ok: true, value: `${local}@${domain.toLowerCase()}`, domain };
-      if (/\s/.test(domain) || domain.includes("@")) {
-        return { ok: false, error: "An email address cannot contain spaces or a second @ sign." };
-      }
-      const labels = domain.split(".");
-      if (labels.some((label) => !label)) {
-        return { ok: false, error: `There is an empty piece in ${domain}. Remove the extra dot and try again.` };
-      }
-      if (labels.length === 1) {
-        const provider = providers.find((name) => name.split(".")[0] === domain);
-        return {
-          ok: false,
-          error: provider
-            ? `Did you mean ${provider}? A ${domain} address needs its domain after the dot.`
-            : `'${domain}' is not a domain the internet can route mail to. Use the full address, for example name@gmail.com.`,
-        };
-      }
-      for (const label of labels) {
-        if (!labelRe.test(label)) {
-          return {
-            ok: false,
-            error: `'${label}' is not a valid domain part: letters, digits and single dashes, and never a leading or trailing dash.`,
-          };
-        }
-      }
-      if (!tldRe.test(labels[labels.length - 1])) {
-        return { ok: false, error: `'${labels[labels.length - 1]}' is not a domain extension. A Gmail address ends in gmail.com.` };
-      }
-      if (typos[domain]) {
-        return { ok: false, error: `'${domain}' is not a mail provider - did you mean ${typos[domain]}?`, suggestion: typos[domain] };
-      }
-      // One or two keystrokes from a real provider, and not itself a provider:
-      // `gnail.com`, `gmial.com`. The hosted app reaches the same conclusion via
-      // DNS ("nobody can receive mail there") and so leaves an unusual-but-real
-      // domain alone; a static page cannot ask DNS, so it treats a near-miss of a
-      // known provider as a typo outright. The domains that *look* like typos and
-      // are not (mail.com, gmx.com, zoho.com) come from the policy as
-      // `lookalikes`, which is why they are listed there rather than hardcoded
-      // here - the two sides must refuse the same set.
-      if (!isReserved(domain, labels)) {
-        const near = nearMiss(domain);
-        if (near) {
-          return { ok: false, error: `'${domain}' is one keystroke from ${near}. Check the spelling before you save it.`, suggestion: near };
-        }
-      }
-      if (disposable.has(domain)) {
-        return {
-          ok: false,
-          error: "That is a temporary inbox, which stops working before your course does. Use an address you will still have next month.",
-        };
-      }
-      return { ok: true, value: `${local}@${domain}`, domain };
-    }
-
-    function splitE164(digits) {
-      for (let length = 1; length <= 3; length += 1) {
-        const code = `+${digits.slice(0, length)}`;
-        if (plans[code]) return { code, nsn: digits.slice(length) };
-      }
-      for (let length = 1; length <= 3; length += 1) {
-        const code = `+${digits.slice(0, length)}`;
-        if (/^\+[1-9][0-9]{0,2}$/.test(code) && digits.length > length) {
-          return { code, nsn: digits.slice(length) };
-        }
-      }
       return null;
     }
+  }
 
-    // The shapes nobody was issued: one digit repeated, a short ascending or
-    // descending run. Longer runs are left alone on purpose - 9876543210 is a
-    // real, assignable Indian number and the example in the docs.
-    function looksInvented(nsn) {
-      if (nsn.length < 4) return true;
-      if (/^([0-9])\1{3,}$/.test(nsn)) return true;
-      if (nsn.length <= 8) {
-        const steps = [];
-        for (let i = 0; i + 1 < nsn.length; i += 1) steps.push(Number(nsn[i + 1]) - Number(nsn[i]));
-        const up = steps.every((step) => step === 1);
-        const down = steps.every((step) => step === -1);
-        if (up || down) return true;
-      }
+  let memoryProfile = null; // used when storage is blocked
+  function writeProfile(profile) {
+    memoryProfile = profile;
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      return true;
+    } catch (_) {
       return false;
     }
-
-    function phone(raw, countryCode) {
-      const text = String(raw || "").trim();
-      if (!text) return { ok: false, error: "Enter a mobile number with country code, for example 98765 43210 with +91." };
-      if (!PHONE_CHARS.test(text)) {
-        return { ok: false, error: "A mobile number contains digits, spaces, dots, dashes or brackets only." };
-      }
-      let cc = String(countryCode || "+91").trim().replace(/\s+/g, "");
-      if (cc && !cc.startsWith("+")) cc = `+${cc}`;
-      if (cc && !/^\+[1-9][0-9]{0,3}$/.test(cc)) {
-        return { ok: false, error: "Select a valid country code (for example +91, +1, +44)." };
-      }
-      let hasPlus = text.includes("+");
-      let digits = text.replace(/\D+/g, "");
-      if (!digits) return { ok: false, error: "Enter the mobile number that follows the country code." };
-      // 00 is the international prefix most of the world dials before a country
-      // code, exactly as in validators.normalize_phone_with_country_code.
-      if (!hasPlus && digits.startsWith("00")) {
-        hasPlus = true;
-        digits = digits.slice(2);
-      }
-      const national = hasPlus ? "" : digits.replace(/^0+/, "");
-      let combined = "";
-      if (hasPlus) {
-        combined = `+${digits}`;
-      } else {
-        if (!cc) cc = "+91";
-        combined = `${cc}${national}`;
-      }
-      const total = combined.length - 1;
-      if (total < minDigits || total > maxDigits) {
-        return {
-          ok: false,
-          error: `A phone number has between ${minDigits} and ${maxDigits} digits including the country code. Count the digits you typed.`,
-        };
-      }
-      const parts = splitE164(combined.slice(1));
-      if (!parts) {
-        return { ok: false, error: "That country code is not recognised. Start the number with + and its code, for example +91." };
-      }
-      const plan = plans[parts.code];
-      if (plan && !new RegExp(plan.nsn).test(parts.nsn)) {
-        return {
-          ok: false,
-          error: `${plan.label} numbers look like ${plan.example}. The ${parts.nsn.length} digits you typed after ${parts.code} do not match that plan.`,
-        };
-      }
-      if (looksInvented(parts.nsn)) {
-        return {
-          ok: false,
-          error: "That looks like a placeholder rather than a phone number. Type the number as it is written on your SIM.",
-        };
-      }
-      return { ok: true, value: combined };
-    }
-
-    // What the sign-in box may hold: an address, a username, or a number that
-    // starts with +. A digit-only string is not forced into being a phone,
-    // because it is as likely to be somebody's numeric username.
-    function identity(raw) {
-      const text = String(raw || "").trim();
-      if (!text) return { ok: false, error: "Enter the email, username or mobile number on your account." };
-      if (text.includes("@")) return email(text);
-      if (text.startsWith("+")) return phone(text, "+91");
-      return { ok: true, value: text.toLowerCase() };
-    }
-
-    return { email, phone, identity, plans };
   }
 
-  const IDENTITY = makeIdentityRules(config.identity || FALLBACK_IDENTITY_POLICY);
-
-  function normalizePhoneWithCountryCode(phoneRaw, countryCode = "+91") {
-    const result = IDENTITY.phone(phoneRaw, countryCode);
-    return result.ok ? result.value : "";
-  }
-  // === END EV-IDENTITY-RULES ===
-
-  // One lookup for every account page: username, email, the SHA-256 of either,
-  // or a mobile number with its country code. It lives at module scope because
-  // sign-in needs it and so does recovery - the forgot-password page has to know
-  // which address an account actually holds before it can claim to mail it.
-  async function findAccountByIdentity(store, identity) {
-    const value = String(identity || "").trim().toLowerCase();
-    if (!value) return null;
-    const normalizedPhone = value.startsWith("+") || /^\d{7,15}$/.test(value.replace(/\D+/g, ""))
-      ? normalizePhoneWithCountryCode(value, "+91")
-      : "";
-    const idSha = await sha256Hex(value);
-    const phoneSha = normalizedPhone ? await sha256Hex(normalizedPhone) : "";
-    return (
-      Object.values(store.accounts || {}).find(
-        (a) =>
-          a.username?.toLowerCase() === value ||
-          (a.email && a.email.toLowerCase() === value) ||
-          (a.email_sha256 && a.email_sha256 === idSha) ||
-          (normalizedPhone && a.phone === normalizedPhone) ||
-          (phoneSha && a.phone_sha256 === phoneSha)
-      ) || null
-    );
-  }
-
-  function maskDestination(dest, channel = "email") {
-    const val = String(dest || "").trim();
-    if (channel === "phone" || val.startsWith("+")) {
-      const digits = val.replace(/\D+/g, "");
-      if (digits.length <= 4) return "••••" + digits;
-      return `${val.startsWith("+") ? "+" : ""}${"•".repeat(Math.max(4, digits.length - 4))}${digits.slice(-4)}`;
-    }
-    const [local, domain] = val.split("@");
-    // A username with no @ is not an address, and rendering it as
-    // "••••@gmail.com" made the page claim a destination nobody had typed.
-    if (!domain) return val ? `••••${local.slice(-4)} (not an address)` : "no address on file";
-    const maskedLocal =
-      local.length <= 2
-        ? local[0] + "•••"
-        : local[0] + "•".repeat(Math.max(2, local.length - 2)) + local[local.length - 1];
-    return `${maskedLocal}@${domain}`;
-  }
-
-  function generateSixDigitOtp() {
-    if (window.crypto?.getRandomValues) {
-      const arr = new Uint32Array(1);
-      window.crypto.getRandomValues(arr);
-      return String(arr[0] % 1000000).padStart(6, "0");
-    }
-    return String(Math.floor(100000 + Math.random() * 900000));
-  }
-
-  // Real delivery: when an OTP service is configured (exported meta tag,
-  // window.EV_OTP_API_URL, or localStorage "ev:otp_api_url"), the code is
-  // generated and SENT by that service (services/otp) to the user's own
-  // email/phone. The browser never receives the code. Without a service this
-  // static page cannot send anything, so it falls back to showing the code —
-  // the honest demo behaviour, labelled as such.
-  function otpServiceUrl() {
-    const meta = document.querySelector('meta[name="ev-otp-api-url"]');
-    let url = (window.EV_OTP_API_URL || config.otpApiUrl || meta?.getAttribute("content") || "").trim();
-    if (!url) {
-      try { url = String(localStorage.getItem("ev:otp_api_url") || "").trim(); } catch (_) {}
-    }
-    return url.replace(/\/+$/, "");
-  }
-
-  function otpIssueHtml(issued, label) {
-    if (issued.error) {
-      return `<strong>Code could not be sent:</strong> ${escapeHtml(issued.error)}`;
-    }
-    if (issued.delivered) {
-      return `<strong>${escapeHtml(label)}:</strong> A 6-digit code was sent to ` +
-        `<code>${escapeHtml(issued.masked)}</code>. Enter it below — it expires in 10 minutes.`;
-    }
-    return `<strong>${escapeHtml(label)}:</strong> Static copy: no email or SMS can be sent from this page, so your code is shown here instead — it only proves you can read this screen. On the hosted app the code is delivered to your address. Code for <code>${escapeHtml(issued.masked)}</code>: <code>${issued.code}</code>`;
-  }
-
-  function otpIssueToast(issued) {
-    if (issued.error) return "Code could not be sent — see the message above";
-    return issued.delivered
-      ? `6-digit code sent to ${issued.masked}`
-      : "Code shown on this page (static copy — nothing was sent)";
-  }
-
-  async function issueBrowserOtpChallenge({ purpose, username, channel, destination }) {
-    const serviceUrl = otpServiceUrl();
-    if (serviceUrl) {
-      const masked = maskDestination(destination, channel);
+  // One-time move out of the old multi-layer "vault". Every layer it used is
+  // removed: localStorage/sessionStorage keys, the ev_live_user cookie, the
+  // IndexedDB database, the window.name mirror and the GitHub token it held.
+  function migrateLegacyStores() {
+    let legacy = null;
+    for (const area of ["localStorage", "sessionStorage"]) {
       try {
-        const resp = await fetch(`${serviceUrl}/otp/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ purpose, channel, destination }),
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok || !data.ok) {
-          return { delivered: false, error: data.error || "The OTP service could not send your code.", masked, channel, destination };
-        }
-        const store = loadStore();
-        if (!store.otpChallenges || typeof store.otpChallenges !== "object") store.otpChallenges = {};
-        // Only routing metadata is kept locally — no code, no code hash.
-        store.otpChallenges[purpose] = {
-          purpose, username: String(username || "").toLowerCase(), channel,
-          destination, masked: data.masked || masked, remote: true,
-          expiresAt: Date.now() + Number(data.expires_in || 600) * 1000, attempts: 0,
-        };
-        saveStore(store, { skipBroadcast: true });
-        return { delivered: true, masked: data.masked || masked, channel, destination };
-      } catch (_) {
-        return { delivered: false, error: "Could not reach the OTP service. Check your connection and try again.", masked, channel, destination };
+        const raw = window[area].getItem(LEGACY_STORE_KEY);
+        if (raw && !legacy) legacy = JSON.parse(raw);
+      } catch (_) { /* unreadable: nothing to migrate */ }
+    }
+    if (legacy && typeof legacy === "object" && legacy.accounts && typeof legacy.accounts === "object" && !readProfile()) {
+      const accounts = legacy.accounts;
+      const picked = (legacy.currentUser && accounts[legacy.currentUser]) || accounts.guest ||
+        Object.values(accounts).sort((a, b) => String(b?.updated_at || "").localeCompare(String(a?.updated_at || "")))[0];
+      if (picked) writeProfile(sanitizeProfile(picked));
+    }
+    for (const key of LEGACY_KEYS) {
+      try { localStorage.removeItem(key); } catch (_) { /* ignore */ }
+      try { sessionStorage.removeItem(key); } catch (_) { /* ignore */ }
+    }
+    try {
+      if (/(?:^|;\s*)ev_live_user=/.test(document.cookie || "")) {
+        document.cookie = "ev_live_user=; path=/; max-age=0; SameSite=Lax";
       }
-    }
-    const code = generateSixDigitOtp();
-    const digest = await sha256Hex(`ev-otp:${purpose}:${username}:${code}`);
-    const masked = maskDestination(destination, channel);
-    const store = loadStore();
-    if (!store.otpChallenges || typeof store.otpChallenges !== "object") {
-      store.otpChallenges = {};
-    }
-    store.otpChallenges[purpose] = {
-      purpose,
-      username: String(username || "").toLowerCase(),
-      channel,
-      destination,
-      masked,
-      codeHash: digest,
-      expiresAt: Date.now() + 10 * 60 * 1000,
-      attempts: 0,
-    };
-    saveStore(store, { skipBroadcast: true });
-
-    // Forward OTP event to n8n / Supabase / Appwrite webhook if configured
-    if (store.webhookUrl) {
-      forwardWebhook(store.webhookUrl, {
-        event: "otp_issued",
-        purpose,
-        username,
-        channel,
-        destination_masked: masked,
-        otp_code: code,
-        ts: new Date().toISOString(),
-      }).catch(() => {});
-    }
-    return { code, masked, channel, destination };
-  }
-
-  async function verifyBrowserOtpChallenge(purpose, submittedCode) {
-    const cleanCode = String(submittedCode || "").replace(/[\s.-]+/g, "");
-    if (!/^\d{6}$/.test(cleanCode)) {
-      return { ok: false, error: "Enter a valid 6-digit numeric OTP code." };
-    }
-    const store = loadStore();
-    const ch = store.otpChallenges?.[purpose];
-    if (!ch) {
-      return { ok: false, error: "No active OTP challenge found. Request a new 6-digit OTP." };
-    }
-    if (Date.now() > Number(ch.expiresAt || 0)) {
-      delete store.otpChallenges[purpose];
-      saveStore(store, { skipBroadcast: true });
-      return { ok: false, error: "That 6-digit OTP has expired. Click Resend OTP to get a fresh code." };
-    }
-    if (ch.remote) {
-      // The service checks the code; this page never had it.
-      const serviceUrl = otpServiceUrl();
-      if (!serviceUrl) {
-        return { ok: false, error: "The OTP service is no longer configured. Request a new 6-digit OTP." };
+    } catch (_) { /* ignore */ }
+    try {
+      if (typeof window.name === "string" && window.name.startsWith("EV_STORE:")) window.name = "";
+    } catch (_) { /* ignore */ }
+    try {
+      if (window.indexedDB && !localStorage.getItem("ev:legacy-cleaned")) {
+        window.indexedDB.deleteDatabase("EngineVerseVaultDB");
+        localStorage.setItem("ev:legacy-cleaned", "1");
       }
-      try {
-        const resp = await fetch(`${serviceUrl}/otp/verify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ purpose, destination: ch.destination, code: cleanCode }),
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (resp.ok && data.ok) {
-          delete store.otpChallenges[purpose];
-          saveStore(store, { skipBroadcast: true });
-          return { ok: true, challenge: ch };
-        }
-        if (resp.status === 401 && /expired|too many/i.test(String(data.error || ""))) {
-          delete store.otpChallenges[purpose];
-          saveStore(store, { skipBroadcast: true });
-        }
-        return { ok: false, error: data.error || "That 6-digit OTP was not accepted." };
-      } catch (_) {
-        return { ok: false, error: "Could not reach the OTP service to verify your code. Try again." };
-      }
-    }
-    const expectedHash = await sha256Hex(`ev-otp:${purpose}:${ch.username}:${cleanCode}`);
-    if (expectedHash !== ch.codeHash) {
-      ch.attempts = Number(ch.attempts || 0) + 1;
-      if (ch.attempts >= 5) {
-        delete store.otpChallenges[purpose];
-        saveStore(store, { skipBroadcast: true });
-        return { ok: false, error: "Too many incorrect OTP attempts. Request a new 6-digit OTP." };
-      }
-      store.otpChallenges[purpose] = ch;
-      saveStore(store, { skipBroadcast: true });
-      return { ok: false, error: `Incorrect 6-digit OTP code (${5 - ch.attempts} attempts remaining).` };
-    }
-    delete store.otpChallenges[purpose];
-    saveStore(store, { skipBroadcast: true });
-    return { ok: true, challenge: ch };
+    } catch (_) { /* ignore */ }
   }
 
   function getActiveProfile() {
-    const store = loadStore();
-    if (store.currentUser && store.accounts[store.currentUser]) {
-      return store.accounts[store.currentUser];
-    }
-    if (!store.accounts.guest) {
-      store.accounts.guest = defaultProfile();
-      saveStore(store);
-    }
-    return store.accounts.guest;
+    const stored = readProfile();
+    if (stored) return stored;
+    if (memoryProfile) return memoryProfile;
+    const fresh = defaultProfile();
+    writeProfile(fresh);
+    return fresh;
   }
 
   function saveActiveProfile(mutator) {
-    const store = loadStore();
-    const key = store.currentUser || "guest";
-    const profile = store.accounts[key] || defaultProfile({ username: key });
+    const profile = getActiveProfile();
     mutator(profile);
     const streakState = computeStreak(writeStreak((profile.activity_days || []).concat(readStreak().days)));
     profile.activity_days = streakState.days;
@@ -938,230 +281,50 @@
     profile.longest_streak = Math.max(Number(profile.longest_streak || 0), streakState.longest);
     profile.xp = Math.max(0, Number(profile.xp || 0));
     profile.level = Math.max(1, Math.floor(profile.xp / 250) + 1);
-    profile.updated_at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-    store.accounts[key] = profile;
-    saveStore(store);
-    if (store.webhookUrl) {
-      forwardWebhook(store.webhookUrl, toGithubSnapshot(profile)).catch(() => {});
-    }
-    return profile;
+    profile.updated_at = nowStamp();
+    const clean = sanitizeProfile(profile);
+    writeProfile(clean);
+    return clean;
   }
 
-  function toGithubSnapshot(profile) {
+  function exportProfilePayload() {
+    const profile = getActiveProfile();
     return {
-      username: (profile.username || "guest").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30) || "learner",
-      display_name: String(profile.display_name || profile.username || "Learner").slice(0, 60),
-      branch: String(profile.branch || "cse").slice(0, 32),
-      year_of_study: Math.min(6, Math.max(1, Number(profile.year_of_study || 1))),
-      bio: String(profile.bio || "").slice(0, 240),
-      xp: Math.max(0, Number(profile.xp || 0)),
-      level: Math.max(1, Number(profile.level || 1)),
-      streak_days: Math.max(0, Number(profile.streak_days || 0)),
-      longest_streak: Math.max(0, Number(profile.longest_streak || 0)),
-      activity_days: Array.from(new Set(profile.activity_days || [])).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().slice(-365),
-      completed_topics: Array.from(new Set(profile.completed_topics || [])).sort(),
-      solved_problems: Array.from(new Set(profile.solved_problems || [])).sort(),
-      completed_projects: Array.from(new Set(profile.completed_projects || [])).sort(),
-      bookmarks: Array.from(new Set(profile.bookmarks || [])).sort(),
-      quiz_attempts: Math.max(0, Number(profile.quiz_attempts || 0)),
-      quiz_correct: Math.max(0, Number(profile.quiz_correct || 0)),
-      // Progress only. The snapshot is published to a public repository, so
-      // it must never carry the password digest or hashed contact details
-      // that the device-local profile keeps. Those stay on this device.
-      password_sha256: "",
-      email_sha256: "",
-      phone_sha256: "",
-      country_code: String(profile.country_code || "+91"),
-      otp_verified: profile.otp_verified !== false,
-      updated_at: profile.updated_at || new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+      format: PROFILE_FORMAT,
+      version: 1,
+      exported_at: nowStamp(),
+      profile,
+      streak_days: readStreak().days,
     };
   }
 
-  function mergeSnapshotIntoStore(snapshot, setCurrent = false) {
-    if (!snapshot || !snapshot.username) return null;
-    const uname = String(snapshot.username).toLowerCase().trim();
-    const store = loadStore();
-    const existing = store.accounts[uname] || defaultProfile({ username: uname });
-    const merged = Object.assign({}, existing, {
-      username: uname,
-      display_name: snapshot.display_name || existing.display_name || uname,
-      branch: snapshot.branch || existing.branch || "cse",
-      year_of_study: Number(snapshot.year_of_study || existing.year_of_study || 1),
-      bio: snapshot.bio || existing.bio || "",
-      country_code: snapshot.country_code || existing.country_code || "+91",
-      otp_verified: snapshot.otp_verified !== undefined ? Boolean(snapshot.otp_verified) : existing.otp_verified !== false,
-      xp: Math.max(Number(existing.xp || 0), Number(snapshot.xp || 0)),
-      level: Math.max(Number(existing.level || 1), Number(snapshot.level || 1)),
-      streak_days: Math.max(Number(existing.streak_days || 0), Number(snapshot.streak_days || 0)),
-      longest_streak: Math.max(Number(existing.longest_streak || 0), Number(snapshot.longest_streak || 0)),
-      activity_days: Array.from(new Set([...(existing.activity_days || []), ...(snapshot.activity_days || [])])).sort(),
-      completed_topics: Array.from(new Set([...(existing.completed_topics || []), ...(snapshot.completed_topics || [])])).sort(),
-      solved_problems: Array.from(new Set([...(existing.solved_problems || []), ...(snapshot.solved_problems || [])])).sort(),
-      completed_projects: Array.from(new Set([...(existing.completed_projects || []), ...(snapshot.completed_projects || [])])).sort(),
-      bookmarks: Array.from(new Set([...(existing.bookmarks || []), ...(snapshot.bookmarks || [])])).sort(),
-      quiz_attempts: Math.max(Number(existing.quiz_attempts || 0), Number(snapshot.quiz_attempts || 0)),
-      quiz_correct: Math.max(Number(existing.quiz_correct || 0), Number(snapshot.quiz_correct || 0)),
-      // A snapshot pulled from the public registry is untrusted input: it
-      // must never set this device's password or contact-identifier hashes.
-      // Only the hashes already stored on this device survive a merge.
-      password_sha256: existing.password_sha256 || "",
-      email_sha256: existing.email_sha256 || "",
-      phone_sha256: existing.phone_sha256 || "",
-      updated_at: snapshot.updated_at || existing.updated_at,
-    });
-    store.accounts[uname] = merged;
-    if (setCurrent) store.currentUser = uname;
-    saveStore(store, { skipBroadcast: !setCurrent });
-    if (merged.activity_days?.length) {
-      writeStreak(readStreak().days.concat(merged.activity_days));
-    }
-    return merged;
-  }
-
-  // Pull seeded & live GitHub learner vault on boot
-  async function pullGithubVault(silent = true) {
-    const store = loadStore();
-    const repo = store.githubRepo || GH_REPO;
-    const urls = [
-      `https://api.github.com/repos/${repo}/contents/${GH_VAULT_PATH}`,
-      config.vault || `${BASE}learner-vault.json`,
-    ];
-    for (const url of urls) {
-      try {
-        const headers = { Accept: "application/vnd.github+json, application/json" };
-        if (url.includes("api.github.com") && store.githubToken) {
-          headers.Authorization = `Bearer ${store.githubToken}`;
-        }
-        const res = await fetch(url, { headers, cache: "no-store" });
-        if (!res.ok) continue;
-        const data = await res.json();
-        let registry = data;
-        if (data && data.content && data.encoding === "base64") {
-          const decoded = decodeURIComponent(escape(atob(String(data.content).replace(/\s+/g, ""))));
-          registry = JSON.parse(decoded);
-        }
-        if (registry && registry.learners && typeof registry.learners === "object") {
-          Object.values(registry.learners).forEach((snap) => mergeSnapshotIntoStore(snap, false));
-          if (!silent) toast(`Synced ${Object.keys(registry.learners).length} learner record(s) from GitHub Vault.`);
-          return registry;
-        }
-      } catch (_) {
-        /* try next fallback */
-      }
-    }
-    if (!silent) toast("Loaded local learner vault cache.", "info");
-    return null;
-  }
-
-  async function pushSnapshotToGithub(profile, options = {}) {
-    const initialStore = loadStore();
-    const repo = (options.repo || initialStore.githubRepo || GH_REPO).trim();
-    const token = (options.token !== undefined ? options.token : initialStore.githubToken || "").trim();
-    const snapshot = toGithubSnapshot(profile);
-
-    const recordSyncTime = () => {
-      const latest = loadStore();
-      latest.lastSyncAt = new Date().toISOString();
-      if (snapshot.username && latest.accounts[snapshot.username]) {
-        latest.accounts[snapshot.username] = Object.assign({}, latest.accounts[snapshot.username], profile);
-      }
-      saveStore(latest, { skipBroadcast: true });
-    };
-
-    // 1. Try local FastAPI backend `/api/sync/snapshot` if running on a live server
+  // Returns the sanitised profile, or throws an Error with a learner-facing message.
+  function parseProfileImport(text) {
+    let raw;
     try {
-      const apiRes = await fetch(`${BASE}api/sync/snapshot`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ snapshot, push_github: true }),
-      });
-      if (apiRes.ok) {
-        const out = await apiRes.json();
-        if (out.ok) {
-          recordSyncTime();
-          toast(`Saved learner data for @${snapshot.username} to GitHub vault!`);
-          return { ok: true, mode: "backend-api", detail: out };
-        }
-      }
+      raw = JSON.parse(text);
     } catch (_) {
-      /* static host; proceed with direct GitHub push or GitHub Issue workflow */
+      throw new Error("That file is not valid JSON.");
     }
-
-    // 2. If user provided a GitHub token, push directly via GitHub Contents API
-    if (token) {
-      const apiUrl = `https://api.github.com/repos/${repo}/contents/${GH_VAULT_PATH}`;
-      const headers = {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      };
-      const getRes = await fetch(apiUrl, { headers, cache: "no-store" });
-      let registry = { schema_version: 1, repository: repo, updated_at: "", learners: {} };
-      let sha = "";
-      if (getRes.ok) {
-        const current = await getRes.json();
-        sha = current.sha || "";
-        if (current.content) {
-          const decoded = decodeURIComponent(escape(atob(String(current.content).replace(/\s+/g, ""))));
-          registry = JSON.parse(decoded);
-        }
-      }
-      if (!registry.learners || typeof registry.learners !== "object") registry.learners = {};
-      registry.learners[snapshot.username] = snapshot;
-      registry.updated_at = snapshot.updated_at;
-      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(registry, null, 2) + "\n")));
-      const putBody = {
-        message: `chore(learners): sync progress snapshot for ${snapshot.username}`,
-        content: encoded,
-        branch: "main",
-      };
-      if (sha) putBody.sha = sha;
-      const putRes = await fetch(apiUrl, {
-        method: "PUT",
-        headers: Object.assign({ "Content-Type": "application/json" }, headers),
-        body: JSON.stringify(putBody),
-      });
-      if (!putRes.ok) {
-        const errData = await putRes.json().catch(() => ({}));
-        throw new Error(errData.message || `GitHub API push returned HTTP ${putRes.status}`);
-      }
-      recordSyncTime();
-      toast(`Committed @${snapshot.username}'s progress directly to ${repo}!`);
-      return { ok: true, mode: "github-contents-api" };
-    }
-
-    // 3. Zero-token GitHub Actions Issue Sync (opens pre-filled issue on authorsauravkushwaha/EngineVerse)
-    if (options.useIssueSync) {
-      const title = `[learner-sync] @${snapshot.username} (${snapshot.xp} XP · ${snapshot.streak_days}d streak)`;
-      const body = [
-        "### EngineVerse Learner Progress Sync Request",
-        "",
-        `This issue asks a maintainer to review and merge a progress-only snapshot for **@${snapshot.username}** to \`data/learners/registry.json\` on \`${repo}\`.`,
-        "It contains no password or contact details. A maintainer reviews it and runs the `Learner Data Sync` workflow manually; submitting this issue does not commit anything by itself.",
-        "",
-        "```engineverse-learner-snapshot",
-        JSON.stringify(snapshot, null, 2),
-        "```",
-      ].join("\n");
-      const issueUrl = `https://github.com/${repo}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-      window.open(issueUrl, "_blank", "noopener,noreferrer");
-      toast("Opened a GitHub sync request — a maintainer reviews it before anything is saved.");
-      return { ok: true, mode: "github-issue-workflow", issueUrl };
-    }
-
-    // Save locally and prompt user with one-click GitHub Issue sync
-    recordSyncTime();
-    return { ok: true, mode: "local-vault", snapshot };
+    if (!raw || typeof raw !== "object") throw new Error("That file is not an EngineVerse progress export.");
+    // Accept this format and the progress-only snapshot older versions exported.
+    const body = raw.format === PROFILE_FORMAT ? raw.profile
+      : raw.format === "engineverse-progress-export" ? raw
+      : raw.schema === "engineverse.learner.v1" || raw.completed_topics ? raw : null;
+    if (!body || typeof body !== "object") throw new Error("That file is not an EngineVerse progress export.");
+    const profile = sanitizeProfile(body);
+    const days = Array.isArray(raw.streak_days) ? raw.streak_days : profile.activity_days;
+    return { profile, days };
   }
 
-  async function forwardWebhook(url, snapshot) {
-    if (!url || !/^https?:\/\//i.test(url)) return;
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source: "engineverse", event: "learner.snapshot", snapshot }),
-    });
+  function clearLocalProgress() {
+    for (const key of [PROFILE_KEY, STREAK_KEY]) {
+      try { localStorage.removeItem(key); } catch (_) { /* ignore */ }
+    }
+    memoryProfile = null;
   }
+
+  safely("migrateLegacyStores", migrateLegacyStores);
 
   // ---------------------------------------------------------------------------
   // 1. Streak calculation & activity recording
@@ -1228,519 +391,76 @@
   }
   const streak = computeStreak(days);
 
-  // Sync streak into active learner profile
+  // Record study days in the local profile as well as the streak store.
   saveActiveProfile((p) => {
     p.activity_days = Array.from(new Set([...(p.activity_days || []), ...days]));
   });
 
-  // ---------------------------------------------------------------------------
-  // 2. Topbar Account Icon & Cross-Tab Signed-In Hydration
-  // ---------------------------------------------------------------------------
-  function signOutActiveUser() {
-    const store = loadStore();
-    store.currentUser = null;
-    try { sessionStorage.setItem("ev:explicit_logout", "1"); } catch (_) {}
-    saveStore(store);
-    safely("hydrateNavigation", hydrateNavigation);
-    toast("Signed out of your EngineVerse session.", "info");
-    window.location.href = `${BASE}login/`;
-  }
 
+  // ---------------------------------------------------------------------------
+  // 2. Top bar progress button and sheet progress
+  //
+  // base.html renders a "My progress" button on the static copy. This fills in
+  // the streak from this browser's record. There is no signed-in state to
+  // reconcile: the static copy has no accounts.
+  // ---------------------------------------------------------------------------
   function hydrateNavigation() {
-    const store = loadStore();
     const profile = getActiveProfile();
-    const signedIn = Boolean(store.currentUser && store.currentUser !== "guest");
-    syncGlobalAuthFlag(store.currentUser);
-
-    const topbarRight = document.querySelector(".topbar-right") || document.querySelector(".topbar .actions");
-    if (topbarRight) {
-      const loginLinks = Array.from(topbarRight.querySelectorAll('a[href*="/login"], a[href*="/register"], [data-ev-anon-auth]'));
-      const serverAvatar = topbarRight.querySelector(".avatar:not([data-live-avatar])");
-      const navToggle = topbarRight.querySelector("#navtoggle");
-      const insertBeforeNode = navToggle || null;
-
-      if (signedIn) {
-        // Hide "Sign in" and "Start free" buttons in the topbar
-        loginLinks.forEach((el) => {
-          el.setAttribute("data-ev-anon-auth", "");
-          el.hidden = true;
-          el.style.display = "none";
-        });
-
-        if (!serverAvatar) {
-          // 1. Streak badge
-          let streakEl = topbarRight.querySelector("[data-live-streak]");
-          if (!streakEl) {
-            streakEl = document.createElement("a");
-            streakEl.className = "streak";
-            streakEl.setAttribute("data-live-streak", "");
-            topbarRight.insertBefore(streakEl, insertBeforeNode);
-          }
-          const sDays = Number(profile.streak_days || streak.current || 0);
-          streakEl.href = `${BASE}streaks/`;
-          streakEl.title = sDays > 0 ? `Study streak: ${sDays} day(s)` : "No study day yet — open a topic or DPP to start";
-          streakEl.innerHTML = `<svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-2 1-3 2-5 1 2 2 2 2-5z"/><path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-5-1 1.5-2.5 2-3.5 5z"/></svg><span>${sDays}</span>`;
-
-          // 2. XP & Level badge
-          let xpEl = topbarRight.querySelector("[data-live-xp]");
-          if (!xpEl) {
-            xpEl = document.createElement("a");
-            xpEl.className = "xpchip";
-            xpEl.setAttribute("data-live-xp", "");
-            topbarRight.insertBefore(xpEl, insertBeforeNode);
-          }
-          const lvl = Number(profile.level || 1);
-          const xpVal = Number(profile.xp || 0);
-          xpEl.href = `${BASE}profile/`;
-          xpEl.title = `Level ${lvl} · ${xpVal} XP`;
-          xpEl.innerHTML = `<span class="lvl">Lv ${lvl}</span><span class="xpv">${xpVal} XP</span>`;
-
-          // 3. Notifications bell icon
-          let notifEl = topbarRight.querySelector("[data-live-notif]");
-          if (!notifEl) {
-            notifEl = document.createElement("a");
-            notifEl.className = "iconbtn";
-            notifEl.setAttribute("data-live-notif", "");
-            notifEl.setAttribute("aria-label", "Notifications");
-            notifEl.title = "Notifications";
-            topbarRight.insertBefore(notifEl, insertBeforeNode);
-          }
-          notifEl.href = `${BASE}notifications/`;
-          notifEl.innerHTML = `<svg class="i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
-
-          // 4. Account Profile Icon & Dropdown Menu (replaces Sign in / Start free)
-          let accountMenu = topbarRight.querySelector("[data-live-account-menu]");
-          if (!accountMenu) {
-            accountMenu = document.createElement("div");
-            accountMenu.className = "menu";
-            accountMenu.setAttribute("data-menu", "");
-            accountMenu.setAttribute("data-live-account-menu", "");
-            topbarRight.insertBefore(accountMenu, insertBeforeNode);
-          }
-          const initial = escapeHtml(String(profile.display_name || profile.username || "U").trim().charAt(0).toUpperCase() || "U");
-          const unameEsc = escapeHtml(profile.username || "learner");
-          const dnameEsc = escapeHtml(profile.display_name || profile.username || "Learner");
-          const branchEsc = escapeHtml(String(profile.branch || "cse").toUpperCase());
-          const yearEsc = Number(profile.year_of_study || 1);
-          accountMenu.innerHTML = `
-            <button class="avatar" type="button" data-live-avatar aria-haspopup="true" aria-expanded="false" aria-label="Account menu for ${unameEsc}" title="Signed in as @${unameEsc}">
-              <svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              <span class="avatar-initial">${initial}</span>
-            </button>
-            <div class="menu-pop" role="menu">
-              <div class="menu-head">
-                <strong>${dnameEsc}</strong>
-                <span class="muted small">@${unameEsc} · ${branchEsc} Y${yearEsc}</span>
-              </div>
-              <a class="menu-item" role="menuitem" href="${BASE}dashboard/"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg> Dashboard</a>
-              <a class="menu-item" role="menuitem" href="${BASE}profile/"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> My profile</a>
-              <a class="menu-item" role="menuitem" href="${BASE}portfolio/"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> Public portfolio</a>
-              <a class="menu-item" role="menuitem" href="${BASE}today/"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Today's plan</a>
-              <a class="menu-item" role="menuitem" href="${BASE}mistakes/"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Mistake notebook</a>
-              <a class="menu-item" role="menuitem" href="${BASE}leaderboard/"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> Leaderboard</a>
-              <a class="menu-item" role="menuitem" href="${BASE}settings/"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings &amp; GitHub Sync</a>
-              <button class="menu-item danger" type="button" data-live-logout><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sign out</button>
-            </div>
-          `;
-          const logoutBtn = accountMenu.querySelector("[data-live-logout]");
-          if (logoutBtn) {
-            logoutBtn.addEventListener("click", (e) => {
-              e.preventDefault();
-              signOutActiveUser();
-            });
-          }
-        }
-      } else {
-        // Signed out: remove dynamic signed-in topbar items and restore Sign in / Start free
-        topbarRight.querySelectorAll("[data-live-streak], [data-live-xp], [data-live-notif], [data-live-account-menu]").forEach((el) => el.remove());
-        loginLinks.forEach((el) => {
-          el.hidden = false;
-          el.style.display = "";
-        });
-      }
-    }
-
-    // Remove "sign in" lock pills across topnav, mobile drawer, and index lists when signed in
-    document.querySelectorAll(".navmenu-lock, .indexlist-lock").forEach((badge) => {
-      badge.hidden = signedIn;
-      badge.style.display = signedIn ? "none" : "";
+    const current = computeStreak(readStreak().days).current;
+    document.querySelectorAll("[data-ev-local-streak]").forEach((el) => {
+      el.textContent = String(current);
     });
-
-    // Update topnav and mobile nav links that differ between anonymous and signed-in
-    if (signedIn) {
-      const branchSlug = encodeURIComponent(profile.branch || "cse");
-      document.querySelectorAll('.navmenu-item, .mobilenav-item').forEach((link) => {
-        const label = link.querySelector(".navmenu-label")?.textContent?.trim() || link.textContent.trim();
-        if (label.startsWith("My branch")) {
-          link.setAttribute("href", `${BASE}stream/${branchSlug}/`);
-        } else if (label.startsWith("Due flashcards")) {
-          link.setAttribute("href", `${BASE}revision/`);
-        }
-      });
-
-      // Update mobile drawer account buttons
-      const mobileCta = document.querySelector("#mobilenav .mobilenav-cta");
-      if (mobileCta) {
-        mobileCta.innerHTML = `
-          <a class="btn btn-primary" href="${BASE}dashboard/">@${escapeHtml(profile.username)} · Dashboard</a>
-          <a class="btn btn-ghost" href="${BASE}settings/">Account &amp; Sync Settings</a>
-          <button class="btn btn-ghost" type="button" data-live-mobile-logout>Sign out</button>
-        `;
-        mobileCta.querySelector("[data-live-mobile-logout]")?.addEventListener("click", signOutActiveUser);
-      }
-
-      // Update footer Sign in / Create account links
-      document.querySelectorAll('.footer a[href*="/login"], .footer a[href*="/register"]').forEach((a) => {
-        if (a.getAttribute("href")?.includes("/login")) {
-          a.setAttribute("href", `${BASE}dashboard/`);
-          a.textContent = `Dashboard (@${profile.username})`;
-        } else {
-          a.setAttribute("href", `${BASE}settings/`);
-          a.textContent = "Account settings";
-        }
-      });
-    }
-  }
-
-  // Hydrate page-specific signed-out callouts so switching tabs never shows "Sign in to..." when signed in
-  function hydrateSignedInPageContent() {
-    const store = loadStore();
-    const signedIn = Boolean(store.currentUser && store.currentUser !== "guest");
-    if (!signedIn) return;
-    const profile = getActiveProfile();
-    // `path` was read here without ever being defined in this scope - it only
-    // existed inside shouldRecordStudy() - so every check below threw a
-    // ReferenceError on the first page that used one. That is why a signed-in
-    // learner kept meeting "Sign in to ..." prompts on the revision, sheets,
-    // DPP, community and coding tabs.
-    const path = window.location.pathname;
-
-    // 1. Generic anonymous auth callouts across tabs (Sheets, DPP, Home, Resources)
-    document.querySelectorAll(".callout").forEach((callout) => {
-      const text = callout.textContent || "";
-      if (text.includes("Sign in to have your progress on this sheet tracked")) {
-        const rows = document.querySelectorAll("table.table tbody tr");
-        const total = rows.length || 1;
-        let solvedOnSheet = 0;
-        const solvedSet = new Set(profile.solved_problems || []);
-        rows.forEach((tr) => {
-          const link = tr.querySelector('a[href*="/practice/problems/"]');
-          const slug = link?.getAttribute("href")?.split("/practice/problems/")[1]?.replace(/\/$/, "");
-          if (slug && solvedSet.has(slug)) {
-            solvedOnSheet += 1;
-            const statusCell = tr.querySelector("td:last-child");
-            if (statusCell && !statusCell.querySelector(".chip.ok")) {
-              statusCell.innerHTML = '<span class="chip ok">Solved ✓</span>';
-            }
-          }
-        });
-        const pct = Math.round((solvedOnSheet / total) * 100);
-        callout.className = "panel mb";
-        callout.innerHTML = `
-          <div class="row between">
-            <div><strong>Your progress (@${escapeHtml(profile.username)})</strong> — ${solvedOnSheet} of ${ rows.length } solved (${pct}%)</div>
-            <span class="chip ${pct === 100 ? "ok" : "info"}">${pct}% complete</span>
-          </div>
-          <div class="bar lg mt-xs"><span style="width:${pct}%"></span></div>
-        `;
-      } else if (text.includes("Sign in to record answers, build a streak and get a mistake notebook")) {
-        callout.className = "callout ok mt";
-        callout.innerHTML = `
-          <strong>Signed in as @${escapeHtml(profile.username)}:</strong>
-          Your answers on this Daily Practice set are automatically recorded to your
-          <a href="${BASE}streaks/">${profile.streak_days || 0}-day streak</a>,
-          <a href="${BASE}mistakes/">Mistake Notebook</a>, and
-          <a href="${BASE}dashboard/">Learner Dashboard</a> (${profile.xp || 0} XP).
-        `;
-      } else if (text.includes("Code execution is off on this server")) {
-        callout.remove();
-      }
-    });
-
-    // 2. Revise / Spaced Repetition tab (/revision/)
-    if (path.endsWith("/revision/") || path.endsWith("/revision/index.html")) {
-      const anonPanel = Array.from(document.querySelectorAll(".panel")).find((p) =>
-        (p.textContent || "").includes("Sign in to start revising")
-      );
-      if (anonPanel) {
-        anonPanel.innerHTML = `
-          <div class="row between mb">
-            <div>
-              <h2>Due Flashcards for @${escapeHtml(profile.username)}</h2>
-              <p class="small muted">Spaced-repetition SM-2 deck synced with your ${escapeHtml((profile.branch || "cse").toUpperCase())} learner profile.</p>
-            </div>
-            <span class="chip ok" id="ev-rev-counter">Card 1</span>
-          </div>
-          <div class="card p" id="ev-rev-card" style="min-height:150px">
-            <div class="eyebrow" id="ev-rev-subject">Engineering Core</div>
-            <h3 id="ev-rev-front" class="mt-xs">Loading flashcard deck...</h3>
-            <div id="ev-rev-back" class="mt pt" style="border-top:1px solid var(--border)" hidden></div>
-          </div>
-          <div class="row mt" id="ev-rev-actions">
-            <button class="btn btn-primary" type="button" id="ev-rev-flip">Show answer</button>
-            <div class="row" id="ev-rev-rate" hidden>
-              <button class="btn btn-ghost btn-sm" type="button" data-rev-q="1">Again (1d)</button>
-              <button class="btn btn-soft btn-sm" type="button" data-rev-q="3">Hard (3d)</button>
-              <button class="btn btn-primary btn-sm" type="button" data-rev-q="4">Good</button>
-              <button class="btn btn-ok btn-sm" type="button" data-rev-q="5">Easy</button>
-            </div>
-          </div>
-        `;
-        fetchJSON(config.corpus || `${BASE}tutor-corpus.json`).then((corpus) => {
-          const cards = (corpus?.chunks || []).slice(0, 24).map((c) => ({
-            subject: c.subject || c.kind || "Core Engineering",
-            front: `Explain the core principle and engineering trade-offs of: ${c.title}`,
-            back: c.summary || c.excerpt || "Review the key invariant, complexity bounds, and failure modes.",
-          }));
-          if (!cards.length) {
-            cards.push({
-              subject: "Systems & Algorithms",
-              front: "What is the time complexity of binary search on a sorted array of N elements?",
-              back: "O(log N) comparisons because each probe halves the remaining search interval.",
-            });
-          }
-          let idx = 0;
-          const renderCard = () => {
-            const card = cards[idx % cards.length];
-            const counter = document.getElementById("ev-rev-counter");
-            const subj = document.getElementById("ev-rev-subject");
-            const front = document.getElementById("ev-rev-front");
-            const back = document.getElementById("ev-rev-back");
-            const flipBtn = document.getElementById("ev-rev-flip");
-            const rateRow = document.getElementById("ev-rev-rate");
-            if (counter) counter.textContent = `Card ${(idx % cards.length) + 1} of ${cards.length}`;
-            if (subj) subj.textContent = card.subject;
-            if (front) front.textContent = card.front;
-            if (back) {
-              back.textContent = card.back;
-              back.hidden = true;
-            }
-            if (flipBtn) flipBtn.hidden = false;
-            if (rateRow) rateRow.hidden = true;
-          };
-          renderCard();
-          document.getElementById("ev-rev-flip")?.addEventListener("click", () => {
-            const back = document.getElementById("ev-rev-back");
-            const flipBtn = document.getElementById("ev-rev-flip");
-            const rateRow = document.getElementById("ev-rev-rate");
-            if (back) back.hidden = false;
-            if (flipBtn) flipBtn.hidden = true;
-            if (rateRow) rateRow.hidden = false;
-          });
-          anonPanel.querySelectorAll("[data-rev-q]").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              // Flashcard XP mirrors the server (2 XP per review) but, under
-              // knowledge XP, only the first rating of a card per day pays -
-              // self-rating the same card "easy" in a loop must not farm XP.
-              const cardKey = String(cards[idx]?.front || idx);
-              const todayKey = isoOf(new Date());
-              let gain = 0;
-              saveActiveProfile((p) => {
-                const ledger = (p.srs_xp_day && p.srs_xp_day.date === todayKey)
-                  ? p.srs_xp_day : { date: todayKey, cards: [] };
-                if (!ledger.cards.includes(cardKey)) {
-                  ledger.cards.push(cardKey);
-                  gain = 2;
-                  p.xp = Number(p.xp || 0) + gain;
-                }
-                p.srs_xp_day = ledger;
-              });
-              safely("hydrateNavigation", hydrateNavigation);
-              toast(gain ? "Card scheduled via SM-2 (+2 XP)" : "Card scheduled via SM-2");
-              idx += 1;
-              renderCard();
-            });
-          });
-        });
-      }
-    }
-
-    // 3. Coding Problem tab (/practice/problems/<slug>/)
-    const problemView = document.querySelector(".problem-view[data-problem]");
-    if (problemView) {
-      const slug = problemView.getAttribute("data-problem") || "";
-      problemView.querySelectorAll('a[href*="/login"]').forEach((a) => a.remove());
-      if (slug && (profile.solved_problems || []).includes(slug)) {
-        const solvedChip = document.getElementById("solved-chip");
-        if (solvedChip) solvedChip.hidden = false;
-      }
-    }
-
-    // 4. Community tab (/community/)
-    if (path.includes("/community/")) {
-      document.querySelectorAll('a[href*="/login"]').forEach((signInBtn) => {
-        if ((signInBtn.textContent || "").toLowerCase().includes("sign in")) {
-          const postBtn = document.createElement("button");
-          postBtn.type = "button";
-          postBtn.className = "btn btn-primary";
-          postBtn.textContent = "New discussion post";
-          signInBtn.replaceWith(postBtn);
-          postBtn.addEventListener("click", () => {
-            let box = document.getElementById("ev-live-community-composer");
-            if (!box) {
-              box = document.createElement("section");
-              box.id = "ev-live-community-composer";
-              box.className = "panel mb";
-              box.innerHTML = `
-                <h2>Start a Discussion as @${escapeHtml(profile.username)}</h2>
-                <form id="ev-community-post-form" class="form">
-                  <label class="field"><span>Title</span><input type="text" name="title" required maxlength="140" placeholder="Question or engineering insight..."></label>
-                  <label class="field"><span>Details</span><textarea name="body" rows="3" required placeholder="Share your derivation, benchmark, or question..."></textarea></label>
-                  <button class="btn btn-primary btn-sm" type="submit">Publish post (+10 XP)</button>
-                </form>
-              `;
-              postBtn.closest(".page-head")?.after(box);
-              box.querySelector("#ev-community-post-form")?.addEventListener("submit", (ev) => {
-                ev.preventDefault();
-                const fd = new FormData(ev.currentTarget);
-                const title = String(fd.get("title") || "").trim();
-                const body = String(fd.get("body") || "").trim();
-                if (!title || !body) return;
-                const updated = saveActiveProfile((p) => {
-                  // Matches the server's community-post award (5 XP).
-                  p.xp = Number(p.xp || 0) + 5;
-                  p.community_posts = [{ title, body, ts: isoOf(new Date()) }].concat(p.community_posts || []).slice(0, 30);
-                });
-                pushSnapshotToGithub(updated).catch(() => {});
-                safely("hydrateNavigation", hydrateNavigation);
-                const list = document.querySelector(".list");
-                if (list) {
-                  const row = document.createElement("div");
-                  row.className = "list-row";
-                  row.innerHTML = `<div><strong>${escapeHtml(title)}</strong><div class="muted small">${escapeHtml(body)}</div><div class="muted small">by ${escapeHtml(updated.display_name)} (@${escapeHtml(updated.username)}) · just now</div></div><div class="right"><span class="chip ok">Published</span></div>`;
-                  list.prepend(row);
-                }
-                box.remove();
-                toast("Published discussion post (+5 XP)!");
-              });
-            }
-          });
-        }
-      });
-    }
-
-    // 5. Home page hero & bottom CTA (/ or /index.html)
-    if (path === BASE || path === `${BASE}index.html`) {
-      document.querySelectorAll('a[href*="/register"], a[href*="/login"]').forEach((link) => {
-        if (link.closest(".topbar-right") || link.closest(".footer")) return;
-        link.href = `${BASE}dashboard/`;
-        if ((link.textContent || "").toLowerCase().includes("create") || (link.textContent || "").toLowerCase().includes("start")) {
-          link.textContent = `Open Dashboard (@${profile.username})`;
-        } else if ((link.textContent || "").toLowerCase().includes("sign in")) {
-          link.textContent = "My Progress & Streak";
-          link.href = `${BASE}streaks/`;
-        }
-      });
-    }
-
-    // 6. Every other "Sign in to …" call to action in the catalogue.
-    //
-    // The exported pages are one anonymous snapshot served to everybody, so a
-    // signed-in reader used to keep meeting prompts for a step they had already
-    // taken: "Sign in to post" on the community tab, "Sign in to submit" beside
-    // the run button, "Sign in to save a personal SM-2 schedule" on flashcards,
-    // "Create an account or sign in to track your XP" on the hosting page. One
-    // sweep covers them (and any page added later) instead of a special case per
-    // template:
-    //
-    //   * an anchor that only exists to offer sign-in/sign-up becomes a link to
-    //     the dashboard, or disappears when its container already offers an
-    //     action (the practice page has its own Submit button);
-    //   * the matching sentence, when the prompt is plain text, says who is
-    //     signed in instead of asking again.
-    const signInWord = /\bsign in\b|\bcreate (a free )?account\b|\bregister\b/i;
-    const keepAction = (link) => {
-      const container = link.closest(".row, .between, .page-head, .panel, .callout, p");
-      if (!container) return false;
-      const siblings = Array.from(container.querySelectorAll("a, button")).filter((el) => el !== link);
-      return siblings.length === 0;
-    };
-    document.querySelectorAll("main a[href*='/login'], main a[href*='/register'], main a[href*='login/'], main a[href*='register/']").forEach((link) => {
-      if (link.closest(".topbar-right") || link.closest(".footer") || link.closest("nav")) return;
-      if (!signInWord.test(link.textContent || "")) return;
-      if (keepAction(link)) {
-        link.textContent = `Open dashboard (@${profile.username})`;
-        link.href = `${BASE}dashboard/`;
-        link.classList.remove("btn-primary");
-        link.classList.add("btn-soft");
-        return;
-      }
-      link.remove();
-    });
-    document.querySelectorAll("main p, main span, main div, main h2, main h3").forEach((node) => {
-      // Only leaf elements that no longer carry a control of their own: a
-      // paragraph that still has a link or a form is left exactly as it is.
-      if (node.querySelector("a, button, input, select, textarea")) return;
-      const text = node.textContent || "";
-      if (!/sign in to /i.test(text)) return;
-      node.textContent = text.replace(/sign in to /i, (match) =>
-        match[0] === match[0].toUpperCase()
-          ? `Signed in as @${profile.username} — `
-          : `signed in as @${profile.username} — `
-      );
+    document.querySelectorAll("[data-ev-local-progress]").forEach((el) => {
+      el.title = current > 0
+        ? `${current}-day streak · ${profile.xp || 0} XP · saved on this device`
+        : "No study days yet · progress is saved on this device";
     });
   }
 
-  // The exported country rows used to hardcode a nine-option list *and* an
-  // Indian placeholder, so a learner who chose +1 was still prompted with
-  // "9876543210". The example now follows the selected plan, from the same table
-  // the check itself runs against.
-  function bindPhoneFieldHints() {
-    document.querySelectorAll(".phone-cc-row").forEach((row) => {
-      const select = row.querySelector("select");
-      const input = row.querySelector("input");
-      if (!select || !input || input.dataset.evPhoneHint) return;
-      input.dataset.evPhoneHint = "1";
-      const apply = () => {
-        const plan = IDENTITY.plans[String(select.value || "+91")];
-        if (plan && plan.example) {
-          input.placeholder = plan.example.split(" ").slice(1).join(" ");
-          input.title = `${plan.label} numbers look like ${plan.example}`;
+  // Sheet pages list problems in a table; mark the ones solved in this browser.
+  function markSheetProgress() {
+    const note = document.querySelector("[data-ev-sheet-progress]");
+    if (!note) return;
+    const solved = new Set(getActiveProfile().solved_problems || []);
+    const rows = Array.from(document.querySelectorAll("table tbody tr"));
+    let done = 0;
+    let total = 0;
+    rows.forEach((tr) => {
+      const link = tr.querySelector('a[href*="/practice/problems/"]');
+      if (!link) return;
+      total += 1;
+      const slug = (link.getAttribute("href") || "").split("/practice/problems/")[1]?.replace(/[/?#].*$/, "");
+      if (slug && solved.has(slug)) {
+        done += 1;
+        if (!tr.querySelector("[data-ev-solved]")) {
+          const chip = document.createElement("span");
+          chip.className = "chip ok";
+          chip.setAttribute("data-ev-solved", "");
+          chip.textContent = "Solved";
+          link.after(document.createTextNode(" "), chip);
         }
-      };
-      select.addEventListener("change", apply);
-      apply();
+      }
     });
+    if (total) {
+      note.textContent = `${done} of ${total} solved on this device (${Math.round((done / total) * 100)}%). ` +
+        "Progress is saved in this browser only.";
+    }
   }
 
-  // Every boot step is isolated: an earlier revision called an undefined
-  // helper here, which threw out of the IIFE and silently disabled the whole
-  // runtime - no account icon, no OTP code, no streak calendar.
-  const refreshSignedInUi = () => {
+  const refreshLocalUi = () => {
     safely("hydrateNavigation", hydrateNavigation);
-    safely("hydrateSignedInPageContent", hydrateSignedInPageContent);
-    safely("bindPhoneFieldHints", bindPhoneFieldHints);
+    safely("markSheetProgress", markSheetProgress);
   };
+  refreshLocalUi();
 
-  refreshSignedInUi();
-  safely("idbRestoreIfNeeded", () =>
-    idbRestoreIfNeeded(() => {
-      refreshSignedInUi();
-      safely("renderAccountPage", renderAccountPage);
-    })
-  );
-  safely("pullGithubVault", () =>
-    pullGithubVault(true).then(() => {
-      refreshSignedInUi();
-      safely("renderAccountPage", renderAccountPage);
-    })
-  );
-
-  // Synchronize auth and profile state immediately across tabs and back/forward navigation
+  // Another tab recorded progress: refresh what this one shows.
   window.addEventListener("storage", (ev) => {
-    if (!ev.key || ev.key === STORE_KEY || ev.key === SESSION_USER_KEY) {
-      refreshSignedInUi();
+    if (!ev.key || ev.key === PROFILE_KEY || ev.key === STREAK_KEY) {
+      refreshLocalUi();
+      safely("renderAccountPage", () => renderAccountPage());
     }
   });
-  window.addEventListener("pageshow", refreshSignedInUi);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      refreshSignedInUi();
-    }
-  });
-  if (authChannel) {
-    authChannel.addEventListener("message", refreshSignedInUi);
-  }
+  window.addEventListener("pageshow", refreshLocalUi);
 
   // ---------------------------------------------------------------------------
   // 3. DPP Calendar Rotation + Streak Page Rendering
@@ -2002,7 +722,8 @@
   // 5. Topic Completion, Bookmarks & Flashcards in the Browser
   // ---------------------------------------------------------------------------
   document.querySelectorAll("[data-complete-topic]").forEach((btn) => {
-    const slug = btn.getAttribute("data-complete-topic");
+    const slug = btn.getAttribute("data-complete-topic") || btn.getAttribute("data-id") || "";
+    if (!slug) return;
     const profile = getActiveProfile();
     if (profile.completed_topics?.includes(slug)) {
       btn.textContent = "✓ Completed";
@@ -3859,1024 +2580,309 @@
     cplLangEl?.dispatchEvent(new Event("change"));
   }
 
+
   // ---------------------------------------------------------------------------
-  // 7. Interactive Account, Profile, Settings, Dashboard & GitHub Vault Pages
+  // 7. Personal pages on the static copy: dashboard, profile, settings,
+  //    mistakes and portfolio (markup written by scripts/export_pages.py)
+  //
+  // Everything shown here comes from this browser's local profile. All
+  // learner-supplied text is written with textContent.
   // ---------------------------------------------------------------------------
-  function renderAccountPage() {
-    const pageRoot = document.querySelector("[data-ev-page]");
-    if (!pageRoot) return;
-    const pageKind = pageRoot.getAttribute("data-ev-page");
-    const store = loadStore();
-    const profile = getActiveProfile();
-
-    const setElText = (id, text) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = String(text);
-    };
-
-    if (pageKind === "logout") {
-      store.currentUser = null;
-      try { sessionStorage.setItem("ev:explicit_logout", "1"); } catch (_) {}
-      saveStore(store);
-      safely("hydrateNavigation", hydrateNavigation);
-      return;
-    }
-
-    if (pageKind === "login") {
-      const form = document.getElementById("ev-login-form");
-      const alertBox = document.getElementById("ev-auth-alert");
-      const demoBtn = document.getElementById("ev-demo-signin");
-      const pullBtn = document.getElementById("ev-github-pull-signin");
-      const alreadyBox = document.getElementById("ev-already-signed-in");
-      const alreadyUser = firstEl("ev-already-user", "ev-already-signed-in-text");
-      const switchBtn = document.getElementById("ev-switch-account-btn");
-      const otpStep = firstEl("ev-login-otp-step");
-      const otpPreview = firstEl("ev-login-otp-preview");
-      const otpInput = firstEl("ev-login-otp", "ev-login-otp-code");
-      const otpForm = firstEl("ev-login-otp-form");
-      const otpResend = firstEl("ev-login-otp-resend");
-      const submitBtn = firstEl("ev-login-submit-btn");
-
-      const nextParam = new URLSearchParams(window.location.search).get("next");
-      if (store.currentUser && store.currentUser !== "guest") {
-        if (nextParam && nextParam.startsWith("/")) {
-          window.location.href = nextParam;
-          return;
-        }
-        if (alreadyBox) {
-          alreadyBox.hidden = false;
-          if (alreadyUser) alreadyUser.textContent = `@${store.currentUser}`;
-        }
-      }
-      if (switchBtn && !switchBtn.dataset.bound) {
-        switchBtn.dataset.bound = "1";
-        switchBtn.addEventListener("click", () => {
-          const s = loadStore();
-          s.currentUser = null;
-          try { sessionStorage.setItem("ev:explicit_logout", "1"); } catch (_) {}
-          saveStore(s);
-          if (alreadyBox) alreadyBox.hidden = true;
-          safely("hydrateNavigation", hydrateNavigation);
-        });
-      }
-
-      // --- shared sign-in steps ------------------------------------------
-      // "Sign in" is one flow with up to two steps. Both the password form and
-      // the OTP form (a separate <form> in the exported markup) call these, so
-      // the code step cannot dead-end the way it did when only the first form
-      // had a handler.
-      const identityOfForm = () =>
-        String(document.getElementById("ev-login-identity")?.value || "").trim().toLowerCase();
-
-      const startLoginOtp = async (account) => {
-        const ch = account.phone ? "phone" : "email";
-        // Never invent a destination. `account.username + "@gmail.com"` used to
-        // be the fallback, which masked a *made-up* address as if it were the
-        // learner's own - so the page read "code sent to a***@gmail.com" for an
-        // account that has no Gmail at all. A contact-less account is told so.
-        const dest = account.phone || account.email || "";
-        if (!dest) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent =
-              `@${account.username} has no mobile number or Gmail address saved on this device, ` +
-              "so there is nowhere to send a code. Sign in with the password you set here, or " +
-              "create the account again with a real address.";
-          }
-          return null;
-        }
-        const issued = await issueBrowserOtpChallenge({
-          purpose: "signup_verify",
-          username: account.username,
-          channel: ch,
-          destination: dest,
-        });
-        if (otpStep) otpStep.hidden = false;
-        if (otpPreview) {
-          otpPreview.hidden = false;
-          otpPreview.innerHTML = otpIssueHtml(issued, "First-time account verification");
-        }
-        if (submitBtn) submitBtn.textContent = "Verify 6-digit OTP & Sign in";
-        if (otpInput) otpInput.focus();
-        toast(otpIssueToast(issued));
-      };
-
-      const completeSignIn = async (account) => {
-        const digest = await hashPasswordDigest(account.username, String(document.getElementById("ev-login-password")?.value || ""));
-        account.password_sha256 = digest;
-        account.otp_verified = true;
-        const latest = loadStore();
-        latest.accounts[account.username] = account;
-        latest.currentUser = account.username;
-        saveStore(latest);
-        safely("hydrateNavigation", hydrateNavigation);
-        toast(`Welcome back, ${account.display_name || account.username}!`);
-        location.href = nextParam && nextParam.startsWith("/") ? nextParam : `${BASE}dashboard/`;
-      };
-
-      const finishLoginOtp = async (account) => {
-        const verified = await verifyBrowserOtpChallenge("signup_verify", otpInput?.value || "");
-        if (!verified.ok) {
-          if (alertBox) { alertBox.hidden = false; alertBox.textContent = verified.error; }
-          return;
-        }
-        account.otp_verified = true;
-        await completeSignIn(account);
-      };
-
-      if (demoBtn && !demoBtn.dataset.bound) {
-        demoBtn.dataset.bound = "1";
-        demoBtn.addEventListener("click", async () => {
-          await pullGithubVault(true);
-          const s = loadStore();
-          if (!s.accounts.saurav) {
-            s.accounts.saurav = defaultProfile({
-              username: "saurav",
-              display_name: "Saurav Kushwaha",
-              email: "saurav@gmail.com",
-              country_code: "+91",
-              otp_verified: true,
-              branch: "cse",
-              year_of_study: 3,
-              xp: 480,
-              level: 3,
-              streak_days: 5,
-              longest_streak: 12,
-              completed_topics: ["ohms-law-and-kirchhoff", "time-complexity-and-asymptotics", "boolean-algebra-and-logic-gates"],
-              solved_problems: ["two-sum", "valid-parentheses", "binary-search"],
-            });
-          }
-          s.currentUser = "saurav";
-          saveStore(s);
-          safely("hydrateNavigation", hydrateNavigation);
-          toast("Signed in as Saurav Kushwaha!");
-          location.href = nextParam && nextParam.startsWith("/") ? nextParam : `${BASE}dashboard/`;
-        });
-      }
-
-      if (pullBtn && !pullBtn.dataset.bound) {
-        pullBtn.dataset.bound = "1";
-        pullBtn.addEventListener("click", async () => {
-          await pullGithubVault(false);
-        });
-      }
-
-      if (form && !form.dataset.bound) {
-        form.dataset.bound = "1";
-        form.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          await pullGithubVault(true);
-          const identity = String(document.getElementById("ev-login-identity")?.value || "").trim().toLowerCase();
-          const password = String(document.getElementById("ev-login-password")?.value || "");
-          if (!identity || !password) {
-            if (alertBox) { alertBox.hidden = false; alertBox.textContent = "Enter your username/Gmail/mobile number and password."; }
-            return;
-          }
-          // Shape before lookup. "asha@gmail" is not anybody's account, so
-          // saying so leaks nothing, and it beats the alternative: silently
-          // searching for a string that could never match and reporting
-          // "no verified account found" to someone whose real problem is a typo.
-          const checked = IDENTITY.identity(identity);
-          if (!checked.ok) {
-            if (alertBox) { alertBox.hidden = false; alertBox.textContent = checked.error; }
-            return;
-          }
-          const account = await findAccountByIdentity(loadStore(), (checked.value || identity).toLowerCase());
-
-          if (!account) {
-            if (alertBox) {
-              alertBox.hidden = false;
-              alertBox.innerHTML = `No verified account found for <strong>${escapeHtml(identity)}</strong>. New users must <a href="${BASE}register/">create an account with 6-digit OTP verification</a> first.`;
-            }
-            return;
-          }
-
-          if (!account.password_sha256) {
-            // An account restored from the vault without a password digest must
-            // not be signable-in with an arbitrary password: there is nothing
-            // to compare against. Send the learner through OTP recovery, which
-            // sets a password on this device.
-            if (alertBox) {
-              alertBox.hidden = false;
-              alertBox.innerHTML = `No password is saved for <strong>@${escapeHtml(account.username)}</strong> on this device yet. <a href="${BASE}forgot-password/">Set one with a 6-digit OTP</a> — or use the demo button below.`;
-            }
-            return;
-          }
-
-          const digest = await hashPasswordDigest(account.username, password);
-          if (account.password_sha256 !== digest) {
-            if (alertBox) {
-              alertBox.hidden = false;
-              alertBox.innerHTML = `Incorrect password for <strong>@${escapeHtml(account.username)}</strong>. <a href="${BASE}forgot-password/">Forgot password? Reset via 6-digit OTP</a>.`;
-            }
-            return;
-          }
-
-          // Only require OTP on login if this is an unverified new account
-          // (`otp_verified === false`). A returning learner who already passed
-          // the one-time check signs in with the password alone.
-          if (account.otp_verified === false) {
-            if (otpStep && otpStep.hidden) {
-              await startLoginOtp(account);
-              return;
-            }
-            await finishLoginOtp(account);
-            return;
-          }
-
-          // Returning verified user -> direct password sign-in without OTP.
-          await completeSignIn(account);
-        });
-      }
-
-      // The code is typed into its own small form on the exported page, so that
-      // form needs the same handler as the password form. Without it, pressing
-      // "Verify OTP" reloaded the page, hid the step again and left the learner
-      // stuck in a loop with no way to finish signing in.
-      if (otpForm && !otpForm.dataset.bound) {
-        otpForm.dataset.bound = "1";
-        otpForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const account = await findAccountByIdentity(loadStore(), identityOfForm());
-          if (!account) {
-            if (alertBox) { alertBox.hidden = false; alertBox.textContent = "Start again: enter your username/Gmail/mobile number and password."; }
-            return;
-          }
-          await finishLoginOtp(account);
-        });
-      }
-
-      if (otpResend && !otpResend.dataset.bound) {
-        otpResend.dataset.bound = "1";
-        otpResend.addEventListener("click", async () => {
-          const account = await findAccountByIdentity(loadStore(), identityOfForm());
-          if (account) await startLoginOtp(account);
-        });
-      }
-    }
-
-    if (pageKind === "register") {
-      const form = document.getElementById("ev-register-form");
-      const alertBox = document.getElementById("ev-auth-alert");
-      const otpStep = document.getElementById("ev-reg-otp-step");
-      const otpPreview = document.getElementById("ev-reg-otp-preview");
-      const otpInput = firstEl("ev-reg-otp", "ev-reg-otp-code");
-      const otpForm = firstEl("ev-reg-otp-form");
-      const submitBtn = firstEl("ev-reg-submit-btn");
-      const resendBtn = firstEl("ev-reg-resend-otp", "ev-reg-otp-resend");
-      const switchBtn = firstEl("ev-reg-otp-switch");
-
-      // Read and validate the contact fields in one place. Both the step that
-      // sends the code and the step that creates the account call this: the code
-      // is typed into a separate <form>, and checking only the first one let a
-      // learner edit the address box after the code was issued and store the
-      // unvalidated value.
-      const readSignupIdentity = () => {
-        const email = IDENTITY.email(document.getElementById("ev-reg-email")?.value || "");
-        const countryCode = String(document.getElementById("ev-reg-country-code")?.value || "+91");
-        const rawPhone = String(document.getElementById("ev-reg-phone")?.value || "").trim();
-        const phone = rawPhone ? IDENTITY.phone(rawPhone, countryCode) : { ok: true, value: "" };
-        const username = String(document.getElementById("ev-reg-username")?.value || "").trim().toLowerCase();
-        let error = "";
-        if (!/^[a-z0-9](?:[a-z0-9._-]{1,22}[a-z0-9])?$/.test(username)) {
-          error = "A username is 3–24 characters: letters, numbers, dot, dash or underscore, starting and ending with a letter or digit.";
-        } else if (!email.ok) {
-          error = email.error;
-        } else if (!phone.ok) {
-          error = phone.error;
-        }
-        return { username, email: email.value || "", phone: phone.value || "", error };
-      };
-
-      const sendSignupOtp = async () => {
-        const identity = readSignupIdentity();
-        const password = String(document.getElementById("ev-reg-password")?.value || "");
-        const channel = String(document.getElementById("ev-reg-otp-channel")?.value || "email");
-        // One username, from readSignupIdentity, in both steps. This function
-        // used to run its own `replace(/[^a-z0-9_-]/g, "")`, which silently
-        // deleted the dot from `aarav.sharma` while the account-creating step kept
-        // it - so the code was issued for @aaravsharma and verified against
-        // @aarav.sharma, and a learner who typed a legal dotted username could not
-        // finish signing up at all.
-        const username = identity.username;
-        if (password.length < 8) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = "A password of at least 8 characters is required on this copy; the hosted app asks for 10.";
-          }
-          return false;
-        }
-        if (identity.error) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = identity.error;
-          }
-          return false;
-        }
-        const normalizedPhone = identity.phone;
-        if (channel === "phone" && !normalizedPhone) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = "Enter your mobile number with country code to receive SMS OTP, or switch channel to Gmail.";
-          }
-          return false;
-        }
-        const dest = channel === "phone" ? normalizedPhone : identity.email;
-        const issued = await issueBrowserOtpChallenge({
-          purpose: "signup_verify",
-          username,
-          channel,
-          destination: dest,
-        });
-        if (alertBox) alertBox.hidden = true;
-        if (otpStep) otpStep.hidden = false;
-        if (resendBtn) resendBtn.hidden = false;
-        if (submitBtn) submitBtn.textContent = "Verify 6-digit OTP & Create Account";
-        if (otpPreview) {
-          otpPreview.hidden = false;
-          otpPreview.innerHTML = otpIssueHtml(issued, "6-digit signup code");
-        }
-        if (otpInput) otpInput.focus();
-        toast(otpIssueToast(issued));
-        return true;
-      };
-
-      if (resendBtn && !resendBtn.dataset.bound) {
-        resendBtn.dataset.bound = "1";
-        resendBtn.addEventListener("click", () => {
-          sendSignupOtp();
-        });
-      }
-
-      // Switching channel restarts the challenge for the other destination, so
-      // "Switch Gmail / Mobile OTP" is not a button that does nothing.
-      if (switchBtn && !switchBtn.dataset.bound) {
-        switchBtn.dataset.bound = "1";
-        switchBtn.addEventListener("click", async () => {
-          const select = document.getElementById("ev-reg-otp-channel");
-          if (select) select.value = select.value === "phone" ? "email" : "phone";
-          await sendSignupOtp();
-        });
-      }
-
-      // Creates the account once the 6-digit code has been accepted. Shared by
-      // the signup form and the OTP form below it: the code is typed into a
-      // separate <form>, which previously had no submit handler at all.
-      const completeSignup = async () => {
-        const verified = await verifyBrowserOtpChallenge("signup_verify", otpInput?.value || "");
-        if (!verified.ok) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = verified.error;
-          }
-          return;
-        }
-
-        const displayName = String(document.getElementById("ev-reg-display")?.value || "").trim();
-        const countryCode = String(document.getElementById("ev-reg-country-code")?.value || "+91");
-        // Checked again, here, because this is the step that writes the account:
-        // the address stored is the one that passed, never whatever the boxes say
-        // after the code was issued.
-        const identity = readSignupIdentity();
-        if (identity.error) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = identity.error;
-          }
-          return;
-        }
-        const username = identity.username;
-        const email = identity.email;
-        const normalizedPhone = identity.phone;
-        const branch = String(document.getElementById("ev-reg-branch")?.value || "cse");
-        const year = Number(document.getElementById("ev-reg-year")?.value || 1);
-        const password = String(document.getElementById("ev-reg-password")?.value || "");
-
-        const digest = await hashPasswordDigest(username, password);
-        const emailSha = email ? await sha256Hex(email) : "";
-        const phoneSha = normalizedPhone ? await sha256Hex(normalizedPhone) : "";
-        const s = loadStore();
-        const existing = s.accounts[username] || defaultProfile({ username });
-        if (s.accounts[username] && existing.password_sha256 && existing.email_sha256 && emailSha && existing.email_sha256 !== emailSha) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.innerHTML = `The username <strong>@${escapeHtml(username)}</strong> is already registered to another address. <a href="${BASE}forgot-password/">Recover it with a 6-digit OTP</a> instead.`;
-          }
-          return;
-        }
-        const created = Object.assign({}, existing, {
-          username,
-          display_name: displayName || username,
-          email,
-          email_sha256: emailSha,
-          phone: normalizedPhone,
-          phone_sha256: phoneSha,
-          country_code: countryCode,
-            otp_verified: true,
-            branch,
-            year_of_study: year,
-            password_sha256: digest,
-            xp: Math.max(50, Number(existing.xp || 0)),
+  let titleIndexPromise = null;
+  function loadTitleIndex() {
+    if (!titleIndexPromise) {
+      if (typeof window.fetch !== "function") return Promise.resolve(new Map());
+      titleIndexPromise = window.fetch(`${BASE}search-index.json`, { credentials: "same-origin" })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((rows) => {
+          const map = new Map();
+          (Array.isArray(rows) ? rows : []).forEach((row) => {
+            const m = /\/(topics|practice\/problems|projects)\/([^/]+)\/?$/.exec(String(row.url || ""));
+            if (m && row.title) map.set(`${m[1]}:${m[2]}`, String(row.title));
           });
-          s.accounts[username] = created;
-          s.currentUser = username;
-          saveStore(s);
-          safely("hydrateNavigation", hydrateNavigation);
-          try {
-            await pushSnapshotToGithub(created, { useIssueSync: false });
-          } catch (_) {}
-          toast(`Verified 6-digit OTP! Account @${username} created (+50 Welcome XP)`);
-          location.href = `${BASE}dashboard/`;
-      };
-
-      if (form && !form.dataset.bound) {
-        form.dataset.bound = "1";
-        form.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          if (otpStep && otpStep.hidden) {
-            await sendSignupOtp();
-            return;
-          }
-          await completeSignup();
-        });
-      }
-
-      // The code field lives in its own form in the exported page; without a
-      // submit handler here, pressing "Verify 6-digit OTP" reloaded the page
-      // and threw the code away.
-      if (otpForm && !otpForm.dataset.bound) {
-        otpForm.dataset.bound = "1";
-        otpForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          await completeSignup();
-        });
-      }
+          return map;
+        })
+        .catch(() => new Map());
     }
+    return titleIndexPromise;
+  }
 
-    if (pageKind === "forgot-password" || pageKind === "reset-password") {
-      const form = document.getElementById("ev-forgot-form");
-      const alertBox = document.getElementById("ev-auth-alert");
-      const otpStep = document.getElementById("ev-forgot-otp-step");
-      const otpPreview = document.getElementById("ev-forgot-otp-preview");
-      const otpInput = firstEl("ev-forgot-otp", "ev-forgot-otp-code");
-      const submitBtn = firstEl("ev-forgot-submit-btn");
-      const resendBtn = firstEl("ev-forgot-resend-btn");
+  const humanize = (slug) => {
+    const text = String(slug || "").replace(/[-_]+/g, " ").trim();
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+  };
 
-      const sendResetOtp = async () => {
-        await pullGithubVault(true);
-        const identity = String(document.getElementById("ev-forgot-identity")?.value || "").trim().toLowerCase();
-        const channel = String(document.getElementById("ev-forgot-channel")?.value || "email");
-        const countryCode = String(document.getElementById("ev-forgot-country-code")?.value || "+91");
-        const rawPhone = String(document.getElementById("ev-forgot-phone")?.value || "").trim();
+  function setTextById(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
 
-        if (!identity && !rawPhone) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = "Enter your username, Gmail address, or mobile number with country code.";
-          }
-          return false;
-        }
-        const typedPhone = rawPhone || (identity.startsWith("+") ? identity : "");
-        const normalizedPhone = typedPhone ? normalizePhoneWithCountryCode(typedPhone, countryCode) : "";
-        if (typedPhone && !normalizedPhone) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = IDENTITY.phone(typedPhone, countryCode).error;
-          }
-          return false;
-        }
-        if (identity.includes("@")) {
-          const checkedEmail = IDENTITY.email(identity);
-          if (!checkedEmail.ok) {
-            if (alertBox) {
-              alertBox.hidden = false;
-              alertBox.textContent = checkedEmail.error;
-            }
-            return false;
-          }
-        }
-        if (channel === "phone" && !normalizedPhone) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = "Enter a valid mobile number with your country code to receive SMS OTP.";
-          }
-          return false;
-        }
-        // The destination is the one on the account, never one guessed from the
-        // login name. `uname + "@gmail.com"` used to be the fallback for a
-        // username recovery, so recovery "sent a code" to an address nobody owns -
-        // and on a static page that address is the learner's own typing.
-        const recoveryAccount = await findAccountByIdentity(loadStore(), identity);
-        const uname = (recoveryAccount && recoveryAccount.username)
-          || identity.split("@")[0].replace(/[^a-z0-9_-]/g, "") || "learner";
-        const dest = channel === "phone"
-          ? normalizedPhone
-          : ((recoveryAccount && recoveryAccount.email) || (identity.includes("@") ? identity : ""));
-        if (!dest) {
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent =
-              `@${uname} has no Gmail address or mobile number saved on this device, so there is ` +
-              "no way to verify it. Sign in with your password, or set the contact details from the " +
-              "device where you created the account.";
-          }
-          return false;
-        }
-        const issued = await issueBrowserOtpChallenge({
-          purpose: "password_reset",
-          username: uname,
-          channel,
-          destination: dest,
-        });
-        if (alertBox) alertBox.hidden = true;
-        if (otpStep) otpStep.hidden = false;
-        if (resendBtn) resendBtn.hidden = false;
-        if (submitBtn) submitBtn.textContent = "Verify 6-digit OTP & Reset Password";
-        if (otpPreview) {
-          otpPreview.hidden = false;
-          otpPreview.innerHTML = otpIssueHtml(issued, "6-digit password reset code");
-        }
-        if (otpInput) otpInput.focus();
-        toast(otpIssueToast(issued));
-        return true;
-      };
+  function showEmpty(listId, isEmpty) {
+    document.querySelectorAll(`[data-ev-empty="${listId}"]`).forEach((el) => { el.hidden = !isEmpty; });
+  }
 
-      if (resendBtn && !resendBtn.dataset.bound) {
-        resendBtn.dataset.bound = "1";
-        resendBtn.addEventListener("click", () => {
-          sendResetOtp();
-        });
-      }
-
-      if (form && !form.dataset.bound) {
-        form.dataset.bound = "1";
-        form.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          if (otpStep && otpStep.hidden) {
-            await sendResetOtp();
-            return;
-          }
-
-          const verified = await verifyBrowserOtpChallenge("password_reset", otpInput?.value || "");
-          if (!verified.ok) {
-            if (alertBox) {
-              alertBox.hidden = false;
-              alertBox.textContent = verified.error;
-            }
-            return;
-          }
-
-          const identity = String(document.getElementById("ev-forgot-identity")?.value || "").trim().toLowerCase();
-          const newPass = String(document.getElementById("ev-forgot-new-password")?.value || "");
-          const confirmPass = String(document.getElementById("ev-forgot-confirm-password")?.value || newPass);
-          if (newPass.length < 8) {
-            if (alertBox) { alertBox.hidden = false; alertBox.textContent = "New password must be at least 8 characters."; }
-            return;
-          }
-          if (newPass !== confirmPass) {
-            if (alertBox) { alertBox.hidden = false; alertBox.textContent = "New password and confirmation do not match."; }
-            return;
-          }
-          const s = loadStore();
-          const matchedAcc = Object.values(s.accounts).find(
-            (a) => a.username?.toLowerCase() === identity || (a.email && a.email.toLowerCase() === identity)
-          );
-          const uname = matchedAcc?.username || identity.split("@")[0].replace(/[^a-z0-9_-]/g, "") || "learner";
-          const digest = await hashPasswordDigest(uname, newPass);
-          const acc = s.accounts[uname] || defaultProfile({ username: uname, display_name: uname });
-          acc.password_sha256 = digest;
-          acc.otp_verified = true;
-          acc.password_changed_via_otp = true;
-          s.accounts[uname] = acc;
-          s.currentUser = uname;
-          saveStore(s);
-          safely("hydrateNavigation", hydrateNavigation);
-          try {
-            await pushSnapshotToGithub(acc, { useIssueSync: false });
-          } catch (_) {}
-          if (alertBox) {
-            alertBox.hidden = false;
-            alertBox.textContent = `Verified 6-digit OTP! Password updated for @${uname}. Redirecting to your dashboard…`;
-          }
-          setTimeout(() => { location.href = `${BASE}dashboard/`; }, 700);
-        });
-      }
-    }
-
-    if (pageKind === "dashboard") {
-      setElText("ev-dash-greeting", `Welcome, ${profile.display_name} (@${profile.username})`);
-      setElText("ev-stat-xp", `${profile.xp || 0} XP`);
-      setElText("ev-stat-level", `Level ${profile.level || 1} · ${profile.branch?.toUpperCase() || "CSE"}`);
-      setElText("ev-stat-streak", `${profile.streak_days || streak.current || 0} days`);
-      setElText("ev-stat-longest", `Longest: ${profile.longest_streak || streak.longest || 1}d`);
-      setElText("ev-stat-topics", (profile.completed_topics || []).length);
-      setElText("ev-stat-problems", (profile.solved_problems || []).length);
-      setElText("ev-stat-quizzes", `${profile.quiz_correct || 0}/${profile.quiz_attempts || 0} quizzes correct`);
-
-      const statusBox = document.getElementById("ev-dash-sync-status");
-      if (statusBox) {
-        statusBox.textContent = store.lastSyncAt
-          ? `Synced with ${store.githubRepo || GH_REPO} · Last sync: ${store.lastSyncAt}`
-          : `Ready to sync @${profile.username}'s progress (${profile.xp || 0} XP) to ${store.githubRepo || GH_REPO}.`;
-      }
-      const actBox = document.getElementById("ev-dash-activity");
-      if (actBox) {
-        const items = [
-          ...(profile.solved_problems || []).map((s) => `Solved coding problem: <a href="${BASE}practice/problems/${s}/">${s}</a>`),
-          ...(profile.completed_topics || []).map((t) => `Completed topic note: <a href="${BASE}topics/${t}/">${t}</a>`),
-        ];
-        if (items.length) {
-          actBox.innerHTML = `<ul class="small">${items.slice(0, 8).map((i) => `<li>${i}</li>`).join("")}</ul>`;
-        }
-      }
-    }
-
-    if (pageKind === "profile") {
-      setElText("ev-profile-name", profile.display_name || "EngineVerse Learner");
-      setElText("ev-profile-username", `@${profile.username || "guest"}`);
-      setElText("ev-profile-branch", `${(profile.branch || "cse").toUpperCase()} · Year ${profile.year_of_study || 1}`);
-      setElText("ev-profile-xp", `${profile.xp || 0} XP (Lv ${profile.level || 1})`);
-      const topBox = document.getElementById("ev-profile-topics");
-      if (topBox && (profile.completed_topics?.length || profile.bookmarks?.length)) {
-        topBox.innerHTML = `<ul class="small">${(profile.completed_topics || []).map((t) => `<li>✓ <a href="${BASE}topics/${t}/">${t}</a></li>`).join("")}${(profile.bookmarks || []).map((b) => `<li>★ Saved: ${b}</li>`).join("")}</ul>`;
-      }
-      const probBox = document.getElementById("ev-profile-problems");
-      if (probBox && profile.solved_problems?.length) {
-        probBox.innerHTML = `<ul class="small">${profile.solved_problems.map((s) => `<li>✓ <a href="${BASE}practice/problems/${s}/">${s}</a></li>`).join("")}</ul>`;
-      }
-    }
-
-    if (pageKind === "settings") {
-      const ghRepoIn = document.getElementById("ev-gh-repo");
-      const ghTokenIn = document.getElementById("ev-gh-token");
-      const dispIn = document.getElementById("ev-set-display");
-      const branchIn = document.getElementById("ev-set-branch");
-      const yearIn = document.getElementById("ev-set-year");
-      const bioIn = document.getElementById("ev-set-bio");
-      const webIn = document.getElementById("ev-set-webhook");
-      const alertBox = document.getElementById("ev-settings-alert");
-
-      if (ghRepoIn) ghRepoIn.value = store.githubRepo || GH_REPO;
-      if (ghTokenIn) ghTokenIn.value = store.githubToken || "";
-      if (dispIn) dispIn.value = profile.display_name || "";
-      if (branchIn) branchIn.value = profile.branch || "cse";
-      if (yearIn) yearIn.value = String(profile.year_of_study || 1);
-      if (bioIn) bioIn.value = profile.bio || "";
-      if (webIn) webIn.value = store.webhookUrl || "";
-
-      const ghForm = document.getElementById("ev-github-sync-form");
-      if (ghForm && !ghForm.dataset.bound) {
-        ghForm.dataset.bound = "1";
-        ghForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const s = loadStore();
-          s.githubRepo = String(ghRepoIn?.value || GH_REPO).trim();
-          s.githubToken = String(ghTokenIn?.value || "").trim();
-          saveStore(s);
-          try {
-            const res = await pushSnapshotToGithub(getActiveProfile(), {
-              repo: s.githubRepo,
-              token: s.githubToken,
-              useIssueSync: !s.githubToken,
-            });
-            if (alertBox) {
-              alertBox.hidden = false;
-              alertBox.textContent = res.mode === "github-contents-api"
-                ? `Successfully committed @${profile.username}'s snapshot to ${s.githubRepo}/data/learners/registry.json!`
-                : `Prepared GitHub learner snapshot for ${s.githubRepo}.`;
-            }
-          } catch (err) {
-            if (alertBox) { alertBox.hidden = false; alertBox.textContent = String(err.message || err); }
-          }
-        });
-      }
-
-      const issueBtn = document.getElementById("ev-gh-issue-sync");
-      if (issueBtn && !issueBtn.dataset.bound) {
-        issueBtn.dataset.bound = "1";
-        issueBtn.addEventListener("click", () => {
-          pushSnapshotToGithub(getActiveProfile(), { useIssueSync: true });
-        });
-      }
-
-      const pullBtn = document.getElementById("ev-gh-pull-btn");
-      if (pullBtn && !pullBtn.dataset.bound) {
-        pullBtn.dataset.bound = "1";
-        pullBtn.addEventListener("click", async () => {
-          await pullGithubVault(false);
-          renderAccountPage();
-        });
-      }
-
-      const exportBtn = document.getElementById("ev-export-json");
-      if (exportBtn && !exportBtn.dataset.bound) {
-        exportBtn.dataset.bound = "1";
-        exportBtn.addEventListener("click", () => {
-          const snap = toGithubSnapshot(getActiveProfile());
-          const blob = new Blob([JSON.stringify(snap, null, 2) + "\n"], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `engineverse-learner-${snap.username}.json`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        });
-      }
-
-      const importIn = document.getElementById("ev-import-json");
-      if (importIn && !importIn.dataset.bound) {
-        importIn.dataset.bound = "1";
-        importIn.addEventListener("change", async () => {
-          const file = importIn.files?.[0];
-          if (!file) return;
-          try {
-            const text = await file.text();
-            const parsed = JSON.parse(text);
-            const snap = parsed.learners ? Object.values(parsed.learners)[0] : parsed;
-            const merged = mergeSnapshotIntoStore(snap, true);
-            if (merged) {
-              toast(`Imported learner snapshot for @${merged.username}!`);
-              safely("hydrateNavigation", hydrateNavigation);
-              renderAccountPage();
-            }
-          } catch (_) {
-            toast("Invalid learner snapshot JSON file.", "bad");
-          }
-        });
-      }
-
-      const profForm = document.getElementById("ev-profile-form");
-      const emailIn = document.getElementById("ev-set-email");
-      const ccIn = document.getElementById("ev-set-country-code");
-      const phoneIn = document.getElementById("ev-set-phone");
-      if (emailIn) emailIn.value = profile.email || "";
-      if (ccIn) ccIn.value = profile.country_code || "+91";
-      if (phoneIn) {
-        const rawP = String(profile.phone || "");
-        // Show the national digits beside the selector, never the number with
-        // its own country code inside the digits box: re-saving what used to be
-        // prefilled prepended the code a second time.
-        const stored = rawP.trim().startsWith("+") ? rawP.trim() : "";
-        const code = Object.keys(IDENTITY.plans)
-          .filter((candidate) => stored.startsWith(candidate) && stored.length > candidate.length)
-          .sort((a, b) => b.length - a.length)[0];
-        phoneIn.value = code ? stored.slice(code.length) : stored.replace(/^\+/, "");
-        if (ccIn && code) ccIn.value = code;
-      }
-
-      if (profForm && !profForm.dataset.bound) {
-        profForm.dataset.bound = "1";
-        profForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const rawEmailVal = String(emailIn?.value || profile.email || "").trim();
-          const ccVal = String(ccIn?.value || profile.country_code || "+91").trim();
-          const rawPhoneVal = String(phoneIn?.value || "").trim();
-          // An unusable contact used to be dropped in silence: the digits were
-          // thrown away only if they failed the loose shape test, and the page
-          // still reported "Saved". The learner believed a phone number they had
-          // not actually stored. Both fields are now checked and named.
-          const refuse = (message) => {
-            if (alertBox) {
-              alertBox.hidden = false;
-              alertBox.textContent = message;
-            }
-            toast(message, "bad");
-          };
-          const checkedEmail = IDENTITY.email(rawEmailVal);
-          if (!rawEmailVal || !checkedEmail.ok) {
-            refuse(checkedEmail.error || "Add the Gmail address you sign in with.");
-            return;
-          }
-          const emailVal = (checkedEmail.value || rawEmailVal).toLowerCase();
-          let normPhone = "";
-          if (rawPhoneVal) {
-            const checkedPhone = IDENTITY.phone(rawPhoneVal, ccVal);
-            if (!checkedPhone.ok) {
-              refuse(checkedPhone.error);
-              return;
-            }
-            normPhone = checkedPhone.value;
-          }
-          const emailSha = emailVal ? await sha256Hex(emailVal) : "";
-          const phoneSha = normPhone ? await sha256Hex(normPhone) : "";
-
-          const updated = saveActiveProfile((p) => {
-            p.display_name = String(dispIn?.value || p.display_name).trim();
-            p.email = emailVal;
-            p.email_sha256 = emailSha || p.email_sha256 || "";
-            p.country_code = ccVal;
-            if (normPhone) {
-              p.phone = normPhone;
-              p.phone_sha256 = phoneSha;
-            }
-            p.branch = String(branchIn?.value || p.branch);
-            p.year_of_study = Number(yearIn?.value || p.year_of_study || 1);
-            p.bio = String(bioIn?.value || "").trim();
-          });
-          const s = loadStore();
-          s.webhookUrl = String(webIn?.value || "").trim();
-          saveStore(s);
-          safely("hydrateNavigation", hydrateNavigation);
-          pushSnapshotToGithub(updated).catch(() => {});
-          toast("Saved profile, contact channels, and sync settings!");
-        });
-      }
-
-      // Section 3: Change Password via 6-Digit OTP (Gmail or Mobile Number with Country Code)
-      const pwdForm = document.getElementById("ev-password-change-form");
-      const pwdAlert = document.getElementById("ev-pwd-otp-alert");
-      const pwdStep = document.getElementById("ev-pwd-otp-step");
-      const pwdPreview = document.getElementById("ev-pwd-otp-preview");
-      const pwdSubmitBtn = document.getElementById("ev-pwd-submit-btn");
-      if (pwdForm && !pwdForm.dataset.bound) {
-        pwdForm.dataset.bound = "1";
-        pwdForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const active = getActiveProfile();
-          const channel = String(document.getElementById("ev-pwd-otp-channel")?.value || "email");
-          const cc = String(document.getElementById("ev-pwd-country-code")?.value || active.country_code || "+91");
-          const rawPhone = String(document.getElementById("ev-pwd-phone")?.value || active.phone || "").trim();
-          let normPhone = rawPhone ? normalizePhoneWithCountryCode(rawPhone, cc) : "";
-
-          if (pwdStep && pwdStep.hidden) {
-            const checkedPhone = rawPhone ? IDENTITY.phone(rawPhone, cc) : { ok: true, value: "" };
-            if (!checkedPhone.ok) {
-              if (pwdAlert) {
-                pwdAlert.hidden = false;
-                pwdAlert.textContent = checkedPhone.error;
-              }
-              return;
-            }
-            normPhone = checkedPhone.value;
-            if (channel === "phone" && !normPhone) {
-              if (pwdAlert) {
-                pwdAlert.hidden = false;
-                pwdAlert.textContent = "Enter your mobile number with country code to receive SMS OTP.";
-              }
-              return;
-            }
-            // Same rule as recovery: the code goes to a contact on file, and an
-            // account with no address is told so instead of being "sent" a code
-            // for a Gmail account this device invented from the username.
-            const dest = channel === "phone" ? normPhone : (active.email || "");
-            if (!dest) {
-              if (pwdAlert) {
-                pwdAlert.hidden = false;
-                pwdAlert.textContent =
-                  "This account has no Gmail address saved on this device, so a code cannot be " +
-                  "delivered to it. Add one under Contact channels, or choose the mobile-number channel.";
-              }
-              return;
-            }
-            const issued = await issueBrowserOtpChallenge({
-              purpose: "password_change",
-              username: active.username,
-              channel,
-              destination: dest,
-            });
-            if (pwdAlert) pwdAlert.hidden = true;
-            pwdStep.hidden = false;
-            if (pwdSubmitBtn) pwdSubmitBtn.textContent = "Verify 6-digit OTP & Update Password";
-            if (pwdPreview) {
-              pwdPreview.hidden = false;
-              pwdPreview.innerHTML = otpIssueHtml(issued, "6-digit password change code");
-            }
-            document.getElementById("ev-pwd-otp-code")?.focus();
-            toast(otpIssueToast(issued));
-            return;
-          }
-
-          const code = String(document.getElementById("ev-pwd-otp-code")?.value || "");
-          const newPass = String(document.getElementById("ev-pwd-new-password")?.value || "");
-          const confirmPass = String(document.getElementById("ev-pwd-confirm-password")?.value || "");
-          if (newPass.length < 8) {
-            if (pwdAlert) { pwdAlert.hidden = false; pwdAlert.textContent = "New password must be at least 8 characters."; }
-            return;
-          }
-          if (newPass !== confirmPass) {
-            if (pwdAlert) { pwdAlert.hidden = false; pwdAlert.textContent = "New password and confirmation do not match."; }
-            return;
-          }
-          const verified = await verifyBrowserOtpChallenge("password_change", code);
-          if (!verified.ok) {
-            if (pwdAlert) { pwdAlert.hidden = false; pwdAlert.textContent = verified.error; }
-            return;
-          }
-          const digest = await hashPasswordDigest(active.username, newPass);
-          const updated = saveActiveProfile((p) => {
-            p.password_sha256 = digest;
-            p.otp_verified = true;
-            p.password_changed_via_otp = true;
-            if (normPhone) p.phone = normPhone;
-            p.country_code = cc;
-          });
-          pushSnapshotToGithub(updated).catch(() => {});
-          if (pwdStep) pwdStep.hidden = true;
-          if (pwdSubmitBtn) pwdSubmitBtn.textContent = "Send 6-digit OTP to change password";
-          if (pwdAlert) {
-            pwdAlert.hidden = false;
-            pwdAlert.textContent = `Verified 6-digit OTP! Password updated and synced for @${updated.username}.`;
-          }
-          toast("Password updated via 6-digit OTP!");
-        });
-      }
-
-      const signoutBtn = document.getElementById("ev-signout-btn");
-      if (signoutBtn && !signoutBtn.dataset.bound) {
-        signoutBtn.dataset.bound = "1";
-        signoutBtn.addEventListener("click", () => {
-          signOutActiveUser();
-        });
-      }
-    }
-
-    if (pageKind === "mistakes") {
-      const box = document.getElementById("ev-mistakes-list");
-      const mistakes = profile.mistakes || [];
-      if (box && mistakes.length) {
-        box.innerHTML = `<h2>Recorded mistakes (${mistakes.length})</h2>` + mistakes.map((m) => `
-          <article class="card mb">
-            <div class="row" style="justify-content:space-between">
-              <strong>${m.topicTitle || "Practice Question"}</strong>
-              <span class="chip bad">Correct: ${m.correctLabel || "See explanation"}</span>
-            </div>
-            <p class="mt">${m.stem}</p>
-            ${m.explanation ? `<p class="small muted">${m.explanation}</p>` : ""}
-            <div class="row mt">
-              <a class="btn btn-ghost btn-sm" href="${m.topicUrl || (BASE + "practice/questions/")}">Review topic</a>
-            </div>
-          </article>
-        `).join("");
-      }
-    }
-
-    if (pageKind === "portfolio") {
-      setElText("ev-portfolio-title", `${profile.display_name}'s Engineering Portfolio`);
-      setElText("ev-portfolio-summary", `@${profile.username} · ${(profile.branch || "cse").toUpperCase()} Year ${profile.year_of_study || 1} · ${profile.xp || 0} XP · ${(profile.completed_topics || []).length} topics mastered · ${(profile.solved_problems || []).length} coding problems solved · Backed by ${GH_REPO}.`);
-      const projBox = document.getElementById("ev-portfolio-projects");
-      if (projBox && profile.completed_topics?.length) {
-        projBox.innerHTML = `<ul class="small">${profile.completed_topics.map((t) => `<li>✓ <a href="${BASE}topics/${t}/">${t}</a></li>`).join("")}</ul>`;
-      }
-      const codeBox = document.getElementById("ev-portfolio-coding");
-      if (codeBox && profile.solved_problems?.length) {
-        codeBox.innerHTML = `<ul class="small">${profile.solved_problems.map((s) => `<li>✓ <a href="${BASE}practice/problems/${s}/">${s}</a></li>`).join("")}</ul>`;
-      }
-    }
-
-    if (pageKind === "certificates") {
-      const list = document.getElementById("ev-certificates-list");
-      if (list) {
-        const topicsCount = (profile.completed_topics || []).length;
-        const probsCount = (profile.solved_problems || []).length;
-        list.innerHTML = `
-          <div class="grid g2">
-            <article class="card">
-              <span class="chip ${topicsCount >= 1 ? "ok" : ""}">${topicsCount >= 1 ? "Unlocked" : `${topicsCount}/1 topics`}</span>
-              <h3 class="mt">Core Engineering Foundations</h3>
-              <p class="small muted">Issued to <strong>${profile.display_name} (@${profile.username})</strong> · Verified on GitHub Vault <code>${GH_REPO}</code>.</p>
-            </article>
-            <article class="card">
-              <span class="chip ${probsCount >= 1 ? "ok" : ""}">${probsCount >= 1 ? "Unlocked" : `${probsCount}/1 problems`}</span>
-              <h3 class="mt">Algorithmic Problem Solving</h3>
-              <p class="small muted">Issued to <strong>${profile.display_name} (@${profile.username})</strong> · ${probsCount} problem(s) solved in browser judge.</p>
-            </article>
-          </div>
-        `;
-      }
-    }
-
-    // Bind any `[data-ev-sync-github]` and `[data-ev-pull-github]` buttons on the page
-    document.querySelectorAll("[data-ev-sync-github]").forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = "1";
-      btn.addEventListener("click", async () => {
-        const s = loadStore();
-        try {
-          await pushSnapshotToGithub(getActiveProfile(), {
-            repo: s.githubRepo || GH_REPO,
-            token: s.githubToken || "",
-            useIssueSync: !s.githubToken,
-          });
-        } catch (err) {
-          toast(String(err.message || err), "bad");
-        }
-      });
+  // kind: "topics" | "practice/problems" | "projects"
+  function fillLinkList(listId, kind, slugs, limit, append = false) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    const items = (slugs || []).slice(-limit).reverse();
+    if (!append) list.textContent = "";
+    const anchors = [];
+    items.forEach((slug) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = `${BASE}${kind}/${encodeURIComponent(slug)}/`;
+      a.textContent = humanize(slug);
+      a.dataset.evTitleKey = `${kind}:${slug}`;
+      li.appendChild(a);
+      list.appendChild(li);
+      anchors.push(a);
     });
-
-    document.querySelectorAll("[data-ev-pull-github]").forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = "1";
-      btn.addEventListener("click", async () => {
-        await pullGithubVault(false);
-        safely("hydrateNavigation", hydrateNavigation);
-        renderAccountPage();
+    showEmpty(listId, list.children.length === 0);
+    if (anchors.length) {
+      loadTitleIndex().then((map) => {
+        anchors.forEach((a) => {
+          const title = map.get(a.dataset.evTitleKey);
+          if (title) a.textContent = title;
+        });
       });
+    }
+  }
+
+  function fillBookmarks(listId, keys) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    list.textContent = "";
+    const routes = { topic: "topics", project: "projects", problem: "practice/problems" };
+    const anchors = [];
+    (keys || []).slice(-20).reverse().forEach((key) => {
+      const [type, id] = String(key).split(":");
+      const li = document.createElement("li");
+      if (routes[type] && id) {
+        const a = document.createElement("a");
+        a.href = `${BASE}${routes[type]}/${encodeURIComponent(id)}/`;
+        a.textContent = humanize(id);
+        a.dataset.evTitleKey = `${routes[type]}:${id}`;
+        li.appendChild(a);
+        anchors.push(a);
+      } else {
+        li.textContent = humanize(id || type);
+      }
+      list.appendChild(li);
+    });
+    showEmpty(listId, !(keys || []).length);
+    if (anchors.length) {
+      loadTitleIndex().then((map) => {
+        anchors.forEach((a) => {
+          const title = map.get(a.dataset.evTitleKey);
+          if (title) a.textContent = title;
+        });
+      });
+    }
+  }
+
+  function fillStats(profile) {
+    const s = computeStreak(readStreak().days);
+    setTextById("ev-stat-xp", String(profile.xp || 0));
+    setTextById("ev-stat-level", `Level ${profile.level || 1}`);
+    setTextById("ev-stat-streak", String(s.current));
+    setTextById("ev-stat-longest", `best ${Math.max(s.longest, profile.longest_streak || 0)}`);
+    setTextById("ev-stat-topics", String((profile.completed_topics || []).length));
+    setTextById("ev-stat-problems", String((profile.solved_problems || []).length));
+    const attempts = Number(profile.quiz_attempts || 0);
+    setTextById("ev-stat-quizzes", `${attempts} question${attempts === 1 ? "" : "s"} answered`);
+  }
+
+  const yearLabel = (y) => (y >= 5 ? "5th year or later" : y > 0 ? `${["", "1st", "2nd", "3rd", "4th"][y]} year` : "");
+
+  function renderMistakes(profile) {
+    const list = document.getElementById("ev-mistakes-list");
+    if (!list) return;
+    list.textContent = "";
+    const mistakes = profile.mistakes || [];
+    mistakes.forEach((m) => {
+      const li = document.createElement("li");
+      li.className = "panel";
+      const stem = document.createElement("p");
+      stem.className = "ev-mistake-stem";
+      stem.textContent = m.stem;
+      li.appendChild(stem);
+      if (m.correctLabel) {
+        const ans = document.createElement("p");
+        const strong = document.createElement("strong");
+        strong.textContent = "Correct answer: ";
+        ans.appendChild(strong);
+        ans.appendChild(document.createTextNode(m.correctLabel));
+        li.appendChild(ans);
+      }
+      if (m.explanation) {
+        const ex = document.createElement("p");
+        ex.className = "muted";
+        ex.textContent = m.explanation;
+        li.appendChild(ex);
+      }
+      const row = document.createElement("p");
+      row.className = "row small";
+      if (m.topicUrl) {
+        const a = document.createElement("a");
+        a.href = m.topicUrl;
+        a.textContent = m.topicTitle ? `Revise: ${m.topicTitle}` : "Open the question again";
+        row.appendChild(a);
+      }
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn btn-ghost btn-sm";
+      btn.textContent = "Mark as understood";
+      btn.addEventListener("click", () => {
+        saveActiveProfile((p) => { p.mistakes = (p.mistakes || []).filter((x) => x.id !== m.id); });
+        renderAccountPage();
+        toast("Removed from your mistake notebook");
+      });
+      row.appendChild(btn);
+      li.appendChild(row);
+      list.appendChild(li);
+    });
+    showEmpty("ev-mistakes-list", mistakes.length === 0);
+  }
+
+  function settingsStatus(message, kind = "info") {
+    const box = document.getElementById("ev-settings-status");
+    if (!box) { toast(message, kind === "bad" ? "bad" : "ok"); return; }
+    box.className = `callout ${kind === "bad" ? "warning" : kind} mb`;
+    box.textContent = message;
+    box.hidden = false;
+  }
+
+  let settingsBound = false;
+  function bindSettings() {
+    if (settingsBound) return;
+    settingsBound = true;
+    const form = document.getElementById("ev-profile-form");
+    if (form) {
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const name = cleanText(form.elements.display_name.value, 60);
+        if (/@|\d{7,}/.test(name)) {
+          settingsStatus("Use a name rather than an email address or phone number.", "bad");
+          form.elements.display_name.focus();
+          return;
+        }
+        saveActiveProfile((p) => {
+          p.display_name = name;
+          p.branch = cleanText(form.elements.branch.value, 60);
+          p.year_of_study = Math.min(cleanInt(form.elements.year_of_study.value, 5), 5);
+          p.bio = cleanText(form.elements.bio.value, 240);
+        });
+        settingsStatus("Profile saved on this device.", "ok");
+        refreshLocalUi();
+      });
+    }
+    document.getElementById("ev-export-json")?.addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(exportProfilePayload(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `engineverse-progress-${isoOf(new Date())}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      settingsStatus("Progress exported. Keep the file somewhere safe.", "ok");
+    });
+    document.getElementById("ev-import-json")?.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { settingsStatus("That file is too large to be a progress export.", "bad"); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        let parsed;
+        try {
+          parsed = parseProfileImport(String(reader.result || ""));
+        } catch (err) {
+          settingsStatus(err.message, "bad");
+          return;
+        }
+        const p = parsed.profile;
+        const summary = `${p.completed_topics.length} topics, ${p.solved_problems.length} problems, ${p.xp} XP`;
+        if (!window.confirm(`Replace the progress stored in this browser with the imported file (${summary})?`)) return;
+        writeStreak(parsed.days);
+        writeProfile(p);
+        saveActiveProfile(() => {});
+        settingsStatus(`Imported ${summary}.`, "ok");
+        refreshLocalUi();
+        renderAccountPage();
+      };
+      reader.onerror = () => settingsStatus("Could not read that file.", "bad");
+      reader.readAsText(file);
+    });
+    document.getElementById("ev-clear-data")?.addEventListener("click", () => {
+      if (!window.confirm("Delete your profile, streak and progress from this browser? This cannot be undone. Export first if you want a copy.")) return;
+      clearLocalProgress();
+      settingsStatus("Your progress has been deleted from this browser.", "ok");
+      refreshLocalUi();
+      renderAccountPage();
     });
   }
 
-  renderAccountPage();
+  function renderAccountPage() {
+    const pageRoot = document.querySelector("[data-ev-page]");
+    if (!pageRoot) return;
+    const kind = pageRoot.getAttribute("data-ev-page");
+    const profile = getActiveProfile();
+    const name = profile.display_name || "";
+
+    if (kind === "dashboard") {
+      setTextById("ev-dash-greeting", name ? `${name}'s progress` : "My progress");
+      fillStats(profile);
+      fillLinkList("ev-dash-activity", "topics", profile.completed_topics, 8);
+      fillLinkList("ev-dash-activity", "practice/problems", profile.solved_problems, 6, true);
+      fillBookmarks("ev-dash-bookmarks", profile.bookmarks);
+    }
+
+    if (kind === "profile") {
+      setTextById("ev-profile-name", name || "EngineVerse learner");
+      const branchBits = [profile.branch, yearLabel(profile.year_of_study)].filter(Boolean);
+      setTextById("ev-profile-branch", branchBits.length ? branchBits.join(" · ") : "Branch not set");
+      setTextById("ev-profile-xp", `${profile.xp || 0} XP · level ${profile.level || 1}`);
+      setTextById("ev-profile-bio", profile.bio || "");
+      fillLinkList("ev-profile-topics", "topics", profile.completed_topics, 200);
+      fillLinkList("ev-profile-problems", "practice/problems", profile.solved_problems, 200);
+    }
+
+    if (kind === "settings") {
+      const form = document.getElementById("ev-profile-form");
+      if (form) {
+        form.elements.display_name.value = profile.display_name || "";
+        form.elements.branch.value = profile.branch || "";
+        form.elements.year_of_study.value = String(profile.year_of_study || 0);
+        form.elements.bio.value = profile.bio || "";
+      }
+      bindSettings();
+    }
+
+    if (kind === "mistakes") renderMistakes(profile);
+
+    if (kind === "portfolio") {
+      setTextById("ev-portfolio-title", name ? `${name}: learning portfolio` : "Learning portfolio");
+      const parts = [
+        `${(profile.completed_topics || []).length} topics completed`,
+        `${(profile.solved_problems || []).length} coding problems solved`,
+        `${profile.quiz_correct || 0} of ${profile.quiz_attempts || 0} practice questions correct`,
+      ];
+      const branchBits = [profile.branch, yearLabel(profile.year_of_study)].filter(Boolean);
+      setTextById("ev-portfolio-summary", (branchBits.length ? `${branchBits.join(", ")}. ` : "") + parts.join(" · ") + ".");
+      fillLinkList("ev-portfolio-topics", "topics", profile.completed_topics, 500);
+      fillLinkList("ev-portfolio-problems", "practice/problems", profile.solved_problems, 500);
+      const printBtn = document.getElementById("ev-portfolio-print");
+      if (printBtn && !printBtn.dataset.bound) {
+        printBtn.dataset.bound = "1";
+        printBtn.addEventListener("click", () => window.print());
+      }
+    }
+  }
+
+  safely("renderAccountPage", renderAccountPage);
 
   // ---------------------------------------------------------------------------
   // 8. Browser Tutor (runs on /tutor/ where [data-tutor-form] lives)

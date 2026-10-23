@@ -27,6 +27,12 @@
       try {
         var saved = localStorage.getItem("ev-theme");
         var theme = document.documentElement.getAttribute("data-theme") || "light";
+        // An explicit choice from the theme button wins; otherwise follow the
+        // operating system, and only then the site default.
+        if (saved !== "light" && saved !== "dark" && window.matchMedia) {
+          if (window.matchMedia("(prefers-color-scheme: dark)").matches) saved = "dark";
+          else if (window.matchMedia("(prefers-color-scheme: light)").matches) saved = "light";
+        }
         if (saved === "light" || saved === "dark") {
           document.documentElement.setAttribute("data-theme", saved);
           theme = saved;
@@ -144,7 +150,7 @@
            this device only; pages-live.js fills in the streak and XP. #}
         <a class="btn btn-ghost" href="/dashboard" data-ev-local-progress title="Progress saved on this device">
           <span aria-hidden="true">{{ icon("flame", 15, true) }}</span><span data-ev-local-streak>0</span>
-          <span class="sr-only">day streak ·</span> My progress</a>
+          <span class="sr-only">day streak ·</span> <span class="topbar-label">My progress</span></a>
         <a class="btn btn-primary btn-cta" href="/explore">Start learning <span aria-hidden="true">{{ icon("chevron", 14) }}</span></a>
       {% else %}
         <a class="btn btn-ghost{{ ' on' if path == '/login' }}" href="/login" data-ev-anon-auth>Sign in</a>

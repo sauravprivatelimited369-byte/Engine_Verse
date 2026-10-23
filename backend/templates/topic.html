@@ -18,11 +18,11 @@
         </div>
       </div>
       <div class="row">
-        {% if user %}
-          {% if my_progress and my_progress.status in ('completed','mastered') %}
+        {% if user or static_export %}
+          {% if user and my_progress and my_progress.status in ('completed','mastered') %}
             <span class="chip ok">Completed ✓</span>
           {% else %}
-            <button class="btn btn-primary btn-sm" data-complete-topic data-id="{{ topic.id }}">Mark complete</button>
+            <button class="btn btn-primary btn-sm" data-complete-topic="{{ topic.id }}" data-id="{{ topic.id }}">Mark complete</button>
           {% endif %}
           <button class="btn btn-soft btn-sm" data-bookmark="topic" data-type="topic" data-id="{{ topic.id }}"
                   aria-pressed="false">☆ Save</button>

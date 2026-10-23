@@ -17,8 +17,13 @@
         {# A <p>, not an <h2>: the footer's h2s are the column headings generated
            from navigation.py and the page outline must stay exactly that. #}
         <p class="footer-band-title">One hour a day compounds.</p>
+        {% if static_export %}
+        <p class="muted">Notes, judged practice, projects and interview prep. Free to read, progress kept
+          in this browser, no trackers.</p>
+        {% else %}
         <p class="muted">Notes, judged practice, projects and interview prep — one account, every
           device, no trackers.</p>
+        {% endif %}
       </div>
       <div class="row">
         <a class="btn btn-primary" href="{{ '/stream' if user else ('/explore' if static_export else '/register') }}">

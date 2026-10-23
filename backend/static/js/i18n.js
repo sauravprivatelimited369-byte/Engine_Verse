@@ -8,7 +8,15 @@
 (function () {
   "use strict";
 
-  var LOCALES_DIR = "/static/locales/";
+  // Resolve next to this script so a copy served under a sub-path (GitHub
+  // Pages: /<repo>/static/...) loads its own locales instead of a 404.
+  var LOCALES_DIR = (function () {
+    var script = document.currentScript;
+    if (script && script.src) {
+      return script.src.replace(/js\/i18n\.js(?:[?#].*)?$/, "locales/");
+    }
+    return "/static/locales/";
+  })();
   var AVAILABLE = {
     en: { name: "English", dir: "ltr" },
     es: { name: "Español", dir: "ltr" },

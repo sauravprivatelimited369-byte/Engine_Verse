@@ -56,6 +56,11 @@ SKIP_PREFIXES = (
     "/certificates",
     "/portfolio",
 )
+LOCAL_ONLY_PATHS = (
+    "/dashboard", "/profile", "/settings", "/today", "/mistakes", "/portfolio", "/certificates",
+    "/login", "/register", "/forgot-password", "/reset-password", "/logout", "/notifications",
+    "/onboarding", "/hosting",
+)
 AUTH_TO_HOSTING = (
     "/practice/check",
     "/admin",
@@ -134,7 +139,16 @@ def rewrite_html(text: str, base: str) -> str:
             url = hosting
         return f"{match.group('attr')}{match.group('q')}{url}{match.group('q')}"
 
-    return ATTR_URL.sub(repl, text)
+    text = ATTR_URL.sub(repl, text)
+    # GitHub Pages answers POST with 405. A form whose server action was
+    # redirected to /hosting is handled by pages-live.js when JavaScript runs;
+    # without it, a GET still lands on the page that explains what needs a server.
+    return re.sub(
+        r'<form\b([^>]*?)\bmethod=(["\'])post\2([^>]*\baction=(["\'])' + re.escape(hosting) + r'\4)',
+        r'<form\1method=\2get\2\3',
+        text,
+        flags=re.I,
+    )
 
 
 def output_path(site: Path, url_path: str) -> Path:
@@ -1393,8 +1407,21 @@ def assert_clean(site: Path) -> None:
         raise SystemExit("Refusing to publish:\n" + "\n".join(bad))
 
 
-def fill_shell(home_html: str, title: str, main: str) -> str:
+def fill_shell(home_html: str, title: str, main: str, *, private: bool = True) -> str:
+    """A page built from the home shell. Its canonical/og:url would still name
+    the home page, so they are removed and the page is marked noindex: these
+    are personal or explanatory pages, not search content."""
     text = re.sub(r"<title>.*?</title>", f"<title>{html.escape(title)}</title>", home_html, count=1, flags=re.S)
+    if not private:
+        return re.sub(
+            r'(<main id="main" class="wrap">).*?(</main>)',
+            lambda match: match.group(1) + "\n" + main + "\n" + match.group(2),
+            text, count=1, flags=re.S,
+        )
+    text = re.sub(r'\s*<link rel="canonical"[^>]*>', "", text, count=1)
+    text = re.sub(r'\s*<meta property="og:url"[^>]*>', "", text, count=1)
+    if 'name="robots"' not in text:
+        text = text.replace("</title>", '</title>\n  <meta name="robots" content="noindex">', 1)
     text = re.sub(
         r'(<main id="main" class="wrap">).*?(</main>)',
         lambda match: match.group(1) + "\n" + main + "\n" + match.group(2),
@@ -1441,10 +1468,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
         if path.startswith("/practice/problems/") and path.count("/") == 3:
             body = enable_problem_editor(body)
         if path == "/install":
-            body = fill_shell(body, "Install EngineVerse", rewrite_html(reading_copy_install_main(app_url, apk_url), base))
-        if path == "/streaks":
-            body = re.sub(r'<p class="small muted" data-hosted-streak-notice>.*?</p>',
-                          "", body, count=1, flags=re.S)
+            body = fill_shell(body, "Install EngineVerse", rewrite_html(reading_copy_install_main(app_url, apk_url), base), private=False)
         # First-year page should not keep a query-string link to itself as the only year view.
         if path == "/explore/first-year":
             body = body.replace("<title>", "<title>First year - ", 1)
@@ -1484,9 +1508,12 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
 
     origin = project.pages_origin() + ("" if base == "/" else base.rstrip("/"))
     locs = [origin + "/"]
+    # Personal pages (driven by this browser's local profile) and the old
+    # sign-in URLs that now only explain the local model are not search content.
+    private = {p.strip("/") for p in LOCAL_ONLY_PATHS}
     for path in sorted(site.rglob("index.html")):
         rel = path.relative_to(site).as_posix()
-        if rel == "index.html":
+        if rel == "index.html" or rel[: -len("/index.html")] in private:
             continue
         locs.append(origin + "/" + rel[: -len("index.html")])
     xml = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>", '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
