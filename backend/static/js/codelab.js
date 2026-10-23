@@ -1074,6 +1074,13 @@
 
     _bind() {
       const ta = this.textarea;
+      const editorShell = ta.closest(".cl-editor-shell");
+      ta.addEventListener("focus", () => {
+        if (editorShell) editorShell.classList.add("is-editing");
+      });
+      ta.addEventListener("blur", () => {
+        if (editorShell) editorShell.classList.remove("is-editing");
+      });
       ta.addEventListener("scroll", () => this._syncScroll());
       ta.addEventListener("click", () => this._updateCursorStatus());
       ta.addEventListener("keyup", (ev) => {

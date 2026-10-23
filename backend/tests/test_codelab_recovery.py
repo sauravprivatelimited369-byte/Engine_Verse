@@ -160,6 +160,15 @@ class TestClientSideContract:
         assert "_normalisePayload" in source
         assert "response.status === 403" in source
 
+    def test_codelab_editor_shows_native_text_while_typing(self):
+        source = (STATIC_JS / "codelab.js").read_text(encoding="utf-8")
+        stylesheet = (REPO / "backend" / "static" / "css" / "codelab.css").read_text(encoding="utf-8")
+        assert 'ta.addEventListener("focus"' in source
+        assert 'ta.addEventListener("blur"' in source
+        assert '.cl-editor-shell.is-editing .cl-highlight' in stylesheet
+        assert '.cl-textarea:focus {' in stylesheet
+        assert '-webkit-text-fill-color: var(--cl-editor-text);' in stylesheet
+
     def test_console_never_renders_a_blank_result(self):
         source = (STATIC_JS / "codelab.js").read_text(encoding="utf-8")
         assert 'result.status = result.error || result.message ? "service_unavailable" : "runtime_error";' in source
