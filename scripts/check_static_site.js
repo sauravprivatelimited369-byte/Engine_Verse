@@ -175,15 +175,27 @@ const $ = (d, sel) => d.querySelector(sel);
 async function importCheck() {
   const { w, d } = boot("/settings/");
   const input = $(d, "#ev-import-json");
-  const feed = (text) => new Promise((resolve) => {
+  const status = () => $(d, "#ev-settings-status").textContent;
+  // FileReader and the import handler are asynchronous. Poll for the expected
+  // line instead of sleeping for a fixed time: a fixed sleep is a race that
+  // failed on a loaded CI runner and passed on a laptop.
+  const waitFor = (pattern) => new Promise((resolve) => {
+    const started = Date.now();
+    const poll = () => {
+      if (pattern.test(status()) || Date.now() - started > 3000) resolve();
+      else setTimeout(poll, 15);
+    };
+    poll();
+  });
+  const feed = async (text, pattern) => {
     const file = new w.File([text], "progress.json", { type: "application/json" });
     Object.defineProperty(input, "files", { value: [file], configurable: true });
     input.dispatchEvent(new w.Event("change"));
-    setTimeout(resolve, 50);
-  });
-  await feed("{not json");
+    await waitFor(pattern);
+  };
+  await feed("{not json", /not valid JSON/);
   check("import: invalid JSON reported", /not valid JSON/.test($(d, "#ev-settings-status").textContent));
-  await feed(JSON.stringify({ hello: "world" }));
+  await feed(JSON.stringify({ hello: "world" }), /not a Forge progress export/);
   check("import: foreign file refused", /not a Forge progress export/.test($(d, "#ev-settings-status").textContent));
   await feed(JSON.stringify({
     format: "engineverse-local-progress", version: 1,
@@ -193,7 +205,7 @@ async function importCheck() {
       mistakes: [{ id: "q9", stem: "Why?", topicUrl: "https://evil.example/" }],
     },
     streak_days: ["2026-01-01", "not-a-date"],
-  }));
+  }), /Imported/);
   const after = w.localStorage.getItem("ev:local-profile:v1") || "";
   check("import: valid file applied", /"Imported"/.test(after) && /"xp":99/.test(after), after);
   check("import: unsafe slugs dropped", !after.includes("<script>") && !after.includes("../"));

@@ -1,0 +1,279 @@
+{
+  "name": "EngineVerse · Student onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "engineverse/subscribe",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://sauravprivatelimited369-byte.github.io,http://localhost:8000,http://127.0.0.1:8000"
+        }
+      },
+      "id": "58797040-d00e-5eec-a5e1-355999391717",
+      "name": "Subscribe webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "Only after a student ticks an explicit consent box.",
+      "notesInFlow": true,
+      "webhookId": "6197a788-0d76-5f56-9d4e-a483dc859609"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = $json.body ?? $json;\nconst email = String(body.email ?? \"\").trim().toLowerCase().slice(0, 254);\nconst consent = body.consent === true || body.consent === \"true\" || body.consent === \"on\";\nconst name = String(body.name ?? \"\").trim().slice(0, 80);\nconst valid = consent && /^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$/.test(email);\nreturn [{\n  json: {\n    valid,\n    email,\n    name,\n    consent,\n    // A stable key: one welcome per address, ever, unless they unsubscribe and\n    // subscribe again with a new consent timestamp.\n    dedupeKey: email,\n    consentAt: new Date().toISOString(),\n    reason: valid ? \"\" : \"An email address and a ticked consent box are required.\",\n  },\n}];\n"
+      },
+      "id": "60797a05-4b34-5e1b-9094-6aaffae41148",
+      "name": "Validate consent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "188b8a1d-e4f1-5b84-b410-03779899ef07",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "718549ad-834f-56d6-9cfd-bf2346c59f74",
+      "name": "Valid and consented?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO newsletter_subscribers (email, name, consent, consent_at, dedupe_key)\n                VALUES ($1, $2, $3, $4, $5)\n                ON CONFLICT (dedupe_key) DO UPDATE\n                  SET consent = EXCLUDED.consent,\n                      consent_at = EXCLUDED.consent_at,\n                      name = EXCLUDED.name\n                RETURNING id, (xmax = 0) AS is_new",
+        "options": {
+          "queryReplacement": "={{ $json.email }},{{ $json.name }},{{ $json.consent }},{{ $json.consentAt }},{{ $json.dedupeKey }}"
+        }
+      },
+      "id": "5e530203-3884-531e-8cdb-930f25ebb445",
+      "name": "Record subscription (optional)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        460,
+        0
+      ],
+      "notes": "Disabled until the table exists. `is_new` is what prevents a second welcome message; the ON CONFLICT clause makes a re-submit idempotent.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_POSTGRES_CREDENTIAL",
+          "name": "EngineVerse Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "782ca298-66ff-5435-8254-17bce7e7b43c",
+              "leftValue": "={{ $json.is_new === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2f2c2409-e400-572a-9196-9db2ae0e2920",
+      "name": "First time only",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "assistant@example.org",
+        "toEmail": "admin@example.org",
+        "subject": "Welcome to EngineVerse - start with one page",
+        "emailFormat": "text",
+        "text": "Hi {{ $('Validate consent').item.json.name || 'there' }},\n\nThanks for joining EngineVerse. It is free and open source.\n\nThree things worth trying first:\n1. Your branch's study hub: /streams\n2. Coding practice with a real judge: /practice/problems\n3. The study planner: /planner\n\nYou can unsubscribe at any time with the link below, and we will delete your address.\n\nEngineVerse is a study aid, not an accredited institution.\n",
+        "options": {}
+      },
+      "id": "af5c7a7b-e64d-55c0-b674-00a096bfa53e",
+      "name": "Welcome email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        0
+      ],
+      "notes": "Disabled until an SMTP credential is selected. Fill in the real unsubscribe URL before enabling.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_WITH_SMTP_CREDENTIAL",
+          "name": "EngineVerse SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, message: 'Thanks - check your inbox to confirm.' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "5bac73be-c00d-553c-a559-2e0b233945c3",
+      "name": "Thank you",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: $json.reason }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "7b9d0721-1ae8-5773-b6fb-3717965e4ebd",
+      "name": "Refused",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Subscribe webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate consent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate consent": {
+      "main": [
+        [
+          {
+            "node": "Valid and consented?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid and consented?": {
+      "main": [
+        [
+          {
+            "node": "Record subscription (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record subscription (optional)": {
+      "main": [
+        [
+          {
+            "node": "First time only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First time only": {
+      "main": [
+        [
+          {
+            "node": "Welcome email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Consent → idempotent record → one welcome message, never a duplicate."
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

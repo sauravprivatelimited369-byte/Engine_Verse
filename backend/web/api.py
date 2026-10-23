@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from engineverse import (
+    assistant,
     auth,
     catalog,
     certificates as certificates_mod,
@@ -599,6 +600,105 @@ async def api_tutor_ask(request: Request):
     return ok(question=question, answer=result["answer"], sources=result["sources"],
               grounded=result["grounded"], disclosure=result["disclosure"],
               message=result["message"])
+
+
+# ---------------------------------------------------------------------------
+# n8n study assistant
+#
+# The browser never learns the n8n webhook URL: it calls this endpoint, which
+# forwards the message server-side. That keeps the Content-Security-Policy at
+# connect-src 'self', keeps a self-hosted n8n off the public internet if the
+# operator wants it there, and means the upstream error body (which can contain
+# workflow internals) never reaches a student.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/assistant/status")
+async def api_assistant_status(request: Request):
+    """Whether the assistant is available, and what it honestly is."""
+    from engineverse.config import get_settings
+
+    state = assistant.status()
+    state["configured"] = get_settings().assistant_mode == "proxy"
+    return ok(**state)
+
+
+@router.post("/assistant/chat")
+async def api_assistant_chat(request: Request):
+    """Forward one question to n8n and return its answer.
+
+    Abuse controls, in order: the per-IP ``ai`` bucket in
+    main.RateLimitMiddleware (before CSRF, so a forged token cannot dodge it),
+    the per-session budget here, then a length bound on the text. Every outcome
+    is recorded as metadata only - never the question or the answer.
+    """
+    from engineverse.config import get_settings
+    from .deps import session_id as session_subject
+
+    settings = get_settings()
+    viewer = current_user(request)
+    subject = session_subject(request)
+
+    if settings.assistant_mode != "proxy":
+        return fail(
+            assistant.status()["reason"] or "The study assistant is not available on this instance.",
+            status=503, unavailable=True, retryable=False,
+        )
+
+    data = await payload(request)
+    raw = data.get("question")
+    question = assistant.sanitise_question(raw)
+    if not question:
+        provided = raw if isinstance(raw, str) else ""
+        message = (
+            f"Keep your question under {assistant.MAX_QUESTION_CHARS} characters."
+            if len(provided) > assistant.MAX_QUESTION_CHARS
+            else "Ask a question of at least a few words."
+        )
+        return fail(message, status=422, unavailable=False, retryable=False)
+
+    # One browser session gets its own budget on top of the per-IP one: a
+    # campus NAT shares an address, and one tab should not be able to spend the
+    # whole workflow's execution quota.
+    budget = ratelimit.check(
+        f"assistant:{subject}", settings.assistant_session_limit, 3600
+    )
+    if not budget.allowed:
+        record("assistant.limited", actor_id=viewer.id if viewer else None,
+               ip=client_ip(request), meta={"scope": "session"})
+        return JSONResponse(
+            {"ok": False, "error": "You have reached the question limit for this hour. Try again later.",
+             "unavailable": False, "retryable": True},
+            status_code=429,
+            headers={"Retry-After": str(max(1, budget.retry_after))},
+        )
+
+    session = assistant.session_id_for(subject)
+    try:
+        result = await assistant.ask(
+            question,
+            session_id=session,
+            page=request.headers.get("X-EngineVerse-Page") or "/assistant",
+        )
+    except assistant.AssistantUnavailable as exc:
+        record("assistant.failed", actor_id=viewer.id if viewer else None,
+               ip=client_ip(request),
+               meta={"reason": exc.reason, "question_chars": len(question)})
+        return fail(exc.message, status=exc.status,
+                    unavailable=True, retryable=exc.retryable,
+                    reason=exc.reason)
+
+    record("assistant.asked", actor_id=viewer.id if viewer else None,
+           ip=client_ip(request),
+           meta={"question_chars": len(question), "answer_chars": len(result["answer"]),
+                 "latency_ms": result["latency_ms"]})
+    return ok(
+        answer=result["answer"],
+        disclosure=result["disclosure"],
+        identity=result["identity"],
+        latencyMs=result["latency_ms"],
+        limited={"remaining": budget.remaining, "perHour": settings.assistant_session_limit},
+    )
 
 
 # ---------------------------------------------------------------------------

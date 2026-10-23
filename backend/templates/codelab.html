@@ -71,16 +71,21 @@
   </section>
 
   <!-- Mobile / Android Workspace View Switcher -->
-  <div class="cl-mobile-switcher" role="tablist" aria-label="Mobile workspace view">
-    <button type="button" class="cl-mobile-tab active" role="tab" aria-selected="true" data-cl-mobile-tab="code">
-      Code
-    </button>
-    <button type="button" class="cl-mobile-tab" role="tab" aria-selected="false" data-cl-mobile-tab="stdin">
-      Input (stdin)
-    </button>
-    <button type="button" class="cl-mobile-tab" role="tab" aria-selected="false" data-cl-mobile-tab="output">
-      Output
-    </button>
+  <div class="cl-mobile-switcher">
+    {# The tablist contains tabs and nothing else: a Run button inside it is an
+       ARIA violation (axe "aria-required-children") and confuses the arrow-key
+       model, so the FAB is a sibling. #}
+    <div class="cl-mobile-tabs" role="tablist" aria-label="Mobile workspace view">
+      <button type="button" class="cl-mobile-tab active" role="tab" aria-selected="true" data-cl-mobile-tab="code">
+        Code
+      </button>
+      <button type="button" class="cl-mobile-tab" role="tab" aria-selected="false" data-cl-mobile-tab="stdin">
+        Input (stdin)
+      </button>
+      <button type="button" class="cl-mobile-tab" role="tab" aria-selected="false" data-cl-mobile-tab="output">
+        Output
+      </button>
+    </div>
     <button type="button" class="cl-mobile-run-fab" id="cl-mobile-run-btn" aria-label="Run code">
       &#9654; Run
     </button>

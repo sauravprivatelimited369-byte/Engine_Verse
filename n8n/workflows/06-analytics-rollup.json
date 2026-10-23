@@ -1,0 +1,203 @@
+{
+  "name": "EngineVerse · Growth analytics rollup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "125f156e-9e06-5bf1-85e2-6b49c8930288",
+      "name": "Daily at 03:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "Runs against the EngineVerse database. Never against a third-party analytics service.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n                  date_trunc('day', to_timestamp(created_at / 1000.0)) AS day,\n                  count(*) FILTER (WHERE action = 'assistant.asked')        AS questions_answered,\n                  count(*) FILTER (WHERE action = 'assistant.failed')       AS failures,\n                  count(*) FILTER (WHERE action = 'assistant.limited')      AS rate_limited,\n                  round(avg((meta::jsonb ->> 'latency_ms')::numeric)\n                        FILTER (WHERE action = 'assistant.asked'), 1)       AS avg_latency_ms\n                FROM audit_logs\n                WHERE created_at >= (extract(epoch FROM now() - interval '2 days') * 1000)\n                GROUP BY 1\n                ORDER BY 1 DESC",
+        "options": {}
+      },
+      "id": "dfb43282-b171-5daa-a4ad-79b8592b2f5d",
+      "name": "Assistant metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        20,
+        0
+      ],
+      "notes": "Counts come from EngineVerse's own audit log, which stores metadata only. Disabled until a Postgres credential is selected.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_POSTGRES_CREDENTIAL",
+          "name": "EngineVerse Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n                  (SELECT count(*) FROM feedback_events\n                    WHERE occurred_at >= now() - interval '2 days') AS feedback_rows,\n                  (SELECT count(*) FROM newsletter_subscribers\n                    WHERE consent AND consent_at >= now() - interval '2 days') AS new_subscribers,\n                  (SELECT count(*) FROM users\n                    WHERE created_at >= (extract(epoch FROM now() - interval '2 days') * 1000)) AS new_accounts",
+        "options": {}
+      },
+      "id": "3739be66-aaae-55e0-9c81-46ccfb2d2716",
+      "name": "Content and feedback metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Optional: enable after the feedback/onboarding tables exist.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_POSTGRES_CREDENTIAL",
+          "name": "EngineVerse Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a report from measured rows only. Absent data is reported as absent:\n// this workflow must never invent traffic, visitors or retention numbers.\nconst assistantRows = $(\"Assistant metrics\").all().map((item) => item.json).filter(Boolean);\nconst other = $(\"Content and feedback metrics\").first()?.json || {};\nconst measured = assistantRows.length > 0;\nreturn [{\n  json: {\n    generatedAt: new Date().toISOString(),\n    measured,\n    note: measured\n      ? \"Counts are from EngineVerse's audit log for the last two complete days.\"\n      : \"No database rows were returned - the datastore nodes are disabled or empty. Nothing is estimated.\",\n    assistant: assistantRows,\n    product: other,\n    // Deliberately not included: unique visitors, referral sources or retention\n    // cohorts. EngineVerse runs no third-party analytics, so these are not\n    // measurable here and are not guessed.\n    notMeasured: [\"unique visitors\", \"referral sources\", \"retention cohorts\", \"conversion rate\"],\n  },\n}];\n"
+      },
+      "id": "2d3c8475-4697-5e51-9f6c-bfbbead44bf4",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "assistant@example.org",
+        "toEmail": "admin@example.org",
+        "subject": "EngineVerse daily numbers (measured only)",
+        "emailFormat": "text",
+        "text": "Measured run at {{ $json.generatedAt }}\n\nAssistant rows: {{ JSON.stringify($json.assistant) }}\n\nProduct rows: {{ JSON.stringify($json.product) }}\n\nNot measured: {{ $json.notMeasured.join(', ') }}\n\n{{ $json.note }}\n",
+        "options": {}
+      },
+      "id": "3070c3e2-3982-56fd-8bd1-1841fde098be",
+      "name": "Daily digest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        680,
+        0
+      ],
+      "notes": "Disabled until SMTP is configured.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_WITH_SMTP_CREDENTIAL",
+          "name": "EngineVerse SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "1ea6f505-19c1-5021-b9b3-a472febd011b",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Daily at 03:00": {
+      "main": [
+        [
+          {
+            "node": "Assistant metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assistant metrics": {
+      "main": [
+        [
+          {
+            "node": "Content and feedback metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content and feedback metrics": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Daily digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily digest": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Measured metrics only. Unmeasured numbers are named, never estimated."
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

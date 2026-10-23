@@ -1,0 +1,38 @@
+{# The floating study assistant. Included once by base.html.
+
+   The panel is a real dialog region, not a decorative bubble: a button that
+   reports whether it is open, a labelled dialog, a live log, a form with a
+   label, and an Escape key that closes and returns focus. With JavaScript off
+   the whole element stays hidden and the /assistant page - an ordinary link in
+   the navigation - carries the same experience as a normal page.
+#}
+<div class="ev-asst" id="ev-assistant-root" data-ev-assistant-mode="launcher" hidden>
+  <button class="ev-asst-launcher" id="ev-assistant-launcher" type="button"
+          aria-expanded="false" aria-controls="ev-assistant-panel"
+          aria-label="Open the {{ brand.site_name }} study assistant">
+    <span class="ev-asst-launcher-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/></svg>
+    </span>
+    <span class="ev-asst-launcher-text">Ask AI</span>
+  </button>
+
+  <div class="ev-asst-panel" id="ev-assistant-panel" role="dialog" aria-modal="false"
+       aria-labelledby="ev-assistant-heading" hidden>
+    <header class="ev-asst-head">
+      <div>
+        <h2 id="ev-assistant-heading">Study assistant</h2>
+        <p class="ev-asst-sub"><span class="ev-asst-badge">AI</span> AI-generated · may be wrong</p>
+      </div>
+      <button class="ev-asst-close" id="ev-assistant-close" type="button" aria-label="Close the study assistant">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+    <div class="ev-asst-body" data-ev-asst-body></div>
+    <p class="ev-asst-foot">
+      Not a person. It cannot run code or browse the web.
+      <a href="/assistant">Open full assistant</a> · <a href="/privacy">Privacy</a>
+    </p>
+  </div>
+</div>

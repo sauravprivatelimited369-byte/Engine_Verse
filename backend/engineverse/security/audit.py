@@ -12,6 +12,10 @@ ACTIONS = (
     "auth.password_changed", "auth.session_revoked", "auth.role_changed",
     "content.created", "content.updated", "content.published", "content.deleted",
     "admin.config_changed", "community.deleted", "code.submitted", "admin.user_updated",
+    # Tutor and assistant traffic. Rows carry counts, latency and outcome only -
+    # never the question, the answer or the session id.
+    "tutor.asked", "assistant.asked", "assistant.failed", "assistant.limited",
+    "app.feedback", "account.export",
 )
 
 
