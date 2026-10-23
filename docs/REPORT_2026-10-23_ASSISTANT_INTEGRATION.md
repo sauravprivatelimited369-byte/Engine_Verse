@@ -306,15 +306,16 @@ Commands were run in the repository with `.venv` (Python 3.11, FastAPI 0.151.0) 
 | `python scripts/check_links.py --offline` | **0 errors, 40 warnings** |
 | `python scripts/scan_public_credentials.py --repo …` | 11 issues/PRs checked, **no digest-shaped credential** |
 | `node --check` on all `backend/static/js/*.js`, `sw.js`, `scripts/*.js` | clean |
-| `pytest backend/tests -q` (whole suite) | **1852 collected, exit 0, 1 skipped, 0 failed** (~15 min) |
+| `pytest backend/tests -q` (whole suite) | **1853 collected, 2 skipped, 0 failed** (~15 min); the captured run before the last test was added exited **0** |
 
 ### 7.1 Full suite
 
-`python -m pytest backend/tests -q` was run end to end on this branch: **1852 collected**
-(`--collect-only` totals per module), **exit code 0**, one skip marker and no failures. The
-repository's `pytest.ini` suppresses the usual "N passed" summary line, so the figure is
-derived from the collection count and the progress output rather than quoted from a summary
-that is not printed. Wall time was roughly fifteen minutes on this sandbox.
+`python -m pytest backend/tests -q` was run end to end on this branch twice. The first run
+exited **0** (captured) with 1852 collected, 2 skip markers and no failure markers. After the
+unsubscribe test was added, the same command collected **1853**, still with 2 skips and no
+failure markers. The repository's `pytest.ini` suppresses the usual "N passed" summary line,
+so these figures come from `--collect-only` totals plus the progress characters, not from a
+summary line that is not printed. Wall time was roughly fifteen minutes on this sandbox.
 
 Subsets run earlier while the change was in progress, all passing: 340 tests across nine
 route/navigation/export modules; 297 passed + 1 skipped across security, API/schema and two
