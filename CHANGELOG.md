@@ -1,11 +1,29 @@
 # Changelog
 
-Notable changes to EngineVerse. The format follows
+Notable changes to Forge (formerly EngineVerse). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are not yet
 tagged, so everything below is listed under **Unreleased** until the first
 release.
 
 ## Unreleased
+
+### Changed
+
+- **The product is now FORGE — "Where engineers are made."** A full identity
+  rebuild (see [docs/BRAND.md](docs/BRAND.md) for the naming rationale and the
+  runner-up names): new name and tagline everywhere a learner looks, a new
+  anvil-and-spark mark (favicon, PWA icons, Android launcher/splash, store
+  listing — regenerate with `scripts/gen_brand_icons.py`), and a new
+  "Obsidian Forge" tempered-glass design system across the website, the
+  GitHub Pages copy and the Android app: smoked/frosted glass over warm
+  charcoal (dark) or warm paper (light), one ember accent family
+  (`#f97316` / `#fbbf24` / `#f43f5e`), machined corners, and a rebuilt
+  homepage ("Where engineers are forged", the Heat → Strike → Temper cycle,
+  and a short "Why Forge?" manifesto). The Android release asset is now
+  `Forge.apk`. Deliberately unchanged, so nothing breaks: all URLs and the
+  Pages base path, the `engineverse` package and `ENGINEVERSE_*` settings,
+  stored-progress formats and storage keys (old exports still import), the
+  Android application id, and acceptance of legacy `EngineVerse.apk` links.
 
 ### Fixed
 

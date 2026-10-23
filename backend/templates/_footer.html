@@ -37,13 +37,12 @@
     <div class="footer-brand">
       <div class="logo logo-footer">
         <span class="logo-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"
-               stroke-linejoin="round" stroke-linecap="round" aria-hidden="true" focusable="false">
-            <path d="M16 3.5 5.5 9.5v13L16 28.5l10.5-6v-13z"/>
-            <path d="M11.5 20.2V12.2l4.5 4.1 4.5-4.1v8"/>
+          <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true" focusable="false">
+            <path fill="#fbbf24" d="M22.5 3.3 L23.5 5.7 L26 6.7 L23.5 7.7 L22.5 10.1 L21.5 7.7 L19 6.7 L21.5 5.7 Z"/>
+            <path fill="currentColor" d="M5.5 12.3 H18 Q21.8 13.4 25.3 14.7 Q21.8 15.8 18 16.4 H16.3 V18.9 L17.9 20.3 V21.9 H20.5 V24.8 H8 V21.9 H10.6 V20.3 L12.3 18.9 V16.4 H5.5 Z"/>
           </svg>
         </span>
-        <span class="logo-text">{{ brand.site_name }}</span>
+        <span class="logo-text">{{ brand.site_name }}<span class="logo-dot" aria-hidden="true">.</span></span>
       </div>
       <p class="muted">{{ brand.tagline }}</p>
       <p class="muted small">{{ brand.free_tier_note }}</p>

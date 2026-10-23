@@ -11,7 +11,7 @@
       <p class="lead">Ask, answer and argue about engineering. Moderated, attributed, and indexed by search.</p>
     </div>
     {% if user %}<a class="btn btn-primary" href="#ask">{{ icon("chat", 15) }} Ask a question</a>{% else %}
-    {% if static_export %}<p class="chip">Read-only copy: posting needs a hosted EngineVerse server</p>{% else %}
+    {% if static_export %}<p class="chip">Read-only copy: posting needs a hosted {{ brand.site_name }} server</p>{% else %}
     <a class="btn btn-primary" href="/login">Sign in to post</a>{% endif %}{% endif %}
   </div>
 </section>

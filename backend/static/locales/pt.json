@@ -82,7 +82,7 @@
     "offline_limited": "O acesso off-line é limitado a páginas públicas armazenadas em cache previamente; envios e login precisam de conexão.",
     "android_apk": "Android: APK assinado",
     "alternative_apk": "Um wrapper Android alternativo para este mesmo site HTTPS está disponível como uma versão do GitHub assinada.",
-    "download_apk": "Baixar EngineVerse.apk",
+    "download_apk": "Baixar Forge.apk",
     "apk_checksum": "Verifique o lançamento, sua soma de verificação SHA-256 e o certificado de assinatura antes de instalar.",
     "apk_unofficial": "O Android pode pedir para permitir instalações desta fonte. Instale o APK apenas da versão oficial; nunca de uma cópia encaminhada. Atualizações exigem uma nova versão assinada.",
     "no_apk": "Nenhum APK assinado foi publicado e configurado para este site ainda. Não instale um APK de uma fonte não oficial. Use o aplicativo web enquanto isso.",

@@ -62,7 +62,7 @@ import io.github.sauravprivatelimited369byte.engineverse.core.UrlPolicy
 fun WebViewerScreen(path: String, policy: UrlPolicy, onBack: () -> Unit, openCatalog: () -> Unit) {
     val context = LocalContext.current
     val startUrl = remember(path) { policy.pageUrl(path) }
-    var title by remember { mutableStateOf("EngineVerse") }
+    var title by remember { mutableStateOf("Forge") }
     var progress by remember { mutableIntStateOf(0) }
     var failed by remember { mutableStateOf(false) }
     var canGoBack by remember { mutableStateOf(false) }

@@ -12,7 +12,7 @@
 </div>
 <section class="section" aria-labelledby="workflow-blueprints-title">
 <h2 id="workflow-blueprints-title">Declarative blueprints</h2>
-<p class="muted">Inspired by <a href="https://github.com/n8n-io/n8n">n8n</a>. These small, deterministic workflows run locally in EngineVerse; no n8n installation is required. Exported n8n HTTP nodes call the same read-only operators on your self-hosted app.</p>
+<p class="muted">Inspired by <a href="https://github.com/n8n-io/n8n">n8n</a>. These small, deterministic workflows run locally in {{ brand.site_name }}; no n8n installation is required. Exported n8n HTTP nodes call the same read-only operators on your self-hosted app.</p>
 <div class="grid g2">{% for workflow in workflows %}<article class="panel tight lab-blueprint" data-workflow-card="{{ workflow.slug }}">
   <h3 class="h-sub">{{ workflow.name }}</h3><p class="tiny muted">{{ workflow.description }}</p>
   <ol class="lab-graph" aria-label="{{ workflow.name }} node graph">{% for node in workflow.nodes %}<li data-node-id="{{ node.id }}"><strong>{{ node.label }}</strong><span class="tiny muted">{{ node.operator }}{% if node.depends_on %} · after {{ node.depends_on | join(', ') }}{% endif %}</span><span class="chip" data-node-state>not run</span></li>{% endfor %}</ol>
@@ -24,7 +24,7 @@
 
 <section class="section panel" aria-labelledby="workflow-run-title">
 <h2 id="workflow-run-title">Run a pipeline</h2>
-<p class="callout warning" data-lab-mode-notice hidden>This is a static reading copy. Blueprints, seeded examples and JSON downloads work here; executing a pipeline requires a self-hosted EngineVerse backend.</p>
+<p class="callout warning" data-lab-mode-notice hidden>This is a static reading copy. Blueprints, seeded examples and JSON downloads work here; executing a pipeline requires a self-hosted {{ brand.site_name }} backend.</p>
 <form id="workflow-form" action="/api/workflows/run" method="post" data-live-only>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="lab-filters">
@@ -41,7 +41,7 @@
 <div id="workflow-result" aria-live="polite">{{ render_workflow(workflow_result) }}</div>
 </section>
 <section class="section panel"><h2>Use the n8n export</h2>
-<ol class="tiny"><li>Import the downloaded JSON into your own n8n instance.</li><li>Set the n8n variable <code>engineverse_url</code> to your EngineVerse origin, without a trailing slash. Optionally set <code>engineverse_topic</code> to a published topic slug.</li><li>If your app requires sign-in, configure an authenticated Cookie header/credential on the HTTP Request nodes. No cookie or credential is included in the export.</li><li>Use the manual trigger. Each HTTP node calls an allowlisted GET operator and recomputes its dependencies read-only. The local dependency graph is shown above; the n8n transport calls run in sequence.</li></ol>
+<ol class="tiny"><li>Import the downloaded JSON into your own n8n instance.</li><li>Set the n8n variable <code>engineverse_url</code> to your {{ brand.site_name }} origin, without a trailing slash. Optionally set <code>engineverse_topic</code> to a published topic slug.</li><li>If your app requires sign-in, configure an authenticated Cookie header/credential on the HTTP Request nodes. No cookie or credential is included in the export.</li><li>Use the manual trigger. Each HTTP node calls an allowlisted GET operator and recomputes its dependencies read-only. The local dependency graph is shown above; the n8n transport calls run in sequence.</li></ol>
 <p class="tiny muted">This is not a scheduler and does not send notifications. A revision plan does not mark cards reviewed; a placement plan does not certify interview readiness.</p>
 <p class="row"><a class="btn btn-ghost" href="/studio">Inspect the public schema</a><a class="btn btn-ghost" href="/swarm">Review trade-offs with the swarm</a></p>
 </section>

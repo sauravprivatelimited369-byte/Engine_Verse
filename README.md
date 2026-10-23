@@ -1,11 +1,11 @@
-# EngineVerse
+# Forge
 
 [![CI](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml)
 [![Android app](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-EngineVerse is a free, open-source study platform for engineering students. It
+Forge is a free, open-source study platform for engineering students. It
 offers structured notes for 93 subjects, judged coding practice, daily problem
 sets, flashcards, a study planner, a multi-language code playground, and
 links to internships and scholarships. You can use it in three ways:
@@ -22,7 +22,7 @@ Source: GitHub Actions). The Pages workflow builds and tests the site on every
 push either way.
 
 > The seeded catalogue is broad starter material, not a complete degree
-> syllabus. Topics not yet expert-reviewed are labelled as drafts. EngineVerse
+> syllabus. Topics not yet expert-reviewed are labelled as drafts. Forge
 > is not an accredited institution, and its certificates are not qualifications.
 
 <p>
@@ -30,7 +30,7 @@ push either way.
   <img src="docs/images/screenshot-planner.png" alt="The study planner: a task form with subject, due date and priority, and a 25-minute focus timer" width="49%">
 </p>
 
-<sub>Screenshots of the static build, taken in headless Chromium at 1366×900 and 1280×800.</sub>
+<sub>Screenshots of the static build, taken in headless Chromium at 1366×900 and 1280×800. They predate the FORGE "Obsidian Forge" glass theme — see [docs/BRAND.md](docs/BRAND.md) for the current identity; refreshed captures are welcome.</sub>
 
 ## Contents
 
@@ -261,6 +261,7 @@ Don't use a public issue.
 | Topic | Document |
 |---|---|
 | Every feature in depth | [docs/FEATURES.md](docs/FEATURES.md) |
+| Name, logo and the Obsidian Forge design system | [docs/BRAND.md](docs/BRAND.md) |
 | Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |
 | Hosting, Compose, production settings | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |

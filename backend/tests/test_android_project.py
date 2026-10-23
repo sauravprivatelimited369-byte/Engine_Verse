@@ -148,7 +148,7 @@ class TestResourcesAndWorkflow:
             elif not list(res.glob(f"{kind}*/{name}.*")):
                 missing.append(f"@{kind}/{name}")
         assert not missing, missing
-        assert '<string name="app_name">EngineVerse</string>' in _read(res / "values" / "strings.xml")
+        assert '<string name="app_name">Forge</string>' in _read(res / "values" / "strings.xml")
 
     def test_gradle_wrapper_is_executable_for_ci(self):
         import os

@@ -1,6 +1,6 @@
-# Contributing to EngineVerse
+# Contributing to Forge
 
-Thanks for helping. EngineVerse is a free study platform for engineering
+Thanks for helping. Forge is a free study platform for engineering
 students: a FastAPI website, a static reading copy published to GitHub Pages,
 and a native Android app. Corrections to notes are as welcome as code.
 

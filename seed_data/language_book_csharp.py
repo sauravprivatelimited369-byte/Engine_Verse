@@ -45,7 +45,7 @@ Top-level statements (no `Main` boilerplate since C# 9) keep day one
 to a single `Console.WriteLine`. The tooling — SDK, NuGet, VS Code +
 C# Dev Kit — is the smoothest in the industry; use it.""",
             """// Program.cs — top-level statements, no boilerplate.
-Console.WriteLine("Hello, EngineVerse");
+Console.WriteLine("Hello, Forge");
 Console.WriteLine($"2 + 2 = {2 + 2}");
 Console.WriteLine($"Year: {2026}");""",
             """Create a console app, print your name and today's date, and run

@@ -661,7 +661,7 @@ async def compiler_page(request: Request, lang: str | None = None):
         page_title="Code compiler",
         page_intro=(
             "Pick a language, write a complete program, give it input, run it. "
-            "Every language EngineVerse teaches is here; what can execute depends on this host's judge."
+            "Every language Forge teaches is here; what can execute depends on this host's judge."
         ),
     )
 

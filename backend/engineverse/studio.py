@@ -183,7 +183,7 @@ def schema() -> dict[str, Any]:
         "limits": {"sql_chars": MAX_SQL_CHARS, "result_rows": MAX_RESULT_ROWS,
                    "rows_per_table": MAX_TABLE_ROWS, "cell_chars": MAX_CELL_CHARS,
                    "vm_steps": MAX_VM_STEPS, "execution_seconds": MAX_QUERY_SECONDS},
-        "disclosure": "Teaching snapshot, not a production SQL console. EngineVerse SQLite uses application authorization, not native Postgres RLS. The policy matrix describes access boundaries, not installed provider policies.",
+        "disclosure": "Teaching snapshot, not a production SQL console. Forge SQLite uses application authorization, not native Postgres RLS. The policy matrix describes access boundaries, not installed provider policies.",
     }
 
 

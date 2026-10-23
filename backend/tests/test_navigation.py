@@ -639,7 +639,7 @@ def test_the_sitemap_lists_every_sheet_slug(client, seeded):
 def test_the_index_page_renders_every_group(signed_in):
     """/resources is the 'all things together' page; it must list them all."""
     html = signed_in.get("/resources").text
-    assert html.count("Everything on EngineVerse") >= 1
+    assert html.count("Everything on Forge") >= 1
     for section in navigation.index_sections():
         assert f">{section.label}</a>" in html, f"the index omits the {section.label} group"
     for dest in navigation.all_destinations():

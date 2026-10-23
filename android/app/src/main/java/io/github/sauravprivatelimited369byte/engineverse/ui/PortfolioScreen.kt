@@ -59,14 +59,14 @@ fun PortfolioScreen(store: AppStore, catalog: Catalog, openTopic: (String) -> Un
                 Button(
                     onClick = {
                         val lines = buildString {
-                            append("My EngineVerse study record (self-reported)\n")
+                            append("My Forge study record (self-reported)\n")
                             append("${store.completedTopics.size} topics across ${bySubject.size} subjects; ")
                             append("best streak ${streak.longest} days; $tasksDone planner tasks finished.\n")
                             bySubject.forEach { (subject, topics) ->
                                 append("\n${subject.name}: ").append(topics.joinToString(", ") { it.title })
                             }
                         }
-                        shareText(context, "My EngineVerse study record", lines)
+                        shareText(context, "My Forge study record", lines)
                     },
                     enabled = store.completedTopics.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),

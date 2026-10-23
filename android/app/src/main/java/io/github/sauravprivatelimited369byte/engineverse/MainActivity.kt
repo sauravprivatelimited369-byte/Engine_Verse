@@ -18,7 +18,7 @@ import io.github.sauravprivatelimited369byte.engineverse.core.UrlPolicy
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
 import io.github.sauravprivatelimited369byte.engineverse.data.CatalogRepository
 import io.github.sauravprivatelimited369byte.engineverse.ui.EngineVerseApp
-import io.github.sauravprivatelimited369byte.engineverse.ui.theme.EngineVerseTheme
+import io.github.sauravprivatelimited369byte.engineverse.ui.theme.ForgeTheme
 import io.github.sauravprivatelimited369byte.engineverse.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,8 +59,8 @@ class MainActivity : ComponentActivity() {
                 )
                 onDispose {}
             }
-            EngineVerseTheme(dark) {
-                EngineVerseApp(store, catalog ?: Catalog.EMPTY, policy)
+            ForgeTheme(dark) {
+                ForgeApp(store, catalog ?: Catalog.EMPTY, policy)
             }
         }
     }

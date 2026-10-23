@@ -247,7 +247,7 @@ def register(
         )
         db.execute(
             "INSERT INTO notifications (id,user_id,type,title,body,url,created_at) VALUES (?,?,?,?,?,?,?)",
-            ulid(), user_id, "welcome", "Welcome to EngineVerse",
+            ulid(), user_id, "welcome", "Welcome to Forge",
             "Finish onboarding to generate your personal engineering roadmap.", "/onboarding", ts,
         )
         db.execute(

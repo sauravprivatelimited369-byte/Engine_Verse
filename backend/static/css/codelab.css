@@ -1,37 +1,38 @@
 /* ===========================================================================
    CodeLab — Online Compiler stylesheet
-   Matches EngineVerse's neumorphic dark & light theme system cleanly, with
-   dedicated touch ergonomics and soft-keyboard handling for Android phones.
+   Matches FORGE's Obsidian Forge glass theme (warm charcoal editor slab,
+   ember caret), with dedicated touch ergonomics and soft-keyboard handling
+   for Android phones.
    =========================================================================== */
 
 :root {
-  --tok-kw: #8ab4ff;
+  --tok-kw: #ffb067;
   --tok-str: #7ee787;
   --tok-num: #f7b955;
-  --tok-com: #7f91ac;
-  --tok-type: #c4a7ff;
+  --tok-com: #a08b74;
+  --tok-type: #f9a8c4;
   --tok-fn: #5ccfe6;
   --tok-meta: #ff9eb5;
-  --cl-editor-bg: #161d2b;
-  --cl-gutter-bg: #131926;
-  --cl-editor-text: #eef3fb;
-  --cl-caret: #60a5fa;
+  --cl-editor-bg: #171310;
+  --cl-gutter-bg: #120e0b;
+  --cl-editor-text: #f3e7d3;
+  --cl-caret: #f97316;
   --cl-font-size: 14.5px;
   --cl-line-height: 1.56;
 }
 
 [data-theme="light"] {
-  --tok-kw: #1d4ed8;
+  --tok-kw: #b44a0c;
   --tok-str: #15803d;
   --tok-num: #b45309;
-  --tok-com: #64748b;
-  --tok-type: #6d28d9;
+  --tok-com: #75624c;
+  --tok-type: #be123c;
   --tok-fn: #0369a1;
-  --tok-meta: #be123c;
-  --cl-editor-bg: #eef2f8;
-  --cl-gutter-bg: #e2e8f2;
-  --cl-editor-text: #162032;
-  --cl-caret: #2563eb;
+  --tok-meta: #9f1239;
+  --cl-editor-bg: #f9f3ea;
+  --cl-gutter-bg: #f1e7d7;
+  --cl-editor-text: #2a1d12;
+  --cl-caret: #ea580c;
 }
 
 .cl-page {
