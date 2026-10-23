@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest an improvement for students.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve for a student?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+  - type: checkboxes
+    id: honest
+    attributes:
+      label: Constraints
+      options:
+        - label: I understand the Pages copy and Android app keep data on the device only, and features must not pretend to do more.
+          required: true

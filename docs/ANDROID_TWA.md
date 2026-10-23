@@ -1,4 +1,10 @@
-# Android: PWA and signed APK
+# Android: PWA and Trusted Web Activity for self-hosted sites
+
+> **Looking for the EngineVerse Android app?** The repository's app is a native
+> Kotlin/Compose project in [`android/`](../android/README.md), built by
+> `.github/workflows/android-build.yml`. This page is for operators who host the
+> full website on their own domain and want it installable as a PWA or wrapped
+> as a TWA.
 
 The full EngineVerse website is usable on an Android phone **without an APK**:
 open its HTTPS origin in Chrome, then use **Install app / Add to Home screen**.
@@ -75,7 +81,7 @@ rather than a trusted full-screen experience.
    of the same name:
 
    ```text
-   https://github.com/authorsauravkushwaha/EngineVerse/releases/download/android-v1.0.0/EngineVerse.apk
+   https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-v1.0.0/EngineVerse.apk
    ```
 
    Restart web so `/install` offers the direct download. The next `main` Pages
@@ -98,12 +104,11 @@ manifest's root scope must remain on the same origin as Digital Asset Links.
 
 ## CodeLab on Android phones
 
-CodeLab (`/codelab`) works across Chrome/Firefox on Android, the installed root-scoped
-PWA (`manifest.webmanifest` includes a direct **CodeLab** app shortcut), the Bubblewrap
-TWA package, and the standalone signed WebView APK (`scripts/build_android_apk.py`):
+CodeLab (`/codelab`) works in Chrome and Firefox on Android, in the installed
+root-scoped PWA (`manifest.webmanifest` includes a direct **CodeLab** app
+shortcut), in a Bubblewrap TWA package, and in the native app's web viewer:
 
-- **Soft-keyboard layout**: `MainActivity` sets `android:windowSoftInputMode="adjustResize"`,
-  and CodeLab provides sticky mobile workspace tabs (`Code`, `Input (stdin)`, `Output`)
+- **Soft-keyboard layout**: CodeLab provides sticky mobile workspace tabs (`Code`, `Input (stdin)`, `Output`)
   plus a horizontal coding key strip (`Tab`, `{`, `}`, `(`, `)`, `[`, `]`, `;`, `:`,
   `"`, `'`, `=`, `<`, `>`, `_`, `/`, `←`, `→`) above the editor.
 - **Real execution on Android**: Connected to a live EngineVerse host (with local
@@ -113,9 +118,10 @@ TWA package, and the standalone signed WebView APK (`scripts/build_android_apk.p
   On offline/static reading copies, JavaScript executes inside an isolated Web Worker and
   Python executes in CPython WebAssembly when bundled (`scripts/fetch_pyodide.py`), while
   server-only compilers remain clearly marked unavailable rather than simulated.
-- **Downloading/sharing code from WebView**: Clicking **Download** invokes the native
-  `EngineVerseAndroid.shareSourceFile(filename, content)` chooser inside the APK WebView
-  and downloads the source file directly in mobile browsers.
+- **Downloading code**: in mobile browsers, a PWA and a TWA, **Download** saves
+  the source file. The native app's viewer cannot save blob downloads and has no
+  JavaScript bridge, so there **Download** copies the code to the clipboard and
+  says so.
 
 ## Listing pack and limitations
 

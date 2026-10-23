@@ -175,7 +175,7 @@ def fetch_status(url: str, timeout: float) -> tuple[int, str]:
     headers = {
         # A honest user agent. Some publishers 403 anything that announces
         # itself as a bot, and an accurate one is more likely to be allowed.
-        "User-Agent": "EngineVerse-LinkChecker/1.0 (+https://github.com/authorsauravkushwaha/EngineVerse)",
+        "User-Agent": "EngineVerse-LinkChecker/1.0 (+https://github.com/sauravprivatelimited369-byte/Engine_Verse)",
         "Accept": "*/*",
     }
     try:

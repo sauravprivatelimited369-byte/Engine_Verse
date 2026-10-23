@@ -25,8 +25,8 @@ global use, the fix applied, and how to deploy a publicly accessible instance.
 
 ```bash
 # 1. Clone
-git clone https://github.com/authorsauravkushwaha/EngineVerse.git
-cd EngineVerse
+git clone https://github.com/sauravprivatelimited369-byte/Engine_Verse.git
+cd Engine_Verse
 
 # 2. Configure
 cp .env.example .env
@@ -62,7 +62,7 @@ ENGINEVERSE_SMTP_URL=smtps://user:pass@smtp.example.com:465/?starttls=0
 ENGINEVERSE_MAIL_FROM=EngineVerse <no-reply@your-domain.com>
 ENGINEVERSE_SMS_URL=https://gateway.internal/messages
 ENGINEVERSE_SHOW_OTP_ON_PAGE=1
-ENGINEVERSE_APK_URL=https://github.com/authorsauravkushwaha/EngineVerse/releases/download/android-v1.0.0/EngineVerse.apk
+ENGINEVERSE_APK_URL=https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-v1.0.0/EngineVerse.apk
 ```
 
 ---
@@ -108,9 +108,9 @@ Every EngineVerse instance is a PWA:
 
 No app store, no GitHub, no APK download needed.
 
-### Signed APK (optional)
+### Native Android app
 
-Built and signed with Bubblewrap (.github/workflows/android-apk.yml). Requires ENGINEVERSE_APP_URL, TWA package and signing keystore. Publishes to GitHub Releases.
+The repository's native app (`android/`) is built by `.github/workflows/android-build.yml`. Every Android change produces a debug APK as a workflow artifact. A maintainer can publish a signed release APK to GitHub Releases by adding the signing secrets and running the workflow manually; see [android/README.md](android/README.md). Operators who run the full website on their own domain can instead build a Trusted Web Activity with `android/build-twa.cjs` ([docs/ANDROID_TWA.md](docs/ANDROID_TWA.md)).
 
 Note: GitHub Releases are unreachable in some countries. The web-app install path is the recommended global distribution method.
 

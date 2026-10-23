@@ -57,10 +57,6 @@ site/
 # artifact by scripts/fetch_pyodide.py, never source.
 pyodide/
 
-# OTP delivery service local state/secrets
-services/otp/.env
-services/otp/*.sqlite3
-
 # Android (native Gradle project in android/)
 android/.gradle/
 android/.kotlin/

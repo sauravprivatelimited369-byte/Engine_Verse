@@ -359,25 +359,26 @@ the first paint:
   an HMAC of its random token in `sessions`; `read_session()` is the only way a
   request learns who the caller is, and every page renders the top bar from that
   answer. Nothing about the header is decided in JavaScript here.
-* **The exported reading copy** on GitHub Pages has no server and no database, so
-  `pages-live.js` keeps the learner record itself: `localStorage` and
-  `sessionStorage` under `ev:learner-store:v2`, mirrored into a first-party
-  cookie, `window.name`, IndexedDB and a `BroadcastChannel`, with the learner
-  vault (`data/learners/registry.json`) as the shared, repository-backed copy.
-  A nonce'd inline script in `base.html` reads that state and sets
-  `html[data-ev-signed-in="true"]` *before* paint, which is what hides
-  "Sign in / Start free" (CSS) while `hydrateNavigation()` swaps in the account
-  icon, streak and XP chips. If any of those lookups fails, the page still
-  loads, so the failure is silent: `backend/tests/test_pages_live_contract.py`
-  checks the exported markup against every id the runtime looks up, and
-  `scripts/check_auth_flow.js` drives the real exported pages under jsdom.
+* **The exported reading copy** on GitHub Pages has no server and no database,
+  and so no accounts. Its top bar never shows "Sign in": `base.html` renders a
+  "My progress" chip (`data-ev-local-progress`) instead, and `pages-live.js`
+  fills in the streak and XP from the one device-local profile
+  (`localStorage` key `ev:local-profile:v1`) through `hydrateNavigation()`. The
+  profile holds progress only, with no password, email, phone or token. It can
+  be exported and imported as JSON from Settings, and nothing is uploaded. On
+  first load the runtime migrates progress out of the old browser-account
+  store (`ev:learner-store:v2`) and deletes that store and its mirrors.
+  `backend/tests/test_pages_live_contract.py` checks the exported markup against
+  every id the runtime looks up, and `scripts/check_static_site.js` drives the
+  real exported pages under jsdom: migration, export and import validation,
+  escaping, and no `#` links or sign-in prompts.
 
-A six-digit delivered code is required in exactly three places - creating a new
-account, recovering a forgotten password, and changing a password - and never on
-an ordinary sign-in by a learner whose account is already verified. On the server
-that is `ENGINEVERSE_LOGIN_OTP=signup_only` (see
-[Deployment](DEPLOYMENT.md#sign-in-factors-and-optional-delivered-codes)); in the reading copy the code is shown
-on the page, because a static host has no mail or SMS transport behind it.
+Delivered six-digit codes exist only on the server. With
+`ENGINEVERSE_LOGIN_OTP=signup_only`, a code is required when creating an account,
+recovering a forgotten password and changing a password, and never on an
+ordinary sign-in by a verified learner (see
+[Deployment](DEPLOYMENT.md#sign-in-factors-and-optional-delivered-codes)). The
+reading copy does not export the sign-in, registration or recovery pages.
 
 ## What is deliberately absent
 
