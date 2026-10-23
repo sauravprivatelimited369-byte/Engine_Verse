@@ -25,6 +25,10 @@ permissions:
 env:
   ENGINEVERSE_APP_URL: ${{ vars.ENGINEVERSE_APP_URL }}
   ENGINEVERSE_APK_URL: ${{ vars.ENGINEVERSE_APK_URL }}
+  # PUBLIC origin of the FastAPI app that serves /api/voice. Not a secret, and
+  # not a credential: it only tells the static page where to send text for
+  # speech. Empty means the export ships without voice controls.
+  ENGINEVERSE_VOICE_API_URL: ${{ vars.ENGINEVERSE_VOICE_API_URL }}
 
 concurrency:
   group: pages
@@ -115,6 +119,9 @@ jobs:
         run: |
           node scripts/check_static_site.js site
           node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
+
+      - name: Check the voice reader and spoken tutor controls
+        run: node scripts/check_voice.js
 
       - name: Refuse leaked demo passwords or tokens
         run: |

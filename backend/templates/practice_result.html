@@ -19,7 +19,7 @@
   {% endfor %}
   </div>
   {% if result and result.explanation %}
-  <div class="explain on"><strong>Why.</strong> {{ result.explanation }}</div>
+  <div class="explain on" data-speak data-speak-title="Explanation"><strong>Why.</strong> {{ result.explanation }}</div>
   {% endif %}
   {% if result and not result.correct %}<p class="small muted">It has been added to your <a href="/mistakes">mistake notebook</a>.</p>{% endif %}
   <div class="row mt">

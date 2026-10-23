@@ -179,7 +179,11 @@ async function importCheck() {
     const file = new w.File([text], "progress.json", { type: "application/json" });
     Object.defineProperty(input, "files", { value: [file], configurable: true });
     input.dispatchEvent(new w.Event("change"));
-    setTimeout(resolve, 50);
+    // FileReader is asynchronous and jsdom schedules it as a macrotask; 50 ms
+    // was already tight on a loaded CI runner and the JSON parse plus the
+    // status write occasionally landed after the deadline. The assertion below
+    // is unchanged - only the settle time is.
+    setTimeout(resolve, 250);
   });
   await feed("{not json");
   check("import: invalid JSON reported", /not valid JSON/.test($(d, "#ev-settings-status").textContent));

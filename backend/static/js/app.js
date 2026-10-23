@@ -238,6 +238,9 @@
             explain.append(more);
           }
           explain.classList.add("on");
+          // Optional voice reader (static/js/voice.js). Never required for
+          // grading; a missing voice module leaves the card unchanged.
+          try { window.EV?.voice?.enhance?.(explain, "Explanation"); } catch (_) { /* optional */ }
         }
         const badge = $(".verdict-inline", card);
         if (badge) {
@@ -801,6 +804,9 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
         .map((para) => `<p>${inline(para).replace(/\n/g, "<br>")}</p>`)
         .join("");
       answerEl.hidden = !data.answer;
+      // Optional voice reader (static/js/voice.js). The reader is not required
+      // for the answer to be usable; without it nothing changes here.
+      try { window.EV?.voice?.enhance?.(answerEl, "Tutor answer"); } catch (_) { /* optional */ }
 
       const sources = data.sources || [];
       if (sources.length) {

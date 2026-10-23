@@ -21,6 +21,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -38,6 +39,7 @@ from engineverse.security import rbac  # noqa: E402
 from engineverse.security.audit import record  # noqa: E402
 from web import api as api_router  # noqa: E402
 from web import auth_pages, pages  # noqa: E402
+from web import voice_api  # noqa: E402
 from web.deps import STATIC_DIR  # noqa: E402
 
 
@@ -54,8 +56,8 @@ _CSP_TEMPLATE = (
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
     "font-src 'self'; "
-    "connect-src 'self'; "
-    "media-src 'self'; "
+    "connect-src {connect}; "
+    "media-src 'self' blob:; "
     "object-src 'none'; "
     "frame-src 'none'; "
     "base-uri 'self'; "
@@ -63,6 +65,24 @@ _CSP_TEMPLATE = (
     "frame-ancestors 'none'; "
     "upgrade-insecure-requests"
 )
+
+
+def _csp_connect_sources() -> str:
+    """``connect-src`` for this deployment.
+
+    The voice reader fetches audio from this origin; the voice tutor opens a
+    WebSocket straight to ElevenLabs using a short-lived signed URL, which the
+    browser must be allowed to reach. That host is named explicitly and only
+    when the feature is switched on - the rest of the site stays sealed.
+    """
+    settings = get_settings()
+    sources = ["'self'"]
+    if settings.elevenlabs_enabled:
+        sources.append("wss://api.elevenlabs.io")
+        for origin in settings.allowed_voice_origins:
+            if origin not in sources:
+                sources.append(origin)
+    return " ".join(sources)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -73,7 +93,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         request.state.csp_nonce = nonce
         response = await call_next(request)
         settings = get_settings()
-        csp = _CSP_TEMPLATE.format(nonce=nonce)
+        csp = _CSP_TEMPLATE.format(nonce=nonce, connect=_csp_connect_sources())
         if settings.frame_preview:
             csp = (
                 csp.replace("frame-ancestors 'none'; ", "")
@@ -87,7 +107,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+        # The microphone is only ever requested by the opt-in voice tutor,
+        # and only after the student presses Start. With the feature switched
+        # off the permission is denied outright, exactly as before.
+        microphone = "microphone=(self)" if settings.elevenlabs_enabled else "microphone=()"
+        response.headers["Permissions-Policy"] = (
+            f"camera=(), {microphone}, geolocation=(), payment=()"
+        )
         response.headers["X-XSS-Protection"] = "0"
         if settings.is_https:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
@@ -195,6 +221,13 @@ class CsrfMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.method in csrf.SAFE_METHODS:
             return await call_next(request)
+        # The voice API is public and cookie-free by design: the static Pages
+        # copy has no session, so a session-bound token is not available there.
+        # It is still not a forgeable endpoint - it refuses anything that is
+        # not application/json (which a cross-site form cannot send) and its
+        # requests carry no ambient authority, so CSRF has nothing to protect.
+        if request.url.path.startswith("/api/voice/"):
+            return await call_next(request)
         session = getattr(request.state, "ev_session_id", None)
         if session is None:
             viewer = _peek_session(request)
@@ -266,7 +299,9 @@ PUBLIC_EXACT = frozenset({
     "/api/sync/status",
     "/api/sync/snapshot",
 })
-PUBLIC_PREFIXES = ("/static/", "/certificates/")
+# The voice API is open on purpose: the public Pages copy has no account and
+# the reader must work there. It is rate-limited and bounded instead of gated.
+PUBLIC_PREFIXES = ("/static/", "/certificates/", "/api/voice/")
 
 
 def is_public_path(path: str) -> bool:
@@ -366,6 +401,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             limit = ("judge", count, window)
         elif request.method == "POST" and path in ("/api/studio/query", "/api/workflows/run"):
             limit = ("catalogue-lab", 60, 60)
+        elif path.startswith("/api/voice/session"):
+            count, window = ratelimit.LIMITS["voice_session"]
+            limit = ("voice-session", count, window)
+        elif path.startswith("/api/voice/"):
+            count, window = ratelimit.LIMITS["voice"]
+            limit = ("voice", count, window)
         elif path.startswith("/api/tutor/") or path == "/api/swarm/simulate":
             # Reads the configured ceiling rather than a literal, so the "ai"
             # entry in LIMITS - defined but previously unused - is what applies.
@@ -459,11 +500,24 @@ def create_app() -> FastAPI:
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestBoundsMiddleware)
+    # Added last, so this is the outermost layer: a preflight is answered
+    # before the sign-in gate and CSRF middleware see it. Only the exact
+    # deployment origins are allowed, and credentials are off because these
+    # endpoints never read a cookie.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_voice_origins,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type"],
+        allow_credentials=False,
+        max_age=600,
+    )
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(pages.router)
     app.include_router(auth_pages.router)
     app.include_router(api_router.router, prefix="/api")
+    app.include_router(voice_api.router, prefix="/api")
 
     @app.exception_handler(404)
     async def not_found(request: Request, _exc):

@@ -71,6 +71,7 @@ rest of the codebase sees.
 | `engineverse/progress.py` | XP, levels, streaks, heatmaps, badges, certificates |
 | `engineverse/search.py` | Fuzzy search over the SQL full-text index |
 | `engineverse/tutor.py` | Retrieval-grounded AI tutor; refuses rather than inventing |
+| `engineverse/voice.py` | Optional ElevenLabs speech: text preparation, synthesis, signed Conversational AI URLs. Off by default |
 | `engineverse/recommend.py` | Weak-topic detection and next-step suggestions |
 | `engineverse/community.py` | Threads, comments, votes, reports |
 | `engineverse/markdown.py` | Markdown + LaTeX rendering with **no dependency** |
@@ -96,6 +97,16 @@ rest of the codebase sees.
    `csrf_token` form field (an HTML form cannot set a header).
 4. **Router** — resolves the current session into a `Viewer`, calls services,
    renders a template.
+
+### The voice API is the one deliberate exception
+
+`/api/voice/*` is mounted beside the authenticated API but is *public* and
+skipped by the CSRF middleware, because the static GitHub Pages copy has no
+session to bind a token to. It is safe for a different reason: it accepts only
+`application/json` (a cross-site form cannot send that type without a preflight
+the CORS allow-list refuses), it reads no cookie, its upstream host is fixed on
+the server, its text is size-capped and its calls are per-IP rate-limited. See
+`docs/ELEVENLABS_INTEGRATION.md` §8.
 
 Templates never touch the database. Everything they need arrives through
 `deps.base_context()`, which supplies `brand`, `user`, `csrf_token`, `flash`,

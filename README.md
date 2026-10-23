@@ -56,6 +56,7 @@ push either way.
 | **Track**: dashboard, streak heatmap and portfolio of completed work | ✓ On this device | ✓ Across devices |
 | **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |
 | **Help**: support and feedback, privacy and terms, a 404 page | ✓ (feedback through GitHub issues) | ✓ |
+| **Listen** (optional, operator-configured): ElevenLabs speech on notes, formulas, roadmaps, tutor answers and practice explanations, plus a spoken tutor | ✓ if `ENGINEVERSE_VOICE_API_URL` is set | ✓ (needs an ElevenLabs key) |
 | Accounts, two-factor sign-in, community posts, leaderboard, certificates | n/a | ✓ |
 
 ### Code playground
@@ -73,6 +74,15 @@ Each language runs on its real compiler or interpreter. Nothing is simulated.
   reported as **not run**.
 - **On a self-hosted site**, the server judge runs code only when the operator
   configures one. Production defaults to `ENGINEVERSE_JUDGE=disabled`.
+
+### Listening (optional)
+
+The operator can enable an ElevenLabs voice reader and a spoken Study Tutor by
+setting a few environment variables on the backend. Both are **off by default**:
+without them the site is unchanged and no text leaves the server. The API key
+stays on the server; the static Pages copy only receives the public API origin.
+Setup, the agent instruction, cost controls and failure modes are in
+[docs/ELEVENLABS_INTEGRATION.md](docs/ELEVENLABS_INTEGRATION.md).
 
 More detail on every feature is in [docs/FEATURES.md](docs/FEATURES.md).
 
@@ -162,6 +172,7 @@ python -m pytest backend/tests -q -m "not slow"   # skip real compile/run tests
 npm install --prefix .toolchain/jsdom jsdom@26    # once, for the static-site checks
 node scripts/check_static_site.js site            # 64 checks on the exported pages
 node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
+node scripts/check_voice.js                       # voice reader/tutor behaviour, stubbed
 node scripts/check_browser_runtimes.js site       # needs the runtimes fetched above
 
 python scripts/export_android_catalog.py --check  # Android catalogue matches the seed
@@ -265,6 +276,7 @@ Don't use a public issue.
 | Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |
 | Hosting, Compose, production settings | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| ElevenLabs voice reader and spoken tutor | [docs/ELEVENLABS_INTEGRATION.md](docs/ELEVENLABS_INTEGRATION.md) |
 | Android app | [android/README.md](android/README.md) |
 | PWA and TWA for self-hosted domains | [docs/ANDROID_TWA.md](docs/ANDROID_TWA.md) |
 | Content policy and note format | [docs/CONTENT.md](docs/CONTENT.md), [docs/NOTE_TEMPLATE.md](docs/NOTE_TEMPLATE.md) |

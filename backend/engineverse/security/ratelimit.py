@@ -202,4 +202,9 @@ LIMITS = {
     "write": (120, 60),
     "ai": (30, 3600),
     "upload": (20, 3600),
+    # Paid per character. A reader sends one request per ~1,200-character
+    # chunk, so 20 requests per 10 minutes is roughly a chapter of notes every
+    # ten minutes per address; a session start is a separate, tighter budget.
+    "voice": (20, 600),
+    "voice_session": (6, 600),
 }

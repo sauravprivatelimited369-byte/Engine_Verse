@@ -34,6 +34,8 @@
   {% else %}
   <p class="small muted">This question has no answer options yet, so it cannot be checked here.</p>
   {% endif %}
-  <div class="explain" aria-live="polite"></div>
+  {# Filled in after an answer is checked; the voice reader attaches to it
+     once it has text, so there is never a Listen button over an empty box. #}
+  <div class="explain" aria-live="polite" data-speak data-speak-title="Explanation" data-speak-dynamic></div>
 </div>
 {% endmacro %}

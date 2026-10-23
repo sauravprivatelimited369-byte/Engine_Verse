@@ -225,6 +225,38 @@ def _static_export() -> bool:
     return os.environ.get("ENGINEVERSE_STATIC_EXPORT", "") == "1"
 
 
+def _voice_api_base() -> str:
+    """The public voice API origin baked into the static copy, or "".
+
+    GitHub Pages is static, so calling the FastAPI voice endpoints requires an
+    operator-supplied HTTPS origin. It is validated to a bare origin here: no
+    path, query, credentials or fragment, so a bad repository variable cannot
+    turn the reader into a request to an unrelated URL. Only origins are
+    published; the API key stays on the server.
+    """
+    if not _static_export():
+        return ""  # the live app serves /api/voice from its own origin
+    raw = os.environ.get("ENGINEVERSE_VOICE_API_URL", "").strip().rstrip("/")
+    if not raw:
+        return ""
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit(raw)
+    except ValueError:
+        return ""
+    if parts.username or parts.password or parts.query or parts.fragment:
+        return ""
+    if parts.path not in ("", "/"):
+        return ""
+    if parts.scheme not in {"http", "https"} or not parts.hostname:
+        return ""
+    if parts.scheme == "http" and parts.hostname not in {"localhost", "127.0.0.1"}:
+        return ""
+    port = f":{parts.port}" if parts.port else ""
+    return f"{parts.scheme}://{parts.hostname}{port}"
+
+
 def _issues_url() -> str:
     from engineverse import project
 
@@ -265,6 +297,11 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         # The GitHub Pages export renders these same templates as a signed-out
         # visitor; this flag swaps account controls for device-local progress.
         "static_export": _static_export(),
+        # The live app serves the voice API from its own origin. The static
+        # export replaces this with a configured public API URL (see
+        # scripts/export_pages.py); an empty value means "no backend pinned",
+        # and the voice controls then do not appear at all on Pages.
+        "voice_api_base": _voice_api_base(),
         "canonical_url": _canonical_url(request.url.path),
         "issues_url": _issues_url(),
         # A signed-out visitor on an instance where sign-in is compulsory can

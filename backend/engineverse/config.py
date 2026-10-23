@@ -238,6 +238,97 @@ class Settings:
     ai_key: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_AI_KEY", ""))
     ai_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_AI_URL", ""))
 
+    # --- ElevenLabs voice reader and voice tutor --------------------------
+    # Off by default: this is the only feature in the application that sends
+    # educational text to a third-party service, and it costs money per
+    # character. With the flag unset the written site is completely unchanged,
+    # no request is made, and the reader reports "not configured".
+    elevenlabs_enabled: bool = field(
+        default_factory=lambda: _bool("ENGINEVERSE_ELEVENLABS_ENABLED", False)
+    )
+    # Server-side only. Never sent to a browser, never logged.
+    elevenlabs_api_key: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    )
+    # Approved voices. Comma-separate to offer more than one; labels are
+    # optional and only used for the picker.
+    elevenlabs_voice_id_en: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_TTS_VOICE_ID_EN", "").strip()
+    )
+    elevenlabs_voice_id_hi: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_TTS_VOICE_ID_HI", "").strip()
+    )
+    elevenlabs_voice_name_en: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_TTS_VOICE_NAME_EN", "").strip()
+    )
+    elevenlabs_voice_name_hi: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_TTS_VOICE_NAME_HI", "").strip()
+    )
+    elevenlabs_tts_model_id: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_TTS_MODEL_ID", "eleven_multilingual_v2").strip()
+    )
+    # Conversational AI agent. Empty means the voice tutor explains that no
+    # agent is configured instead of pretending a session exists.
+    elevenlabs_agent_id: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_AGENT_ID", "").strip()
+    )
+    #: Longest text accepted for one synthesis request (characters).
+    voice_max_chars: int = field(
+        default_factory=lambda: _int("ENGINEVERSE_VOICE_MAX_CHARS", 1200)
+    )
+    #: Upstream read/write timeout in seconds. A stuck ElevenLabs request must
+    #: not pin a worker forever.
+    voice_timeout_seconds: int = field(
+        default_factory=lambda: _int("ENGINEVERSE_VOICE_TIMEOUT_SECONDS", 30)
+    )
+    #: Browser origins allowed to call the public voice API. The static GitHub
+    #: Pages copy is a different origin from the FastAPI app, so exactly the
+    #: deployment origins are listed - never "*".
+    voice_origins: str = field(
+        default_factory=lambda: os.environ.get("ENGINEVERSE_VOICE_ORIGINS", "").strip()
+    )
+
+    @property
+    def allowed_voice_origins(self) -> list[str]:
+        """The CORS allow list: configured origins plus this site's own.
+
+        An empty list means the application refuses cross-origin voice calls
+        entirely; the same-origin live app still works because a same-origin
+        request sends no Origin header at all.
+        """
+        from urllib.parse import urlsplit
+
+        candidates: list[str] = []
+        for raw in (self.voice_origins or "").replace(" ", "").split(","):
+            if not raw:
+                continue
+            try:
+                parts = urlsplit(raw if "//" in raw else f"https://{raw}")
+            except ValueError:
+                continue
+            if parts.scheme not in {"http", "https"} or not parts.netloc:
+                continue
+            if parts.scheme == "http" and self.is_production:
+                continue  # a plain-http origin cannot be trusted to hold the UI
+            candidates.append(f"{parts.scheme}://{parts.netloc}")
+        if self.site_url:
+            parts = urlsplit(self.site_url)
+            if parts.scheme and parts.netloc:
+                candidates.append(f"{parts.scheme}://{parts.netloc}")
+        # The public reading copy is a separate origin from the FastAPI app and
+        # is where most students will use the reader. Its exact Pages origin is
+        # allowed by default; it can still be removed by pointing
+        # ENGINEVERSE_VOICE_ORIGINS at a different deployment (this list only
+        # ever adds the origin, so a self-hosted copy also works unchanged).
+        try:
+            from engineverse.project import pages_origin
+
+            candidates.append(pages_origin())
+        except ValueError:
+            pass
+        # Keep order, drop duplicates.
+        return list(dict.fromkeys(candidates))
+
     # --- hosting ----------------------------------------------------------
     host: str = field(default_factory=lambda: os.environ.get("HOST", "0.0.0.0"))
     port: int = field(default_factory=lambda: _int("PORT", 8000))

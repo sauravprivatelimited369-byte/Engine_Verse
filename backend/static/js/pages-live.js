@@ -663,6 +663,9 @@
         explain.textContent = item.explanation;
       }
       explain.classList.add("on");
+      // Give the voice reader a chance to attach to the explanation that was
+      // just revealed. Optional: the reader is not part of grading.
+      try { window.EV?.voice?.enhance?.(explain, "Explanation"); } catch (_) { /* optional */ }
     }
 
     // Knowledge XP (owner decision, 2026-10-19), same rule as the server:
@@ -3007,6 +3010,8 @@
     foot.href = item.url || "#";
     foot.textContent = "Open full topic note →";
     card.appendChild(foot);
+    // Optional voice reader: one Listen control per matched note card.
+    try { window.EV?.voice?.enhance?.(card, item.title || "Tutor answer"); } catch (_) { /* optional */ }
     return card;
   };
 
@@ -3038,6 +3043,11 @@
     for (const r of ranked) {
       out.appendChild(renderMatch(r.item, mode));
     }
+    // The result shell is server-rendered and hidden until there is an answer.
+    const shell = out.closest("#tutor-result") || document.getElementById("tutor-result");
+    if (shell) shell.hidden = false;
+    const empty = document.getElementById("tutor-empty");
+    if (empty) empty.hidden = true;
   };
 
   tutorForm.addEventListener("submit", (event) => {

@@ -28,7 +28,8 @@
         Drafts and self-review answers are not saved; navigating away loses them. Do not paste secrets.</p>
     </section>
     {% for key, title in sections %}
-    <section class="panel mt academy-section" id="{{ key }}">
+    <section class="panel mt academy-section" id="{{ key }}"
+             data-speak data-speak-title="{{ title }}">
       <h2>{{ title }}</h2><div class="prose">{{ unit[key] | md | safe }}</div>
       {% if key == 'examples' %}
         {% for example in unit.code_examples %}<h3>{{ example.label }}</h3>

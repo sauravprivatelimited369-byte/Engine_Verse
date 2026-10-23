@@ -17,7 +17,7 @@
 {% with narrow_noun="formula", narrow_all="the whole formula centre", narrow_clear="/formulas" %}{% include "_slugfilter.html" %}{% endwith %}
 <div class="grid g2">
   {% for f in formulas %}
-    <div class="panel" id="{{ f.slug }}">
+    <div class="panel" id="{{ f.slug }}" data-speak data-speak-title="{{ f.name }}">
       <h2 class="h-sub">{{ f.name }}</h2>
       <div class="prose"><div class="math-display">{{ ("$$ " + f.latex + " $$") | md | safe }}</div></div>
       <p class="muted small">{{ f.meaning }}</p>

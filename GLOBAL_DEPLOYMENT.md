@@ -116,6 +116,19 @@ Note: GitHub Releases are unreachable in some countries. The web-app install pat
 
 ---
 
+## 5b. Optional voice reader (ElevenLabs)
+
+Setting `ENGINEVERSE_ELEVENLABS_ENABLED=1`, `ELEVENLABS_API_KEY` and at least one
+of `ELEVENLABS_TTS_VOICE_ID_EN` / `ELEVENLABS_TTS_VOICE_ID_HI` adds speech to the
+notes, formulas and roadmaps. `ELEVENLABS_AGENT_ID` adds the spoken tutor on
+`/tutor`. The API key stays on this server. The public GitHub Pages copy gets
+only `ENGINEVERSE_VOICE_API_URL` (the HTTPS origin of this deployment, set as a
+GitHub Actions **variable**), and the browser origin of Pages must be in
+`ENGINEVERSE_VOICE_ORIGINS` - it is included by default. Full steps, the agent
+instruction and the cost limits: `docs/ELEVENLABS_INTEGRATION.md`.
+
+Leaving all of these unset keeps the feature off and makes no outbound request.
+
 ## 6. Internationalisation (i18n)
 
 Supported UI languages (10):
