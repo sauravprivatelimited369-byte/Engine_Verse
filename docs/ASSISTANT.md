@@ -237,6 +237,15 @@ its own, but it does add four protections:
 
 Set the n8n workflow's own rate limit or a budget alert as well: the bridge
 limits one address, not the total spend of your instance.
+
+Two deployment notes about that limit:
+
+- **Behind a reverse proxy**, `ENGINEVERSE_TRUST_PROXY=1` is what makes the
+  "address" the real client rather than the proxy. `deploy/public.yml` already
+  sets it. Without it, every student shares one 60-per-hour budget.
+- On a **shared campus address**, students share the budget too. If that is your
+  audience, raise `assistant` in `engineverse/security/ratelimit.py` and rely on
+  the workflow's own per-session limit, rather than removing the limiter.
 `automation/n8n/05-monitoring.json` alerts you when an execution fails.
 
 ## Accessibility notes
