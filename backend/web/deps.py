@@ -263,8 +263,34 @@ def _issues_url() -> str:
     return project.issues_url()
 
 
-def _canonical_url(path: str) -> str:
-    """Absolute public URL of a page, for <link rel="canonical"> and og:url."""
+#: Query parameters that select a different document rather than a filter on the
+#: same one. ``?page=2`` is a later page of a list and ``?card=`` a deep link to
+#: one flashcard; both are listed in the sitemap, so they keep their own canonical.
+#: Everything else (``?q=``, ``?branch=``, ``?depths=all``) is a view of the page
+#: and canonicalises to the bare path.
+CANONICAL_QUERY_KEYS = ("page", "card")
+
+
+def _site_root() -> str:
+    """Absolute origin (and base path) of the public site, with no trailing slash.
+
+    The static export lives under a project-Pages base path, so its root is the
+    Pages URL rather than the bare origin. Structured data is built from this.
+    """
+    if _static_export():
+        from engineverse import project
+
+        return project.pages_url().rstrip("/")
+    return get_settings().site_url.rstrip("/")
+
+
+def _canonical_url(path: str, query: dict[str, str] | None = None) -> str:
+    """Absolute public URL of a page, for <link rel="canonical"> and og:url.
+
+    Filter and search parameters are dropped so that ``/search?q=a`` and
+    ``/search?q=b`` do not compete with ``/search``. ``page`` and ``card`` are kept
+    because they name a different document.
+    """
     clean = "/" + path.lstrip("/")
     if _static_export():
         from engineverse import project
@@ -272,8 +298,105 @@ def _canonical_url(path: str) -> str:
         tail = clean.lstrip("/")
         if tail and not tail.endswith("/"):
             tail += "/"
-        return project.pages_url() + tail
-    return get_settings().site_url.rstrip("/") + clean
+        base = project.pages_url() + tail
+    else:
+        base = _site_root() + clean
+    query = query or {}
+    kept: dict[str, str] = {}
+    # Page 1 is the bare list, so only later pages get their own canonical.
+    if str(query.get("page", "")).isdigit() and int(query["page"]) > 1:
+        kept["page"] = str(int(query["page"]))
+    if query.get("card"):
+        kept["card"] = str(query["card"])[:128]
+    if kept:
+        from urllib.parse import urlencode
+
+        base += "?" + urlencode(kept)
+    return base
+
+
+def _meta_description(path: str) -> str:
+    """The page's own blurb from the navigation table, if it has one.
+
+    Templates that set a description override the block; the rest used to fall
+    back to the tagline, so forty pages shared one description. Every destination
+    already carries a one-line blurb, which is a better fit than the tagline.
+    """
+    from engineverse import navigation
+
+    dest = navigation.find(path)
+    if dest is not None and dest.blurb and not dest.pattern:
+        return _snippet(dest.blurb)
+    return ""
+
+
+#: Search results show about this many characters of a description before cutting it.
+DESCRIPTION_LIMIT = 160
+
+
+def _snippet(text: str, limit: int = DESCRIPTION_LIMIT) -> str:
+    """``text`` cut to ``limit`` characters at a word boundary, with an ellipsis."""
+    text = " ".join((text or "").split())
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1]
+    if " " in cut:
+        cut = cut[: cut.rindex(" ")]
+    return cut.rstrip(",;:-–— ") + "…"
+
+
+def context_brand_description() -> str:
+    """The site-wide description, used where a page has no blurb of its own."""
+    return _snippet(brand.get("description") or "")
+
+
+def _organization_schema() -> dict[str, Any]:
+    """Organization structured data for the home page.
+
+    Only facts the repository establishes: the name, the public origin, the logo
+    and the source repository. No address, telephone or review figures are
+    invented here, and the support mailbox is left out because it is a placeholder
+    until an operator sets one.
+    """
+    from engineverse import project
+
+    root = _site_root()
+    return {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": brand.get("site_name") or "Meridian",
+        "url": root + "/",
+        "logo": root + "/static/icons/icon-512.png",
+        "description": brand.get("description") or "",
+        "sameAs": [project.repo_url()],
+    }
+
+
+def _breadcrumb_schema(crumbs: list) -> dict[str, Any] | None:
+    """BreadcrumbList structured data that mirrors the visible trail.
+
+    Items are absolute URLs built from the site root. The current page (the crumb
+    with no href) takes the canonical URL of the page itself.
+    """
+    if not crumbs or len(crumbs) < 2:
+        return None
+    items = []
+    root = _site_root()
+    for index, crumb in enumerate(crumbs, start=1):
+        href = getattr(crumb, "href", None)
+        if href is None:
+            url = None
+        elif href == "/":
+            url = root + "/"
+        else:
+            url = root + href
+        entry: dict[str, Any] = {"@type": "ListItem", "position": index, "name": crumb.label}
+        if url is not None:
+            entry["item"] = url
+        items.append(entry)
+    if items and "item" not in items[-1]:
+        items[-1]["item"] = None  # filled in by base_context with the canonical URL
+    return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": items}
 
 
 def _public_url(path: str) -> str:
@@ -284,11 +407,7 @@ def _public_url(path: str) -> str:
     in every social preview.
     """
     clean = path if path.startswith("/") else "/" + path
-    if _static_export():
-        from engineverse import project
-
-        return project.pages_url().rstrip("/") + clean
-    return get_settings().site_url.rstrip("/") + clean
+    return _site_root() + clean
 
 
 def base_context(request: Request, **extra: Any) -> dict[str, Any]:
@@ -317,8 +436,17 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         # scripts/export_pages.py); an empty value means "no backend pinned",
         # and the voice controls then do not appear at all on Pages.
         "voice_api_base": _voice_api_base(),
-        "canonical_url": _canonical_url(request.url.path),
-        "og_image": _public_url("/static/icons/icon-512.png"),
+        "canonical_url": _canonical_url(request.url.path, dict(request.query_params)),
+        "site_root": _site_root(),
+        # The social card is 1200x630, the size the large-image Twitter card and
+        # the Open Graph previews are designed for. See scripts/gen_social_images.py.
+        "og_image": _public_url("/static/img/og-image.png"),
+        "og_image_width": 1200,
+        "og_image_height": 630,
+        "meta_description": _meta_description(request.url.path) or context_brand_description(),
+        # Signed-in pages hold private account data and the static copy is only
+        # ever rendered anonymously, so only anonymous pages may be indexed.
+        "robots": "noindex, nofollow" if viewer is not None else "",
         "issues_url": _issues_url(),
         # The study assistant's browser-side description. In proxy mode this
         # names only the same-origin endpoint; the n8n webhook URL never enters
@@ -366,6 +494,14 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
                       viewer.id) or 0
         )
     context.update(extra)
+    context["organization_ld"] = _organization_schema() if request.url.path == "/" else None
+    context["breadcrumb_ld"] = _breadcrumb_schema(context.get("crumbs") or [])
+    if context["breadcrumb_ld"] is not None:
+        items = context["breadcrumb_ld"]["itemListElement"]
+        if items and items[-1].get("item") is None:
+            items[-1]["item"] = context["canonical_url"] or None
+            if items[-1]["item"] is None:
+                items.pop()
     return context
 
 
@@ -386,6 +522,15 @@ def render(
     explicitly marked anonymous in that browser's local cache.
     """
     context = base_context(request, **extra)
+    # The error handlers pass their status as ``status=`` (it lands in the template
+    # context, as the docstring above warns), so look at that too.
+    effective_status = max(int(status_code or 0), int(extra.get("status") or 0))
+    if effective_status >= 400:
+        # An error page answers for a URL that does not exist, so it must neither
+        # name itself as canonical nor be indexed.
+        context["canonical_url"] = ""
+        context["robots"] = "noindex, nofollow"
+        context["breadcrumb_ld"] = None
     response = templates.TemplateResponse(
         request, template, context, status_code=status_code, background=background
     )

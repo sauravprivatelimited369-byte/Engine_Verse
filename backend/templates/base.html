@@ -14,7 +14,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ brand.site_name }}{% endblock %}</title>
-  <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
+  <meta name="description" content="{% block description %}{{ meta_description or brand.description }}{% endblock %}">
+  {% if robots %}<meta name="robots" content="{{ robots }}">{% endif %}
   <meta name="theme-color" content="{% if brand.theme == 'light' %}#f5f2eb{% else %}#0a1524{% endif %}">
   <script nonce="{{ request.state.csp_nonce }}">
     // Runs before first paint: a stored theme preference wins over the site
@@ -64,17 +65,22 @@
   <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--btn:{{ brand.accent_color | safe }};--grad:{{ brand.accent_color | safe }};--grad-3:{{ brand.accent_color | safe }}}</style>
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta property="og:title" content="{% block og_title %}{{ brand.site_name }}{% endblock %}">
-  <meta property="og:description" content="{{ brand.tagline }}">
+  <meta property="og:description" content="{{ meta_description or brand.description }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ brand.site_name }}">
   <meta property="og:image" content="{{ og_image }}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="{{ og_image_width }}">
+  <meta property="og:image:height" content="{{ og_image_height }}">
   <meta property="og:image:alt" content="{{ brand.site_name }} — {{ brand.tagline }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{% block twitter_title %}{{ brand.site_name }}{% endblock %}">
-  <meta name="twitter:description" content="{{ brand.tagline }}">
+  <meta name="twitter:description" content="{{ meta_description or brand.description }}">
   <meta name="twitter:image" content="{{ og_image }}">
   {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">
   <meta property="og:url" content="{{ canonical_url }}">{% endif %}
+  {% if organization_ld %}<script type="application/ld+json">{{ organization_ld | tojson }}</script>{% endif %}
+  {% if breadcrumb_ld %}<script type="application/ld+json">{{ breadcrumb_ld | tojson }}</script>{% endif %}
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}{{ ' is-static' if static_export and not user }}"{% if gated %} data-signin-gate{% endif %}>
