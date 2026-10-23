@@ -177,6 +177,12 @@ def prepare_env(db_path: Path) -> dict[str, str]:
     # post to a server, the browser Submit button on problem pages, and
     # canonical URLs on the Pages origin rather than the export's loopback host.
     env["ENGINEVERSE_STATIC_EXPORT"] = "1"
+    # The public build never needs a credential and must never carry one. The
+    # voice reader talks to a separately hosted FastAPI app, whose origin is the
+    # only voice setting that reaches a page.
+    env["ELEVENLABS_API_KEY"] = ""
+    env["ELEVENLABS_AGENT_ID"] = ""
+    env["ENGINEVERSE_ELEVENLABS_ENABLED"] = ""
     return env
 
 
@@ -1485,12 +1491,17 @@ def fill_shell(home_html: str, title: str, main: str, *, private: bool = True) -
 
 
 def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
-           assistant_url: str = "") -> int:
+           voice_api_url: str = "", assistant_url: str = "") -> int:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
     (site / ".nojekyll").write_text("", encoding="utf-8")
     copy_static(site, base)
+
+    # Templates read this while rendering the static copy, so the reader knows
+    # which origin to call and every other page stays untouched when it is
+    # empty. It is an origin only - no key, agent ID or signed URL.
+    os.environ["ENGINEVERSE_VOICE_API_URL"] = voice_api_url
 
     from fastapi.testclient import TestClient
 
@@ -1594,6 +1605,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     ).strip()
     (site / "deployment.json").write_text(json.dumps({
         "revision": revision, "mode": "reading-copy", "base": base, "pages": written,
+        "voiceApi": voice_api_url,
         "capabilities": [rewrite_url(path, base) for path in ("/apis", "/studio", "/workflows", "/swarm")],
         # Whether the assistant works on this copy, never the webhook itself:
         # deployment.json is public.
@@ -1647,6 +1659,25 @@ def normalise_app_url(value: str | None) -> str:
             or not all(_DNS_LABEL.fullmatch(label) for label in host.split("."))):
         raise error
     return text
+
+
+def normalise_voice_api_url(value: str | None) -> str:
+    """The public voice API origin baked into the static copy, or "".
+
+    Same rules as the hosted-app URL: an HTTPS origin (localhost HTTP while
+    developing). A path, query, credentials or fragment are refused, and the
+    rejection never echoes the input in case it contained a pasted secret.
+    """
+    text = (value or "").strip()
+    if not text:
+        return ""
+    try:
+        return normalise_app_url(text)
+    except SystemExit:
+        raise SystemExit(
+            "ENGINEVERSE_VOICE_API_URL must be a public HTTPS origin "
+            "(localhost HTTP only for development)."
+        ) from None
 
 
 def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = False,
@@ -1821,6 +1852,9 @@ def main() -> int:
                         help="full app HTTPS origin (default: $ENGINEVERSE_APP_URL)")
     parser.add_argument("--apk-url", default=None,
                         help="versioned signed GitHub Release APK URL (default: $ENGINEVERSE_APK_URL)")
+    parser.add_argument("--voice-api-url", default=None,
+                        help="public FastAPI origin that serves /api/voice "
+                             "(default: $ENGINEVERSE_VOICE_API_URL; empty disables the reader on Pages)")
     parser.add_argument("--assistant-url", default=None,
                         help="public n8n Chat Trigger URL for the static copy "
                              "(default: $ENGINEVERSE_ASSISTANT_PUBLIC_URL)")
@@ -1842,6 +1876,10 @@ def main() -> int:
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from None
+    voice_api_url = normalise_voice_api_url(
+        args.voice_api_url if args.voice_api_url is not None
+        else os.environ.get("ENGINEVERSE_VOICE_API_URL", "")
+    )
     try:
         assistant_url = normalise_assistant_url(
             args.assistant_url if args.assistant_url is not None
@@ -1860,7 +1898,8 @@ def main() -> int:
     os.environ.update(env)
     if not args.skip_seed:
         seed(env, db_path)
-    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url, assistant_url=assistant_url)
+    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url,
+           voice_api_url=voice_api_url, assistant_url=assistant_url)
     return 0
 
 

@@ -25,6 +25,10 @@ permissions:
 env:
   ENGINEVERSE_APP_URL: ${{ vars.ENGINEVERSE_APP_URL }}
   ENGINEVERSE_APK_URL: ${{ vars.ENGINEVERSE_APK_URL }}
+  # PUBLIC origin of the FastAPI app that serves /api/voice. Not a secret, and
+  # not a credential: it only tells the static page where to send text for
+  # speech. Empty means the export ships without voice controls.
+  ENGINEVERSE_VOICE_API_URL: ${{ vars.ENGINEVERSE_VOICE_API_URL }}
   # The public n8n Chat Trigger the static copy calls directly (there is no
   # server on Pages). Set as a repository *variable*, not a secret: the value
   # is published in the page by design. Leave it unset and the assistant page
@@ -123,6 +127,9 @@ jobs:
           # The assistant widget: launcher, n8n chat contract, error and retry
           # states, Esc, offline mode, the reload guard and HTML escaping.
           node scripts/check_assistant.js site
+
+      - name: Check the voice reader and spoken tutor controls
+        run: node scripts/check_voice.js
 
       - name: Refuse leaked demo passwords or tokens
         run: |

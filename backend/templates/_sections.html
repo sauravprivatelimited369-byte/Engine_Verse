@@ -1,5 +1,6 @@
 {% for section in sections %}
-<section class="note-section" id="{{ id_prefix }}{{ section.kind }}">
+<section class="note-section" id="{{ id_prefix }}{{ section.kind }}"
+         data-speak data-speak-title="{{ section.title }}">
   <h2>{{ section.title }}</h2>
   {% if section.callout %}
     <div class="callout {{ section.callout }}">

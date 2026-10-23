@@ -49,6 +49,7 @@
   <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/voice.css">
   {# The assistant's own sheet: launcher, panel and the /assistant page. Kept
      separate so a page that never opens it still pays only for app.css. #}
   <link rel="stylesheet" href="/static/css/assistant.css">
@@ -219,6 +220,14 @@
 </nav>
 {% endif %}
 
+{# Non-secret runtime settings for the optional voice reader and voice tutor.
+   The API base is empty in the live app (same origin). The static Pages copy
+   overwrites this block's payload from its #ev-live boot data, which is the
+   only place a hosted voice API URL is published. No key, agent ID or signed
+   URL is ever written into a page. #}
+<script type="application/json" id="ev-voice-config" nonce="{{ request.state.csp_nonce }}">
+  {"apiBase": "{{ voice_api_base }}", "staticCopy": {{ 'true' if static_export else 'false' }}}
+</script>
 {# The assistant's browser configuration, as data rather than inline script.
    In proxy mode this contains no endpoint other than the same-origin API path:
    the n8n webhook URL is server-side only. export_pages.py replaces this block
@@ -242,6 +251,7 @@
 <script src="/static/js/i18n.js" defer></script>
 <script src="/static/js/engine3d.js" defer></script>
 <script src="/static/js/app.js" defer></script>
+<script src="/static/js/voice.js" defer></script>
 <script src="/static/js/assistant.js" defer></script>
 <script src="/static/js/pages-live.js" defer></script>
 <script src="/static/js/scroll.js" defer></script>

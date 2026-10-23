@@ -9,6 +9,18 @@ release.
 
 ### Added
 
+- **Optional ElevenLabs voice reader and spoken tutor.** Educational text
+  (note sections, the formula centre, roadmaps, programming lessons, Study
+  Tutor answers and checked practice explanations) can be read aloud, with
+  Play/Pause, Stop, Replay and a speed control. On `/tutor`, students can hold
+  a spoken conversation with a configured ElevenLabs agent. Both are off by
+  default: the API key stays on the FastAPI backend, `/api/voice/speech` returns
+  audio and `/api/voice/session` returns a short-lived signed Conversational AI
+  URL. Requests are JSON-only, origin-allow-listed, size-capped and
+  rate-limited; URLs and audio are released client-side. Setup, the agent
+  instruction and cost limits are in
+  [docs/ELEVENLABS_INTEGRATION.md](docs/ELEVENLABS_INTEGRATION.md).
+
 - **The n8n study assistant.** A floating launcher on every page and a full page
   at `/assistant`, backed by an n8n Chat Trigger. The server proxies the request
   (`POST /api/assistant/chat`), so the webhook URL never reaches the browser and
