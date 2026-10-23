@@ -80,10 +80,7 @@ class TestBuildConfiguration:
 
     def test_toolchain_versions(self):
         wrapper = _read(ANDROID / "gradle" / "wrapper" / "gradle-wrapper.properties")
-        # AGP 9.4.1 refuses to apply on anything below Gradle 9.6.0, so the
-        # wrapper and the plugin have to move together. Keep this exact: the
-        # Gradle version is a build input, not a dependency range.
-        assert "gradle-9.6.0-bin.zip" in wrapper
+        assert "gradle-9.4.1-bin.zip" in wrapper
         assert (ANDROID / "gradle" / "wrapper" / "gradle-wrapper.jar").stat().st_size > 40_000
         versions = _read(ANDROID / "gradle" / "libs.versions.toml")
         # Assert the major version, not one patch release: the file has already

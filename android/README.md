@@ -9,7 +9,7 @@ the Forge website inside a restricted viewer.
 |---|---|
 | Package | `io.github.sauravprivatelimited369byte.engineverse` (debug builds add `.debug`) |
 | Android | 7.0 (API 24) and newer; targets API 36 |
-| Toolchain | AGP 9.4.1 (built-in Kotlin), Gradle 9.6.0 wrapper, Compose BOM 2026.06.01, Java 17 |
+| Toolchain | AGP 9.1.1 (built-in Kotlin), Gradle 9.4.1 wrapper, Compose BOM 2026.06.01, Java 17 |
 | Website it opens | `BuildConfig.SITE_URL`, the GitHub Pages copy of this repository |
 
 ## What is in the app
