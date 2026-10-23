@@ -100,11 +100,15 @@ scrapers, or automate follows and likes. Those get accounts banned and are not
 ## D. Student onboarding
 
 ```
-Webhook (Header Auth) → Code (email shape, explicit consent, token)
+Webhook (Header Auth) → Code (email shape, explicit consent, 128-bit token)
   → IF opted in → Postgres INSERT … ON CONFLICT (email) DO NOTHING RETURNING id
       → IF a row came back → welcome email → Respond 200
       → else → Respond 200 "already subscribed"
   → else → Respond 422
+
+GET /webhook/engineverse/unsubscribe?token=… → Postgres
+    UPDATE … SET revoked_at = now() WHERE token = $1 AND revoked_at IS NULL
+  → Respond 200 text
 ```
 
 Requirements the template implements:
@@ -113,10 +117,16 @@ Requirements the template implements:
   email is sent.
 - **Idempotence.** The unique index plus `ON CONFLICT DO NOTHING` is what makes a
   second submission harmless. Do not replace it with a select-then-insert.
-- **Withdrawal.** Every message carries an unsubscribe link with a random token,
-  not the address. Set `revoked_at` when it is used, and exclude revoked rows
-  from every send. A marketing email without a working unsubscribe is unlawful
-  in most jurisdictions and, more simply, a bad way to treat students.
+- **Withdrawal.** Every message carries an unsubscribe link carrying a 128-bit
+  token from the platform CSPRNG, never the address. The link points at the
+  workflow's own `GET engineverse/unsubscribe` webhook, which sets `revoked_at`;
+  excluded revoked rows from every send. A marketing email without a working
+  unsubscribe is unlawful in most jurisdictions and, more simply, a bad way to
+  treat students.
+- **Two variables, both yours.** `engineverse_url` (the EngineVerse origin, for
+  in-email links) and `engineverse_unsubscribe_url` (the n8n webhook above). The
+  second URL is public by design — the token is the credential — so it needs no
+  Header Auth. The subscription webhook still does.
 
 EngineVerse itself has no newsletter form. The workflow is the mechanism; you
 decide whether to put a form on `/support` or keep sign-ups to GitHub Releases.

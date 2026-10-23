@@ -123,6 +123,37 @@ def test_the_onboarding_schema_makes_a_repeat_subscription_a_no_op():
     assert "consent === true" in onboarding
 
 
+def test_the_onboarding_workflow_can_actually_unsubscribe():
+    """A link is not a mechanism. This asserts the endpoint, the token and the revoke."""
+    import json
+
+    data = json.loads((AUTOMATION / "03-student-onboarding.json").read_text(encoding="utf-8"))
+    nodes = {node["name"]: node for node in data["nodes"]}
+
+    unsub = nodes.get("Unsubscribe")
+    assert unsub is not None, "the email promises a link; something has to answer it"
+    assert unsub["parameters"]["httpMethod"] == "GET"
+    assert unsub["parameters"]["responseMode"] == "responseNode"
+
+    revoke = nodes["Revoke once"]["parameters"]["query"]
+    assert "revoked_at = now()" in revoke
+    # Revoking twice must not resurrect or fail: the guard is in the WHERE clause.
+    assert "revoked_at IS NULL" in revoke
+
+    connections = data["connections"]
+    assert connections["Unsubscribe"]["main"][0][0]["node"] == "Revoke once"
+    assert connections["Revoke once"]["main"][0][0]["node"] == "Unsubscribed"
+
+    code = nodes["Validate consent"]["parameters"]["jsCode"]
+    assert "crypto.getRandomValues" in code, "a link token is a credential, not a decoration"
+    assert "Math.random" not in code, "Math.random is not a CSPRNG"
+
+    email = nodes["Welcome email"]["parameters"]["text"]
+    assert "$vars.engineverse_unsubscribe_url" in email
+    # The old link pointed at an EngineVerse route that does not exist.
+    assert "$vars.engineverse_url }}/unsubscribe" not in email
+
+
 def test_the_feedback_workflow_stores_no_answer_text():
     raw = (AUTOMATION / "02-feedback-intake.json").read_text(encoding="utf-8")
     assert "answer" not in raw.lower() or "answer text" in raw.lower()

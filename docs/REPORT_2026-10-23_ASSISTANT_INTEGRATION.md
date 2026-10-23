@@ -201,7 +201,7 @@ Path → why it exists.
 - `scripts/render_assistant_page.py` — renders the real page with a configured URL for DOM tests.
 - `scripts/check_assistant_ui.js` — 24 DOM checks with a stubbed fetch.
 - `backend/tests/test_assistant.py` — 37 tests (bridge, API, page, limits, CSRF, error map).
-- `backend/tests/test_n8n_automation.py` — 15 tests over the workflow JSON and SQL.
+- `backend/tests/test_n8n_automation.py` — 16 tests over the workflow JSON and SQL.
 - `.github/workflows/ci.yml` — renders the page and runs the DOM checks on every push/PR.
 - `.github/workflows/pages.yml` — branch list and main-only deploy.
 
@@ -263,7 +263,7 @@ startup error.
 | A | Student copilot | Bridge + UI + importable template **implemented**; live n8n execution **not verified** |
 | B | Feedback intake | Existing feedback route referenced; validated intake template + SQL **implemented** |
 | C | Content distribution with human review | **Design only** (needs a channel account and a review decision) |
-| D | Onboarding with consent and unsubscribe | Template + schema **implemented**; sending needs a mail provider credential |
+| D | Onboarding with consent and unsubscribe | Template, revoke endpoint and schema **implemented**; sending needs a mail provider credential |
 | E | Growth analytics | **Design only** — deliberately not implemented without a lawful basis and an aggregate-only source |
 | F | Operational monitoring | Templates for error alerting and a 15-minute uptime probe **implemented**; activation is the operator's call |
 
@@ -297,7 +297,7 @@ Commands were run in the repository with `.venv` (Python 3.11, FastAPI 0.151.0) 
 | Check | Result |
 |---|---|
 | `pytest backend/tests/test_assistant.py -q` | **37 passed** (37 collected, exit 0) |
-| `pytest backend/tests/test_n8n_automation.py -q` | **15 passed** |
+| `pytest backend/tests/test_n8n_automation.py -q` | **16 passed** |
 | `node scripts/check_assistant_ui.js /tmp/assistant-page.html` | **24 / 24 passed** |
 | `python scripts/check_assistant.py` with variables unset | exit **2** (not configured), no secrets printed |
 | `python scripts/check_assistant.py` against a loopback stand-in webhook | exit **0**, answered in ~40 ms, token header present |

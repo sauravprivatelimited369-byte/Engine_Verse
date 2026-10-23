@@ -1,5 +1,5 @@
 {
-  "name": "EngineVerse \u00b7 Student onboarding",
+  "name": "EngineVerse · Student onboarding",
   "nodes": [
     {
       "parameters": {
@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Onboarding is opt-in and idempotent. The insert below relies on a unique\n// index, so a repeated subscription returns no row and sends no second email.\nconst incoming = $input.first().json || {};\nconst payload = incoming.body && typeof incoming.body === \"object\" ? incoming.body : incoming;\nconst email = String(payload.email || \"\").trim().toLowerCase().slice(0, 254);\nconst consent = payload.consent === true;\nconst topics = Array.isArray(payload.topics) ? payload.topics.slice(0, 6).map(String) : [];\nconst emailOk = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email);\n\nreturn [{\n  json: {\n    valid: emailOk && consent,\n    email,\n    topics,\n    // A short unguessable token, not the address, is what an unsubscribe link carries.\n    token: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),\n    receivedAt: new Date().toISOString(),\n  },\n}];"
+        "jsCode": "// Onboarding is opt-in and idempotent. The insert below relies on a unique\n// index, so a repeated subscription returns no row and sends no second email.\nconst incoming = $input.first().json || {};\nconst payload = incoming.body && typeof incoming.body === \"object\" ? incoming.body : incoming;\nconst email = String(payload.email || \"\").trim().toLowerCase().slice(0, 254);\nconst consent = payload.consent === true;\nconst topics = Array.isArray(payload.topics) ? payload.topics.slice(0, 6).map(String) : [];\nconst emailOk = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email);\n\nreturn [{\n  json: {\n    valid: emailOk && consent,\n    email,\n    topics,\n    // The unsubscribe link carries this token, never the address.\n    // 128 bits from the platform CSPRNG, hex. a seeded PRNG is not a credential.\n    token: Array.from(crypto.getRandomValues(new Uint8Array(16)),\n      (byte) => byte.toString(16).padStart(2, \"0\")).join(\"\"),\n    receivedAt: new Date().toISOString(),\n  },\n}];"
       },
       "id": "d2",
       "name": "Validate consent",
@@ -122,8 +122,8 @@
       "parameters": {
         "fromEmail": "YOUR-SENDER@example.org",
         "toEmail": "={{ $('Validate consent').item.json.email }}",
-        "subject": "Welcome to EngineVerse \u2014 three things to start with",
-        "text": "Hi,\n\nThanks for choosing to hear from EngineVerse.\n\nStart here:\n1. Find your branch: {{ $vars.engineverse_url }}/streams\n2. Practise one set today: {{ $vars.engineverse_url }}/dpp\n3. Ask the study assistant: {{ $vars.engineverse_url }}/assistant\n\nYou are receiving this because you asked to. Unsubscribe at any time:\n{{ $vars.engineverse_url }}/unsubscribe?token={{ $('Validate consent').item.json.token }}\n\n\u2014 EngineVerse",
+        "subject": "Welcome to EngineVerse — three things to start with",
+        "text": "Hi,\n\nThanks for choosing to hear from EngineVerse.\n\nStart here:\n1. Find your branch: {{ $vars.engineverse_url }}/streams\n2. Practise one set today: {{ $vars.engineverse_url }}/dpp\n3. Ask the study assistant: {{ $vars.engineverse_url }}/assistant\n\nYou are receiving this because you asked to. Unsubscribe at any time:\n{{ $vars.engineverse_unsubscribe_url }}?token={{ $('Validate consent').item.json.token }}\n\n— EngineVerse",
         "options": {}
       },
       "id": "d6",
@@ -182,6 +182,56 @@
       "position": [
         1320,
         -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "engineverse/unsubscribe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d9x",
+      "name": "Unsubscribe",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE engineverse_subscribers SET revoked_at = now() WHERE token = $1 AND revoked_at IS NULL RETURNING email",
+        "options": {
+          "queryReplacement": "={{ [$json.query ? $json.query.token : ''] }}"
+        }
+      },
+      "id": "d10",
+      "name": "Revoke once",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        240,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=You have been unsubscribed from EngineVerse messages. If this was not you, reply to any earlier message.",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "d11",
+      "name": "Unsubscribed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        360
       ]
     }
   ],
@@ -260,6 +310,28 @@
         [
           {
             "node": "Subscribed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unsubscribe": {
+      "main": [
+        [
+          {
+            "node": "Revoke once",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revoke once": {
+      "main": [
+        [
+          {
+            "node": "Unsubscribed",
             "type": "main",
             "index": 0
           }

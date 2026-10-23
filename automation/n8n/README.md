@@ -9,7 +9,7 @@ needs an account says so in its note.
 |---|---|---|
 | `01-student-copilot.json` | Webhook → validate → AI Agent (+ window memory) → Respond. This is the contract `backend/engineverse/assistant.py` calls. | A chat-model credential; a Header Auth credential named to match `ENGINEVERSE_ASSISTANT_AUTH_HEADER` |
 | `02-feedback-intake.json` | Webhook → validate/consent → Postgres insert → Respond | A Postgres credential for the database in `feedback.sql` |
-| `03-student-onboarding.json` | Webhook → consent check → idempotent insert → welcome email with unsubscribe link | Postgres + SMTP credentials; set the `engineverse_url` variable |
+| `03-student-onboarding.json` | Webhook → consent check → idempotent insert → welcome email with unsubscribe link | Postgres + SMTP credentials; set `engineverse_url` and `engineverse_unsubscribe_url` |
 | `05-monitoring.json` | Error Trigger → redact → email the administrator | SMTP credential; the admin address |
 | `06-uptime-check.json` | Every 15 min → GET `/health` → email on a non-200 | SMTP credential; the `engineverse_url` variable |
 
