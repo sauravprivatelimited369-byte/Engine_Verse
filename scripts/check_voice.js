@@ -153,6 +153,7 @@ async function boot({
   status = STATUS_READY,
   session = { ok: true, signedUrl: "wss://api.elevenlabs.io/v1/convai/conversation?token=x" },
   speechStatus = 200,
+  speechHang = false,
   statusError = false,
   browserSpeech = false,
   recognition = false,
@@ -193,6 +194,9 @@ async function boot({
     }
     if (url.endsWith("/api/voice/speech")) {
       calls.speech += 1;
+      if (speechHang) return new Promise((resolve, reject) => {
+        options.signal.addEventListener("abort", () => reject(Object.assign(new Error("Aborted"), { name: "AbortError" })));
+      });
       if (speechStatus !== 200) {
         return response(
           { ok: false, error: "The voice service is unavailable right now.", code: "upstream_unavailable" },
@@ -644,6 +648,14 @@ async function main() {
     check("fallback: reason and provider are visible", /Natural voice unavailable.*device/.test(stateOf(host)), stateOf(host));
     host.querySelector(".voice-stop").click();
     check("fallback: Stop cancels the active device voice", spoken.cancels === 1);
+  }
+  {
+    const { d, w, calls, spoken } = await boot({ browserSpeech: true, speechHang: true });
+    const realTimeout = w.setTimeout.bind(w);
+    w.setTimeout = (fn, ms, ...args) => realTimeout(fn, ms === 35000 ? 1 : ms, ...args);
+    section(d).querySelector(".voice-listen").click();
+    await sleep(20);
+    check("fallback: a timed-out natural voice request starts device speech", calls.speech === 1 && spoken.utterances.length === 1);
   }
   {
     const unavailable = { ...STATUS_READY, tts: { ...STATUS_READY.tts, available: false, languages: [] },
