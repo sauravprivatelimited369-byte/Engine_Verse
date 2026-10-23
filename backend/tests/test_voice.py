@@ -390,3 +390,80 @@ class TestStaticExportConfig:
         assert deps._voice_api_base() == "https://voice.example.com"
         monkeypatch.setenv("ENGINEVERSE_VOICE_API_URL", "https://voice.example.com/secret/path")
         assert deps._voice_api_base() == ""
+
+
+class TestDeploymentVoiceGate:
+    """The Pages gate: honest voice-disabled export, validated voice-enabled one.
+
+    These are automated checks of the *gate*, not a live ElevenLabs test: no
+    request leaves the process. They make sure a voice-enabled release cannot
+    silently publish an empty apiBase, and that a disabled one cannot publish
+    a key, an agent id or a signed URL.
+    """
+
+    def _site(self, tmp_path, config):
+        index = tmp_path / "index.html"
+        index.write_text(
+            '<script type="application/json" id="ev-voice-config">'
+            + json.dumps(config)
+            + "</script>",
+            encoding="utf-8",
+        )
+        return tmp_path
+
+    def test_origin_must_be_a_bare_https_origin(self, capsys):
+        from scripts import verify_voice_api
+
+        assert verify_voice_api.check_url("https://voice.example.com") == "https://voice.example.com"
+        for bad in ("http://voice.example.com", "https://voice.example.com/api/voice",
+                    "https://voice.example.com/Engine_Verse/", "not a url"):
+            with pytest.raises(SystemExit):
+                verify_voice_api.check_url(bad)
+
+    def test_empty_export_is_reported_as_unavailable_not_as_working(self, tmp_path, capsys):
+        from scripts import verify_voice_api
+
+        verify_voice_api.check_site(self._site(tmp_path, {"apiBase": "", "staticCopy": True}), "")
+        out = capsys.readouterr().out
+        assert "voice-disabled" in out and "not connected" in out
+
+    def test_configured_export_publishes_exactly_the_origin(self, tmp_path):
+        from scripts import verify_voice_api
+
+        site = self._site(tmp_path, {"apiBase": "https://voice.example.com", "staticCopy": True})
+        verify_voice_api.check_site(site, "https://voice.example.com")
+        with pytest.raises(SystemExit):
+            verify_voice_api.check_site(site, "https://other.example.com")
+        # An origin must never slip into a disabled export.
+        with pytest.raises(SystemExit):
+            verify_voice_api.check_site(site, "")
+
+    def test_static_output_may_not_contain_a_key_or_agent(self, tmp_path):
+        from scripts import verify_voice_api
+
+        site = self._site(tmp_path, {"apiBase": "https://voice.example.com", "staticCopy": True})
+        (site / "notes").mkdir()
+        (site / "notes" / "index.html").write_text(
+            "<p>key sk_live_should_never_ship</p>", encoding="utf-8")
+        with pytest.raises(SystemExit):
+            verify_voice_api.check_site(site, "https://voice.example.com")
+
+    def test_a_wildcard_cors_answer_is_refused(self, monkeypatch):
+        from scripts import verify_voice_api
+
+        class FakeResponse:
+            status = 200
+            headers = {"access-control-allow-origin": "*"}
+
+            def read(self):
+                return b'{"tts": {"available": true}, "conversation": {"available": false}}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        monkeypatch.setattr(verify_voice_api, "_request", lambda *a, **k: FakeResponse())
+        with pytest.raises(SystemExit):
+            verify_voice_api.check_status("https://voice.example.com")

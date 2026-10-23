@@ -32,12 +32,68 @@
 
   const API_BASE = String(boot.apiBase || "").replace(/\/+$/, "");
   const STATIC_COPY = Boolean(boot.staticCopy);
+  const documentRoot = document;
+
+  // ---------------------------------------------------------------- unavailable
+  // Published without a backend origin (or with a bad one) there is nowhere to
+  // send text, so no Listen button is drawn. Instead of failing silently the
+  // page says, in an accessible status region, that voice is not connected.
+  // Every other part of EngineVerse keeps working.
+  const voiceUnavailable = (message) => {
+    const notice =
+      message ||
+      "Voice is not connected on this copy of EngineVerse yet, so Listen and the " +
+        "spoken tutor are unavailable. All written notes, the tutor, the code " +
+        "playground and the study tools work normally.";
+    documentRoot.documentElement.classList.add("voice-off");
+    const panel = documentRoot.querySelector("[data-voice-tutor]");
+    if (panel) {
+      const chip = documentRoot.getElementById("voice-tutor-chip");
+      const startBtn = documentRoot.getElementById("voice-start");
+      const setupEl = documentRoot.getElementById("voice-setup");
+      const statusEl = documentRoot.getElementById("voice-status");
+      if (chip) {
+        chip.textContent = "Not connected";
+        chip.classList.remove("ok");
+        chip.classList.add("warn");
+      }
+      if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.setAttribute("aria-disabled", "true");
+      }
+      if (setupEl) {
+        setupEl.hidden = false;
+        setupEl.textContent = notice;
+      }
+      if (statusEl) statusEl.textContent = "No microphone is requested until voice is connected.";
+    }
+    if (documentRoot.querySelector(".voice-unavailable")) return;
+    const host = documentRoot.querySelector("[data-speak]");
+    if (!host) return;
+    const note = documentRoot.createElement("p");
+    note.className = "voice-unavailable small muted";
+    note.setAttribute("role", "note");
+    note.textContent = notice;
+    const heading = host.querySelector("h1, h2, h3");
+    if (heading && heading.parentNode === host) {
+      heading.insertAdjacentElement("afterend", note);
+    } else {
+      host.insertBefore(note, host.firstChild);
+    }
+  };
+
   // On GitHub Pages there is no server at all. Without a configured voice API
   // origin the controls are not rendered, so nobody is offered a button that
-  // cannot work.
-  if (STATIC_COPY && !API_BASE) return;
-
-  const documentRoot = document;
+  // cannot work - and the reason is shown rather than hidden.
+  if (STATIC_COPY && !API_BASE) {
+    const announce = () => voiceUnavailable("");
+    if (documentRoot.readyState === "loading") {
+      documentRoot.addEventListener("DOMContentLoaded", announce, { once: true });
+    } else {
+      announce();
+    }
+    return;
+  }
   const IS_ANDROID_APP = /EngineVerseAndroid\//.test(navigator.userAgent || "");
   const PREF_KEY = "ev:voice:v1";
   const SESSION_CHAR_BUDGET = 24000; // one tab; the server also rate-limits per IP
