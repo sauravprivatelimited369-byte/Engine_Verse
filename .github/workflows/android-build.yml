@@ -64,7 +64,7 @@ jobs:
           if [ "$code" -ne 0 ]; then
             # Surface the actual failure in the checks API: raw job logs are
             # not always readable where maintainers work, annotations are.
-            grep -E "^e: |error:|FAILED|What went wrong|Execution failed|Unresolved|aapt2|AAPT|e: file" /tmp/gradle-unit.log | head -n 25 | while IFS= read -r line; do
+            { awk '/What went wrong/{f=1} f&&c<14{print;c++}' /tmp/gradle-unit.log; grep -E "^e: |error:|Execution failed|Unresolved|aapt2|AAPT|e: file" /tmp/gradle-unit.log | head -n 12; } | while IFS= read -r line; do
               esc=$(printf '%s' "$line" | sed 's/%/%25/g')
               echo "::error title=Unit tests::${esc}"
             done
