@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from engineverse import (
+    assistant,
     auth,
     catalog,
     certificates as certificates_mod,
@@ -566,6 +567,68 @@ async def api_tutor_ask(request: Request):
     return ok(question=question, answer=result["answer"], sources=result["sources"],
               grounded=result["grounded"], disclosure=result["disclosure"],
               message=result["message"])
+
+
+# ---------------------------------------------------------------------------
+# Student copilot (the operator's n8n workflow, proxied server-side)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/assistant/status")
+async def api_assistant_status():
+    """Whether a workflow is configured, and the limits that apply.
+
+    Deliberately free of the URL, the token and any upstream detail. The page
+    uses it to show an honest "not connected" state instead of a composer that
+    can only fail.
+    """
+    return ok(**assistant.status())
+
+
+@router.post("/assistant/chat")
+async def api_assistant_chat(request: Request):
+    """Forwards one bounded question to the configured workflow.
+
+    The browser never sees the webhook URL or its credential: they stay in this
+    process's environment, which is also what lets the page keep its
+    ``connect-src 'self'`` CSP.
+    """
+    viewer = current_user(request)
+    data = await payload(request)
+    message = text_field(data, "message", maximum=assistant.MAX_MESSAGE_CHARS)
+    session_id = text_field(data, "sessionId", maximum=64)
+    page = text_field(data, "page", maximum=180)
+    try:
+        result = await run_in_threadpool(
+            assistant.ask, message, session_id=session_id, page=page
+        )
+    except assistant.AssistantError as exc:
+        response = JSONResponse(exc.as_dict(), status_code=exc.status)
+        if exc.retry_after:
+            response.headers["Retry-After"] = str(exc.retry_after)
+        return response
+    record(
+        "assistant.answered",
+        actor_id=viewer.id if viewer else None,
+        ip=client_ip(request),
+        meta={"answer_chars": len(result["reply"]), "latency_ms": result["latencyMs"]},
+    )
+    return ok(**result)
+
+
+@router.post("/assistant/feedback")
+async def api_assistant_feedback(request: Request):
+    """Records an aggregate "was this useful?" vote, without the answer text."""
+    data = await payload(request)
+    helpful = data.get("helpful")
+    if not isinstance(helpful, bool):
+        return fail("Say whether the answer was helpful.", 422)
+    code = text_field(data, "code", maximum=20)
+    if code and code not in assistant.FEEDBACK_CODES:
+        return fail("Choose one of the listed reasons.", 422)
+    # No session id is recorded: a vote is aggregate, not a per-tab trail.
+    result = assistant.feedback(helpful=helpful, code=code)
+    return ok(**result)
 
 
 # ---------------------------------------------------------------------------

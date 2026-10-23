@@ -272,6 +272,11 @@ LEARN = Section(
             icon="spark",
         ),
         Destination(
+            "AI assistant", "/assistant",
+            "Ask about code, concepts or study plans. An AI workflow answers, and says so.",
+            icon="chat",
+        ),
+        Destination(
             "Engineering swarm lab", "/swarm",
             "Five specialist perspectives review seeded evidence, challenge trade-offs and cite their sources.",
             icon="network",

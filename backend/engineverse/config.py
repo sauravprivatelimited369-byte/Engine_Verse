@@ -6,12 +6,16 @@ in production. Nothing here reaches out to a third-party service.
 from __future__ import annotations
 
 import os
+import re
 import secrets
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#: A conservative HTTP header-name test, used for the assistant credential header.
+_AUTH_HEADER_RE = re.compile(r"[A-Za-z][A-Za-z0-9-]{0,62}")
 
 
 def _load_dotenv() -> None:
@@ -235,8 +239,31 @@ class Settings:
     )
 
     # --- AI tutor ---------------------------------------------------------
+    # Used by engineverse.tutor only. Empty keeps the grounded-retrieval mode.
     ai_key: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_AI_KEY", ""))
     ai_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_AI_URL", ""))
+
+    # --- Student copilot (operator's n8n workflow) ------------------------
+    # The browser never talks to n8n. It posts to /api/assistant/chat on this
+    # origin, and this process forwards a bounded request to the URL below.
+    # That keeps the workflow URL, its credential and its CORS settings off the
+    # client, and lets the strict CSP stay connect-src 'self'.
+    #
+    # Empty is a supported state: the assistant page then says plainly that no
+    # workflow is connected and points at the grounded in-app tutor instead.
+    assistant_url: str = field(default_factory=lambda: os.environ.get(
+        "ENGINEVERSE_ASSISTANT_URL", "").strip())
+    assistant_token: str = field(default_factory=lambda: os.environ.get(
+        "ENGINEVERSE_ASSISTANT_TOKEN", "").strip())
+    # Header the token is sent in. n8n's Header Auth credential expects
+    # whatever name was configured there; `Authorization: Bearer <token>` is
+    # the other common choice. The value is sent verbatim.
+    assistant_auth_header: str = field(default_factory=lambda: os.environ.get(
+        "ENGINEVERSE_ASSISTANT_AUTH_HEADER", "X-EngineVerse-Key").strip())
+    assistant_timeout_s: int = field(default_factory=lambda: _int(
+        "ENGINEVERSE_ASSISTANT_TIMEOUT_S", 45))
+    assistant_display_name: str = field(default_factory=lambda: os.environ.get(
+        "ENGINEVERSE_ASSISTANT_NAME", "EngineVerse copilot").strip()[:60])
 
     # --- hosting ----------------------------------------------------------
     host: str = field(default_factory=lambda: os.environ.get("HOST", "0.0.0.0"))
@@ -346,6 +373,27 @@ class Settings:
                 "ENGINEVERSE_JUDGE_TIMEOUT_MS must be at least 500 and "
                 "ENGINEVERSE_JUDGE_MEMORY_KB at least 65536"
             )
+        # The assistant is optional. When it is configured, its URL is a
+        # server-side secret-bearing endpoint: plaintext would put the student's
+        # question on the wire, and credentials in the URL would land in logs.
+        if self.assistant_url:
+            from urllib.parse import urlparse as _urlparse
+
+            parsed_assistant = _urlparse(self.assistant_url)
+            if parsed_assistant.scheme != "https":
+                problems.append("ENGINEVERSE_ASSISTANT_URL must be an https:// URL in production")
+            if parsed_assistant.username or parsed_assistant.password:
+                problems.append(
+                    "ENGINEVERSE_ASSISTANT_URL must not contain credentials; "
+                    "use ENGINEVERSE_ASSISTANT_TOKEN and ENGINEVERSE_ASSISTANT_AUTH_HEADER"
+                )
+            if not _AUTH_HEADER_RE.fullmatch(self.assistant_auth_header or ""):
+                problems.append(
+                    "ENGINEVERSE_ASSISTANT_AUTH_HEADER must be a valid HTTP header name "
+                    "(letters, digits and hyphens)"
+                )
+            if not 5 <= self.assistant_timeout_s <= 120:
+                problems.append("ENGINEVERSE_ASSISTANT_TIMEOUT_S must be between 5 and 120")
         judge = (self.judge or "").lower()
         if judge in LOCAL_JUDGES:
             shown = judge or "auto"

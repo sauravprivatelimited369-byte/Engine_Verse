@@ -1112,6 +1112,18 @@ async def swarm_page(request: Request):
     return render(request, "swarm.html", **swarm_context())
 
 
+@router.get("/assistant")
+async def assistant_page(request: Request):
+    """The student copilot, powered by the operator's n8n workflow.
+
+    The page's state comes from ``base_context`` (``assistant_configured`` and
+    the context-aware suggestions). When nothing is configured the template
+    renders an explanation instead of a composer, because a form that can only
+    return "not connected" wastes a student's time.
+    """
+    return render(request, "assistant.html")
+
+
 @router.get("/tutor")
 async def tutor_page(request: Request):
     """The AI tutor. Retrieval-grounded and labelled; see engineverse/tutor.py."""

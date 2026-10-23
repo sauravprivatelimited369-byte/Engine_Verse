@@ -53,6 +53,37 @@ requires a separate storage, scanning, size-limit and access-control design.
   and rejection of passwords containing account identity text. The blocklist is
   a modest local list, not a breach-password service.
 
+## The AI assistant bridge
+
+`engineverse/assistant.py` forwards one question to an operator-run n8n
+workflow. Controls, and what they do not cover:
+
+- **The browser never holds the webhook URL or its credential.** It posts to
+  `/api/assistant/chat` on this origin. The CSP stays `connect-src 'self'`, so a
+  compromised client script cannot exfiltrate by calling n8n directly either.
+- **The credential is server-side only** and is sent in a configurable header.
+  Production startup refuses a plaintext URL, a URL containing userinfo, an
+  invalid header name, or a timeout outside 5–120 seconds.
+- **Input is bounded before the network call**: 2–1,200 characters, control
+  characters stripped, session ids matched against `^[A-Za-z0-9_-]{8,64}$` and
+  replaced when malformed, page paths matched against a path allowlist.
+- **The response is never treated as HTML.** The browser renders it with
+  `textContent`; `test_assistant.py` fails if the client grows an `innerHTML`
+  path. Replies are capped at 12,000 characters.
+- **Redirects are not followed**, so a hijacked workflow cannot redirect the
+  credential to another host. `trust_env=False` prevents an operator's proxy
+  environment from rerouting questions.
+- **Errors are normalised.** Upstream bodies, stack traces, URLs and tokens are
+  never returned to the client or written to the audit log. Only the outcome,
+  the question's character count and the latency are recorded.
+- **Abuse limits**: 60 questions/hour per client address in the shared counter
+  table, CSRF on the POST, a 45-second default timeout, and no automatic retry.
+
+Not covered: the workflow itself, the model provider's retention, and the
+operator's n8n instance configuration. Those are the operator's agreement and
+responsibility, and neither the code nor the tests can verify them. The
+assistant is optional; with no URL configured nothing is attempted.
+
 ## Sessions
 
 `security/sessions.py`.

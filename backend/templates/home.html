@@ -1,6 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ brand.site_name }} — {{ brand.tagline }}{% endblock %}
 
+{% block head %}
+{# Structured data is used only where the page genuinely is the site's front
+   door. It names the site, its canonical URL and the search endpoint the page
+   actually serves; nothing here claims ratings, reviews or courses that do not
+   exist. The nonce is required because CSP covers every <script>, including
+   application/ld+json. #}
+<script type="application/ld+json" nonce="{{ request.state.csp_nonce }}">{{ {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": brand.site_name,
+  "url": canonical_url,
+  "description": brand.tagline,
+  "inLanguage": "en",
+  "isAccessibleForFree": true,
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {"@type": "EntryPoint", "urlTemplate": canonical_url.rstrip("/") + "/search?q={search_term_string}"},
+    "query-input": "required name=search_term_string"
+  }
+} | tojson }}</script>
+{% endblock %}
+
 {% from "_icons.html" import icon %}
 {% block content %}
 <section class="ev-feed" id="ev-feed">
@@ -123,6 +145,27 @@
     </div>
     <div class="hero-stat ev-count">
       <div class="n" data-target="{{ site.projects }}">0</div><div class="l">Projects</div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- assistant
+       A single honest entry point next to the tutor. It says what the assistant
+       is (an AI workflow), what it is not (a person, or a source of truth), and
+       offers the grounded tutor as the alternative. No fake "online" badge. -->
+  <section class="section assistant-cta ev-reveal" aria-labelledby="ev-assistant-cta">
+    <div class="panel assistant-cta-inner">
+      <div>
+        <span class="chip accent">{{ icon("spark", 13) }} AI assistant</span>
+        <h2 id="ev-assistant-cta" class="mt-sm">Stuck? Ask in plain language.</h2>
+        <p class="muted">
+          Explain a concept, work through a traceback, or turn your syllabus into a study plan.
+          It runs on an AI workflow, it is labelled as AI, and it will say when it does not know.
+        </p>
+      </div>
+      <div class="assistant-cta-actions">
+        <a class="btn btn-primary" href="/assistant">Ask the assistant {{ icon("chevron", 14) }}</a>
+        <a class="btn btn-ghost" href="/tutor">Try the grounded tutor</a>
+      </div>
     </div>
   </section>
 

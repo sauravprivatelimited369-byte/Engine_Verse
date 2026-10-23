@@ -35,6 +35,7 @@ push either way.
 ## Contents
 
 - [What you can do](#what-you-can-do)
+- [AI assistant](#ai-assistant-optional)
 - [Architecture](#architecture)
 - [Run it locally](#run-it-locally)
 - [Tests and checks](#tests-and-checks)
@@ -56,6 +57,7 @@ push either way.
 | **Track**: dashboard, streak heatmap and portfolio of completed work | ✓ On this device | ✓ Across devices |
 | **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |
 | **Help**: support and feedback, privacy and terms, a 404 page | ✓ (feedback through GitHub issues) | ✓ |
+| **Ask**: an AI student copilot on `/assistant` and a floating launcher, powered by the operator's n8n workflow | n/a — no server to forward to; the page says so | ✓ when `ENGINEVERSE_ASSISTANT_URL` is configured |
 | Accounts, two-factor sign-in, community posts, leaderboard, certificates | n/a | ✓ |
 
 ### Code playground
@@ -75,6 +77,35 @@ Each language runs on its real compiler or interpreter. Nothing is simulated.
   configures one. Production defaults to `ENGINEVERSE_JUDGE=disabled`.
 
 More detail on every feature is in [docs/FEATURES.md](docs/FEATURES.md).
+
+## AI assistant (optional)
+
+`/assistant` and the floating launcher are a **student copilot**: general
+questions, debugging help, study plans and project advice, answered by an AI
+workflow the operator runs. It is a separate surface from the
+[retrieval-grounded study tutor](#what-you-can-do), which answers only from this
+site's own notes and cites them.
+
+- The assistant is labelled as AI everywhere. It is never presented as a person,
+  and it is hidden entirely when no workflow is connected — the page explains the
+  state rather than showing a composer that can only fail.
+- The browser never contacts n8n. It posts to `/api/assistant/chat` on this
+  origin, and `backend/engineverse/assistant.py` forwards a bounded request to
+  the webhook URL in `ENGINEVERSE_ASSISTANT_URL`. The URL, the token and the
+  workflow itself stay server-side, and the strict CSP (`connect-src 'self'`) is
+  unchanged. Bounded means: 1,200 characters, 60 questions/hour per address, a
+  45-second timeout, no redirect following, no retries and no conversation
+  stored on the server.
+- Setup is documented in [docs/ASSISTANT.md](docs/ASSISTANT.md), with importable
+  n8n templates in [`automation/n8n/`](automation/n8n/README.md).
+- **Verification is a command, not a claim:**
+  `python scripts/check_assistant.py` (or `--app https://your-origin`) sends a
+  real question and exits non-zero if it does not get an answer. The repository's
+  own tests verify the bridge against a local stand-in webhook; they cannot
+  verify your private workflow, and this README does not pretend otherwise.
+
+The GitHub Pages copy has no server, so it renders `/assistant` as an
+explanation and does not create a launcher.
 
 ## Architecture
 
@@ -158,9 +189,16 @@ Run everything from the repository root, as CI does.
 ```bash
 python -m pytest backend/tests -q                 # full suite, about 11 minutes
 python -m pytest backend/tests -q -m "not slow"   # skip real compile/run tests
+python -m pytest backend/tests/test_assistant.py backend/tests/test_n8n_automation.py -q
+python scripts/check_assistant.py                 # needs ENGINEVERSE_ASSISTANT_* configured
 
 npm install --prefix .toolchain/jsdom jsdom@26    # once, for the static-site checks
 node scripts/check_static_site.js site            # 64 checks on the exported pages
+node scripts/check_assistant_ui.js /tmp/assistant.html   # 24 assistant UI checks
+# The assistant page and widget, driven under jsdom (needs a workflow URL set):
+ENGINEVERSE_ASSISTANT_URL=https://n8n.example.test/webhook/test/chat \
+  ENGINEVERSE_DB_PATH=data/pages-export.sqlite python scripts/render_assistant_page.py --out /tmp/assistant.html
+node scripts/check_assistant_ui.js /tmp/assistant.html
 node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
 node scripts/check_browser_runtimes.js site       # needs the runtimes fetched above
 
@@ -231,6 +269,10 @@ release has been published yet, and the app is not on Google Play.
   - Forms have CSRF protection, and requests are rate-limited.
   - Content-Security-Policy uses per-request nonces.
   - TOTP two-factor sign-in and optional delivered codes are available.
+- The AI assistant sends only your question, a random per-tab conversation id
+  and the page path to the operator's workflow — no account, email or IP. The
+  transcript stays in that browser tab, and the server stores no conversation.
+  The `/privacy` page states this in full.
 - No secrets, keystores or learner data are committed. Release signing uses
   repository secrets only.
 
@@ -255,6 +297,10 @@ Don't use a public issue.
   responsibility.
 - **Opportunity deadlines change.** The page links to official sites and does
   not copy dates. A weekly CI job checks the links.
+- **The AI assistant is only as good as the operator's workflow.** It is
+  unavailable when no workflow is configured, and its answers can be wrong. It
+  cannot run code, browse the web or read your account. Nothing in this
+  repository verifies the quality of a private n8n workflow.
 
 ## Documentation
 
@@ -269,6 +315,9 @@ Don't use a public issue.
 | Content policy and note format | [docs/CONTENT.md](docs/CONTENT.md), [docs/NOTE_TEMPLATE.md](docs/NOTE_TEMPLATE.md) |
 | Programming academy | [docs/ACADEMY.md](docs/ACADEMY.md) |
 | Labs (APIs, studio, workflows, swarm) | [docs/ADVANCED_CAPABILITIES.md](docs/ADVANCED_CAPABILITIES.md) |
+| AI assistant, n8n setup and error states | [docs/ASSISTANT.md](docs/ASSISTANT.md) |
+| Automation workflows A–F, costs and manual steps | [docs/N8N_AUTOMATION.md](docs/N8N_AUTOMATION.md) |
+| Student growth plan and measurement honesty | [docs/GROWTH.md](docs/GROWTH.md) |
 | PostgreSQL schema | [db/postgres/README.md](db/postgres/README.md) |
 | Java sandbox | [sandbox-java/README.md](sandbox-java/README.md) |
 | Past audits and incidents | [docs/AUDIT_2026-10-18.md](docs/AUDIT_2026-10-18.md), [docs/AUDIT_2026-10-19.md](docs/AUDIT_2026-10-19.md), [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) |

@@ -342,6 +342,19 @@ jobs:
           node scripts/check_static_site.js site
           node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
 
+      - name: The assistant answers, fails and retries in a real DOM
+        # Renders /assistant from the real template with a workflow URL set, then
+        # drives backend/static/js/assistant.js under jsdom: success, upstream
+        # 502 + retry, 429 recovery, double submit, and an HTML reply that must
+        # be shown as text. No network is used; fetch is stubbed in the check.
+        env:
+          ENGINEVERSE_ASSISTANT_URL: https://n8n.example.test/webhook/test/chat
+          ENGINEVERSE_DB_PATH: data/pages-export.sqlite
+          ENGINEVERSE_SIGNIN: optional
+        run: |
+          python scripts/render_assistant_page.py --out /tmp/assistant-page.html
+          node scripts/check_assistant_ui.js /tmp/assistant-page.html
+
       - name: No CDN or third-party origins are referenced
         run: |
           if grep -rnE 'https?://[^"]*(cdn|unpkg|jsdelivr|googleapis|gstatic)' \

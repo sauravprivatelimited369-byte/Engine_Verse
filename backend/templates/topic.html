@@ -3,6 +3,23 @@
 {% from "_quiz.html" import quiz_card with context %}
 {% block title %}{{ topic.title }} — {{ brand.site_name }}{% endblock %}
 {% block description %}{{ topic.summary }}{% endblock %}
+{% block head %}
+{# A published topic page is a learning resource, so it may say so. The fields
+   are the ones this page can actually evidence: no rating, no author claim and
+   no duration beyond the stored estimate. #}
+<script type="application/ld+json" nonce="{{ request.state.csp_nonce }}">{{ {
+  "@context": "https://schema.org",
+  "@type": "LearningResource",
+  "name": topic.title,
+  "description": topic.summary,
+  "url": canonical_url,
+  "learningResourceType": "Lesson",
+  "isAccessibleForFree": true,
+  "inLanguage": "en",
+  "timeRequired": "PT" ~ topic.est_minutes ~ "M",
+  "isPartOf": {"@type": "WebSite", "name": brand.site_name}
+} | tojson }}</script>
+{% endblock %}
 {% block content %}
 
 <div class="layout-2">
@@ -28,6 +45,7 @@
                   aria-pressed="false">☆ Save</button>
         {% endif %}
       </div>
+      {% with share_title = topic.title %}{% include "_share.html" %}{% endwith %}
     </header>
 
     {% if topic.accuracy_state != 'reviewed' %}

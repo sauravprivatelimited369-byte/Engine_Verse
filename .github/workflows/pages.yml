@@ -16,7 +16,7 @@ on:
     branches:
       - main
       # Working branch: deploys now; main takes over once it is merged.
-      - arena/38eff4a6-engine-verse
+      - arena/6f775e41-engine-verse
   workflow_dispatch:
 
 permissions:

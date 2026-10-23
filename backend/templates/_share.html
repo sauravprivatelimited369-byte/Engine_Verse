@@ -1,0 +1,28 @@
+{# ==========================================================================
+   Share row for a single piece of content.
+
+   Native share where the browser has it (a phone gets the real sheet), and
+   copy-link everywhere else. The WhatsApp and Telegram links are ordinary
+   links to those services' own share endpoints: no SDK, no third-party script,
+   nothing loaded on this page. The URL shared is the canonical one, so a
+   recipient does not arrive on a loopback or preview origin.
+   ========================================================================== #}
+{% from "_icons.html" import icon %}
+{% set share_text = share_title ~ ' — ' ~ brand.site_name %}
+<div class="share-row" data-ev-share>
+  <span class="tiny muted">Share this page</span>
+  <button type="button" class="btn btn-ghost btn-sm" data-ev-share-native hidden>
+    {{ icon("globe", 14) }} Share
+  </button>
+  <button type="button" class="btn btn-ghost btn-sm" data-ev-share-copy data-share-url="{{ canonical_url }}">
+    Copy link
+  </button>
+  <a class="btn btn-ghost btn-sm" rel="noopener noreferrer" target="_blank"
+     href="https://wa.me/?text={{ (share_text ~ ' ' ~ canonical_url) | urlencode }}">
+    WhatsApp<span class="sr-only"> (opens in a new tab)</span>
+  </a>
+  <a class="btn btn-ghost btn-sm" rel="noopener noreferrer" target="_blank"
+     href="https://t.me/share/url?url={{ canonical_url | urlencode }}&text={{ share_text | urlencode }}">
+    Telegram<span class="sr-only"> (opens in a new tab)</span>
+  </a>
+</div>

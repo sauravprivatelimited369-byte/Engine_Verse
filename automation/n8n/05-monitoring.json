@@ -1,0 +1,81 @@
+{
+  "name": "EngineVerse \u00b7 Operational monitoring",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f1",
+      "name": "On workflow error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reduce a failed execution to what an administrator needs, without copying\n// user content or credentials into an email.\nconst data = $input.first().json || {};\nconst error = data.execution && data.execution.error ? data.execution.error : (data.error || {});\nconst message = String(error.message || \"unknown error\").slice(0, 400)\n  .replace(/([?&](token|key|secret|password)=)[^&\\s]+/gi, \"$1[redacted]\")\n  .replace(/https?:\\/\\/[^\\s\"']+/g, \"[url]\");\nreturn [{\n  json: {\n    workflow: (data.workflow && data.workflow.name) || \"unknown workflow\",\n    executionId: data.execution && data.execution.id ? String(data.execution.id) : \"unknown\",\n    lastNode: (data.execution && data.execution.lastNodeExecuted) || \"unknown\",\n    message,\n    at: new Date().toISOString(),\n  },\n}];"
+      },
+      "id": "f2",
+      "name": "Redact the report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "YOUR-SENDER@example.org",
+        "toEmail": "YOUR-ADMIN@example.org",
+        "subject": "={{ 'EngineVerse automation failed: ' + $json.workflow }}",
+        "text": "={{ 'Workflow: ' + $json.workflow + '\\nExecution: ' + $json.executionId + '\\nLast node: ' + $json.lastNode + '\\nWhen: ' + $json.at + '\\nMessage: ' + $json.message + '\\n\\nOpen the n8n execution list to inspect it. This alert contains no student question or reply.' }}",
+        "options": {}
+      },
+      "id": "f3",
+      "name": "Alert the administrator",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        460,
+        0
+      ],
+      "notes": "Attach an SMTP credential. Add a Slack or Telegram node if you prefer that channel.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "On workflow error": {
+      "main": [
+        [
+          {
+            "node": "Redact the report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redact the report": {
+      "main": [
+        [
+          {
+            "node": "Alert the administrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
