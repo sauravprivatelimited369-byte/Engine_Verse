@@ -226,13 +226,38 @@ import sqlite3
 import sys
 
 
+def _first_boundary(buf):
+    """Length of the shortest prefix of ``buf`` that is a complete statement.
+
+    Scans every ``;`` and asks sqlite about the prefix ending there, so
+    semicolons inside string literals, comments and trigger bodies never
+    split a statement, while several statements written on ONE line
+    (``CREATE TABLE t(a); INSERT INTO t VALUES (1); SELECT * FROM t;``)
+    each get their own boundary. The old code only asked whether the whole
+    accumulated buffer *ended* with a complete statement and then executed
+    it as a single unit, which made sqlite3 reject one-line scripts with
+    "You can only execute one statement at a time."
+    """
+    idx = buf.find(";")
+    while idx != -1:
+        if sqlite3.complete_statement(buf[: idx + 1]):
+            return idx + 1
+        idx = buf.find(";", idx + 1)
+    return None
+
+
 def statements(sql):
     buf = ""
     for line in sql.splitlines(True):
         buf += line
-        if sqlite3.complete_statement(buf):
-            stmt = buf.strip()
-            buf = ""
+        # Peel off every complete statement the buffer now holds; a single
+        # line may terminate several of them.
+        while True:
+            end = _first_boundary(buf)
+            if end is None:
+                break
+            stmt = buf[:end].strip()
+            buf = buf[end:]
             if stmt:
                 yield stmt
     tail = buf.strip()
@@ -502,11 +527,16 @@ elif shutil.which("dotnet"):
 if _RUBY_WASM_RUNNER.is_file() and shutil.which("node"):
     RUNNERS["ruby"] = {
         "file": "main.rb",
-        "run": ["node", str(_RUBY_WASM_RUNNER), "main.rb"],
+        # Node 22's WASI host calls segfault intermittently when V8 tiers up
+        # "fast API calls" (nodejs/node#53087): measured 9/20 SIGSEGV on cold
+        # CRuby-on-WASM starts, reaching learners as a random "runtime crashed".
+        # Disabling that optimisation is the documented workaround; the runner
+        # script also sets it for direct invocations.
+        "run": ["node", "--no-turbo-fast-api-calls", str(_RUBY_WASM_RUNNER), "main.rb"],
         "nproc": 64,
-        # CRuby-on-WASM inside Node segfaults on a fraction of cold starts in
-        # some containers. Re-run the interpreter once; the submission itself
-        # is unchanged and its working directory is discarded either way.
+        # Backstop for any remaining host-side crash: re-run the interpreter
+        # once; the submission itself is unchanged and its working directory is
+        # discarded either way.
         "retry_host_crash": 2,
         "vlimit": 16 * 1024 * 1024,
         "nofile": 256,
