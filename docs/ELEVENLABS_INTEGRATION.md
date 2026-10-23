@@ -246,17 +246,32 @@ the pages and `/api/voice/*`; nothing new needs to be hosted.
    `ENGINEVERSE_VOICE_API_URL=https://your-engineverse-host`. The Pages workflow
    bakes that origin into the static copy.
 
-5. Re-run the **GitHub Pages** workflow (or push). Verify:
+5. Re-run the **GitHub Pages** workflow (or push). The workflow now gates the
+   release in both directions (`scripts/verify_voice_api.py`):
+
+   | `ENGINEVERSE_VOICE_API_URL` | What the build requires | What ships |
+   | --- | --- | --- |
+   | set | a bare HTTPS origin that answers `GET /api/voice/status` with a status payload and allows the Pages origin on a real `OPTIONS` preflight for `POST /api/voice/speech`; the exported `apiBase` must equal it | voice controls talk to that backend |
+   | unset | no backend is contacted; `apiBase` must be empty | the page states that voice is not connected and offers no Listen button |
+
+   A configured but unreachable backend fails the build instead of publishing a
+   dead control, and neither mode may publish a key, agent id or signed URL.
+
+   Verify the backend by hand as well:
 
    ```bash
+   python scripts/verify_voice_api.py --url https://your-engineverse-host
    curl -s https://your-engineverse-host/api/voice/status | python -m json.tool
    ```
 
-   Then open the live Pages site, a topic page, and press Listen.
+   Then open the live Pages site, a topic page, and press Listen. A green Pages
+   run proves the *configuration*; it does not prove ElevenLabs answered for
+   your account. That needs the live test in section 9.
 
 If you do not host the backend, everything above still builds; the Pages copy
-simply ships without voice controls. **Do not publish an API key to make the
-static site "work"** — it cannot be done safely.
+ships with voice shown as explicitly unavailable rather than silently
+disappearing. **Do not publish an API key to make the static site "work"** — it
+cannot be done safely.
 
 ---
 

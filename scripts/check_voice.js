@@ -491,6 +491,30 @@ async function main() {
     check("tutor: microphone is never requested without an agent", calls.getUserMedia === 0);
   }
 
+  // ------------------------------- 13. no API origin: honest, not silent
+  {
+    const { d, calls } = await boot({ apiBase: "", withTutor: true });
+    const notice = d.querySelector(".voice-unavailable");
+    check("unconfigured: the page says voice is not connected", Boolean(notice), "no notice rendered");
+    check(
+      "unconfigured: the notice is readable text, not an empty placeholder",
+      Boolean(notice) && /not connected/i.test(notice.textContent) && notice.textContent.length > 40,
+      notice && notice.textContent,
+    );
+    check("unconfigured: the notice is a note, not a live region", Boolean(notice) && notice.getAttribute("role") === "note");
+    check("unconfigured: no Listen button is offered", d.querySelectorAll(".voice-listen").length === 0);
+    check("unconfigured: no request is sent to an empty endpoint", calls.fetch.length === 0, JSON.stringify(calls.fetch));
+    check("unconfigured: the tutor Start control is disabled", d.querySelector("#voice-start").disabled === true);
+    check(
+      "unconfigured: the tutor chip reports Not connected",
+      /Not connected/.test(d.querySelector("#voice-tutor-chip").textContent),
+      d.querySelector("#voice-tutor-chip").textContent,
+    );
+    check("unconfigured: no microphone is requested", calls.getUserMedia === 0);
+    check("unconfigured: the page is marked voice-off", d.documentElement.classList.contains("voice-off"));
+    check("unconfigured: one notice only", d.querySelectorAll(".voice-unavailable").length === 1);
+  }
+
   if (failures.length) {
     console.error(`voice checks: ${failures.length} failed, ${passes} passed`);
     for (const failure of failures) console.error(`  FAIL ${failure}`);
