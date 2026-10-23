@@ -433,8 +433,8 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         "static_export": _static_export(),
         # The live app serves the voice API from its own origin. The static
         # export replaces this with a configured public API URL (see
-        # scripts/export_pages.py); an empty value means "no backend pinned",
-        # and the voice controls then do not appear at all on Pages.
+        # scripts/export_pages.py). With an empty value, the browser reader
+        # still speaks with a device voice, but no natural voice API is called.
         "voice_api_base": _voice_api_base(),
         "canonical_url": _canonical_url(request.url.path, dict(request.query_params)),
         "site_root": _site_root(),

@@ -59,6 +59,52 @@
   border: 1px solid var(--line);
 }
 
+.voice-page-reader {
+  margin: 10px 0 18px;
+  padding: 2px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--well);
+}
+
+.voice-chooser {
+  max-width: 100%;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.voice-chooser summary {
+  cursor: pointer;
+  padding: 5px 6px;
+}
+
+.voice-chooser[open] {
+  order: 3;
+  flex: 1 0 100%;
+  padding: 8px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--well);
+}
+
+.voice-chooser .voice-settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.voice-chooser .voice-settings-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.voice-chooser .voice-settings-grid select {
+  max-width: 100%;
+}
+
+.voice-chooser p {
+  margin: 8px 0 0;
+}
+
 .voice-state {
   flex: 1 1 180px;
   min-width: 0;
@@ -69,6 +115,7 @@
 
 .voice-controls button:focus-visible,
 .voice-controls select:focus-visible,
+.voice-controls summary:focus-visible,
 .voice-tutor button:focus-visible,
 .voice-tutor select:focus-visible,
 .voice-tutor summary:focus-visible {
@@ -179,6 +226,9 @@
   .voice-settings-grid select {
     max-width: none;
     margin-bottom: 8px;
+  }
+  .voice-chooser .voice-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

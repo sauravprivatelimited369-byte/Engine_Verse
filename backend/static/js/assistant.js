@@ -255,7 +255,7 @@
 
     body.append(log, suggestions, form, error, retry);
 
-    function addMessage(role, text) {
+    function addMessage(role, text, readable = false) {
       const wrap = el("div", { class: `ev-asst-msg ev-asst-${role}` });
       const who = el("span", { class: "ev-asst-who" }, role === "user" ? "You" : "Assistant");
       const bubble = el("div", { class: "ev-asst-bubble" });
@@ -263,6 +263,11 @@
       else bubble.textContent = text;
       wrap.append(who, bubble);
       log.append(wrap);
+      // The actual answer (not the welcome or Thinking placeholder) can be
+      // spoken on demand, including on a static site with only device voices.
+      if (readable) {
+        try { window.EV?.voice?.enhance?.(wrap, "Assistant reply"); } catch (_) { /* optional */ }
+      }
       if (log.children.length > 60) log.firstElementChild.remove();
       log.scrollTop = log.scrollHeight;
       return wrap;
@@ -324,7 +329,7 @@
       setPending(true);
       try {
         const result = MODE === "proxy" ? await sendProxy(text) : await sendDirect(text);
-        addMessage("assistant", result.answer);
+        addMessage("assistant", result.answer, true);
         error.hidden = true;
         retry.hidden = true;
       } catch (err) {
