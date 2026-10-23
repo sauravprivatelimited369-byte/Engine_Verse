@@ -844,6 +844,7 @@
       this.bracketInfo = elements.bracketInfo;
       this.acBox = elements.acBox;
       this.symbolBar = elements.symbolBar;
+      this.shell = this.textarea ? this.textarea.closest(".cl-editor-shell") : null;
       this.onRunShortcut = onRunShortcut;
       this.onChange = onChange;
       this.spec = null;
@@ -936,6 +937,7 @@
 
     _replaceRange(start, end, insertion, caretAfter) {
       const ta = this.textarea;
+      this._setEditing(true);
       const val = ta.value;
       ta.value = val.slice(0, start) + insertion + val.slice(end);
       ta.setSelectionRange(caretAfter, caretAfter);
@@ -952,7 +954,13 @@
         nums += i + "\n";
       }
       this.gutter.textContent = nums;
-      this.highlightCode.innerHTML = highlightSource(val, this.spec);
+      try {
+        this.highlightCode.innerHTML = highlightSource(val, this.spec);
+      } catch (_err) {
+        // A highlighter bug must never take the editor down with it: the
+        // mirror is only decoration, so fall back to plain escaped text.
+        this.highlightCode.textContent = val;
+      }
       this._updateCursorStatus();
     }
 
@@ -1072,17 +1080,72 @@
       }
     }
 
+    /* The one switch for the "learner is editing" look. See the long note in
+       _bind() and in codelab.css for why this must not be spread over two
+       mechanisms again. */
+    _setEditing(on) {
+      if (this.shell) this.shell.classList.toggle("is-editing", Boolean(on));
+    }
+
     _bind() {
       const ta = this.textarea;
-      const editorShell = ta.closest(".cl-editor-shell");
-      ta.addEventListener("focus", () => {
-        if (editorShell) editorShell.classList.add("is-editing");
-      });
+
+      /* ------------------------------------------------------------------
+         Editing state
+
+         While the learner is typing, the textarea paints its own characters
+         and the mirrored syntax layer is hidden (see codelab.css). The class
+         that drives the *whole* state is set here, from every way an edit can
+         begin - not from the focus event alone. A soft keyboard, IME
+         composition or an Android WebView can open an editing session without
+         a clean focus/blur pair, and when the class and the :focus colour
+         disagreed the editor lost both layers and showed a blank slab while
+         the caret moved. setEditing() is the single switch.
+       ------------------------------------------------------------------ */
+      const setEditing = (on) => this._setEditing(on);
+      const startEditing = () => setEditing(true);
+
+      ta.addEventListener("pointerdown", startEditing);
+      ta.addEventListener("touchstart", startEditing, { passive: true });
+      ta.addEventListener("focus", startEditing);
+      ta.addEventListener("keydown", startEditing);
+      ta.addEventListener("compositionstart", startEditing);
       ta.addEventListener("blur", () => {
-        if (editorShell) editorShell.classList.remove("is-editing");
+        // Tapping a quick-symbol key or an autocomplete chip blurs the
+        // textarea for a moment before it is re-focused; dropping the class
+        // on that tick made the line flicker between two renderers.
+        requestAnimationFrame(() => {
+          if (document.activeElement !== ta) setEditing(false);
+        });
       });
       ta.addEventListener("scroll", () => this._syncScroll());
       ta.addEventListener("click", () => this._updateCursorStatus());
+
+      /* On a phone the soft keyboard covers the bottom of the window. The
+         browser scrolls the caret into view, but the editor slab itself is
+         sized in dvh and its lower lines can still sit behind the keyboard -
+         which reads as "my code hides when I type". When the visual viewport
+         shrinks while the editor is focused, lift the page by the overlap. */
+      const vv = window.visualViewport;
+      if (vv) {
+        let pending = false;
+        const liftAboveKeyboard = () => {
+          pending = false;
+          if (document.activeElement !== ta || !this.shell) return;
+          if (!window.matchMedia("(max-width: 960px)").matches) return;
+          const rect = this.shell.getBoundingClientRect();
+          const visibleBottom = vv.offsetTop + vv.height;
+          const overlap = rect.bottom - visibleBottom;
+          if (overlap > 0) {
+            window.scrollBy(0, overlap + 12);
+          }
+        };
+        vv.addEventListener("resize", () => {
+          if (pending) return;
+          pending = true;
+          requestAnimationFrame(liftAboveKeyboard);
+        });
+      }
       ta.addEventListener("keyup", (ev) => {
         if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(ev.key)) {
           this._updateCursorStatus();
@@ -1090,6 +1153,9 @@
       });
 
       ta.addEventListener("input", () => {
+        // Some IMEs deliver text without a keydown at all, so the input event
+        // is the last word on "the learner is typing right now".
+        startEditing();
         this.render();
         this._syncScroll();
         this._updateAutocomplete();

@@ -161,13 +161,36 @@ class TestClientSideContract:
         assert "response.status === 403" in source
 
     def test_codelab_editor_shows_native_text_while_typing(self):
+        """The typed characters must be painted by exactly one layer.
+
+        The editor has two text layers: the syntax mirror and the textarea
+        itself. While editing, the mirror is hidden and the textarea paints its
+        own text. That used to be two mechanisms - JS hid the mirror, and a
+        separate :focus rule restored the text colour. When a soft keyboard or
+        an Android WebView opened an editing session without the pseudo-class
+        being repainted, both layers were blank: the caret moved over an empty
+        slab. The state is now driven by one class, and CSS also honours
+        :focus on its own, so neither half can hide the text on its own.
+        """
         source = (STATIC_JS / "codelab.js").read_text(encoding="utf-8")
         stylesheet = (REPO / "backend" / "static" / "css" / "codelab.css").read_text(encoding="utf-8")
         assert 'ta.addEventListener("focus"' in source
         assert 'ta.addEventListener("blur"' in source
-        assert '.cl-editor-shell.is-editing .cl-highlight' in stylesheet
-        assert '.cl-textarea:focus {' in stylesheet
+        # Every way an edit can start sets the same class.
+        for event in ("pointerdown", "touchstart", "keydown", "compositionstart"):
+            assert f'ta.addEventListener("{event}", startEditing' in source
+        assert "this._setEditing(true);" in source
+        # The mirror is hidden per state...
+        assert '.cl-editor-shell.is-editing .cl-highlight {' in stylesheet
+        assert '.cl-editor-shell:has(.cl-textarea:focus) .cl-highlight {' in stylesheet
+        # ...and the text colour is restored under the *same* two conditions,
+        # never under :focus alone.
+        assert """.cl-textarea:focus,
+.cl-editor-shell.is-editing .cl-textarea {""" in stylesheet
         assert '-webkit-text-fill-color: var(--cl-editor-text);' in stylesheet
+        # app.css styles every textarea as a form field; inside the editor that
+        # painted a rounded, opaque card over the code stage.
+        assert "border-radius: 0;" in stylesheet
 
     def test_console_never_renders_a_blank_result(self):
         source = (STATIC_JS / "codelab.js").read_text(encoding="utf-8")

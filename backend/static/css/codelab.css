@@ -458,6 +458,14 @@
   overflow-wrap: normal;
   overflow: auto;
   box-sizing: border-box;
+  /* app.css styles every textarea as a form field (12-14px radius, inner
+     shadow, 120px min-height). Inside the editor that drew a rounded, opaque
+     card over the code stage - the white notches seen in the top corners - so
+     the two layers are pinned flush to the editor slab instead. */
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 0;
+  max-height: none;
 }
 
 .cl-highlight {
@@ -480,13 +488,30 @@
   resize: none;
   -webkit-text-fill-color: transparent;
 }
-/* While editing, use the textarea's own text instead of relying on the
-   mirrored syntax layer. This keeps typed characters visible in browsers and
-   Android WebViews that composite transparent textarea text inconsistently. */
+/* Editing state: the textarea paints its own text and the mirrored syntax
+   layer steps aside.
+
+   Both halves are now driven by the *same* selectors - the JS `.is-editing`
+   class on the shell and the element's own `:focus`. Before this, the JS class
+   only hid the mirror while a separate `.cl-textarea:focus` rule was the sole
+   thing restoring the text colour. On a phone (soft keyboard, IME composition,
+   Android WebView, a browser that does not repaint `-webkit-text-fill-color`
+   on focus) that pseudo-class can be missed or never repainted, which left the
+   mirror hidden AND the textarea text transparent: the caret moved and the
+   character count grew, but the learner could not see a single letter. With
+   the colour declared per state like this, every combination of "class on/off"
+   and ":focus matching/not matching" still paints the text exactly once. */
 .cl-editor-shell.is-editing .cl-highlight {
   visibility: hidden;
 }
-.cl-textarea:focus {
+/* Same rule again for browsers that never got the class (a missed focus event
+   on a soft keyboard). Kept as its own rule so an engine without :has() drops
+   only this fallback instead of the whole declaration. */
+.cl-editor-shell:has(.cl-textarea:focus) .cl-highlight {
+  visibility: hidden;
+}
+.cl-textarea:focus,
+.cl-editor-shell.is-editing .cl-textarea {
   color: var(--cl-editor-text);
   background: var(--cl-editor-bg);
   -webkit-text-fill-color: var(--cl-editor-text);

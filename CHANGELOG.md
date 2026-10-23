@@ -114,6 +114,24 @@ release.
 
 ### Fixed
 
+- **CodeLab no longer hides what you are typing.** The editor draws text with
+  two layers: a syntax-highlighted mirror, and the textarea itself. While you
+  edit, the mirror is hidden and the textarea paints the characters. Those two
+  halves were driven by different mechanisms - JavaScript added an
+  `.is-editing` class that hid the mirror, and a separate
+  `.cl-textarea:focus` rule was the only thing that restored the text colour.
+  On a soft keyboard, an IME or an Android WebView that misses or never
+  repaints the pseudo-class, the mirror was hidden while the textarea text
+  stayed transparent: the caret moved and the character count grew, but the
+  slab looked empty. One state (the class, mirrored by `:focus` in CSS) now
+  owns both halves, and every way an edit can start - focus, pointerdown,
+  touchstart, keydown, IME input, the quick-symbol keys and autocomplete -
+  sets it, so no combination can hide both layers. The editor slab also no
+  longer inherits the site-wide form-field styling (12px radius, inner shadow,
+  120px min-height) from `app.css`, which had been drawing a rounded opaque
+  card over the code area, and a highlighter error now falls back to plain
+  text instead of an empty mirror. On phones, the page lifts the editor clear
+  of the on-screen keyboard when the visual viewport shrinks mid-edit.
 - **The CodeLab mobile view switcher is a valid tablist again.** The Run button
   sat inside the element with `role="tablist"`, which is a child a tablist may
   not contain (axe `aria-required-children`, severity critical). The three tabs
