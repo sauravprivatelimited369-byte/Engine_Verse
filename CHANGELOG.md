@@ -94,3 +94,9 @@ release.
   instead of the site tagline.
 - The social-preview image URL no longer contains a double slash in the static
   export.
+- The Pages workflow no longer fails after a successful build on a branch the
+  `github-pages` environment does not allow: only `main` deploys, every other
+  push still builds and verifies the site.
+- The Android tool-chain test now asserts the AGP **major** version instead of a
+  single patch, so a dependabot bump no longer turns `main` red for a reason the
+  bump did not cause.

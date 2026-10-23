@@ -9,7 +9,7 @@ runs on hardware you control.
                         ┌────────────────────────────────────────────┐
    browser / PWA ──────►│  Python (FastAPI + Jinja2 SSR)             │
    (no build step)      │                                            │
-                        │  web/pages.py       65 server-rendered     │
+                        │  web/pages.py       66 server-rendered     │
                         │  web/auth_pages.py  auth + settings + CMS  │
                         │  web/api.py         54 JSON endpoints      │
                         │  engineverse/*      services & domain      │
