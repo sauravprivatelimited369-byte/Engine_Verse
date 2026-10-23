@@ -1,22 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FORGE mark (anvil + hammer spark), from backend/static/icons/favicon.svg,
-     scaled into the 108dp adaptive-icon canvas inside the 66dp safe zone.
-     Keep in step with the SVG; scripts/gen_brand_icons.py covers the PNGs. -->
+<!-- MERIDIAN mark (an M inside the meridian ring, with the orbit's signal dot),
+     from backend/static/icons/favicon.svg, scaled into the 108dp adaptive-icon
+     canvas inside the 66dp safe zone. Keep in step with the SVG;
+     scripts/gen_brand_icons.py covers the PNGs. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:scaleX="1.5"
-        android:scaleY="1.5"
-        android:translateX="6"
-        android:translateY="6">
+    <group android:scaleX="1.5" android:scaleY="1.5" android:translateX="6" android:translateY="6">
         <path
-            android:pathData="M45,6.5 L47,11.3 L52,13.3 L47,15.3 L45,20.1 L43,15.3 L38,13.3 L43,11.3 Z"
-            android:fillColor="#FBBF24" />
+            android:pathData="M32,11 A21,21 0 1,1 31.99,11"
+            android:strokeColor="#DCE7FF"
+            android:strokeAlpha="0.34"
+            android:strokeWidth="1.6"
+            android:fillColor="#00000000" />
         <path
-            android:pathData="M11,24.5 H36 Q43.5,26.8 50.5,29.4 Q43.5,31.6 36,32.8 H32.5 V37.8 L35.8,40.6 V43.8 H41 V49.6 H16 V43.8 H21.2 V40.6 L24.5,37.8 V32.8 H11 Z"
-            android:fillColor="#FFF7ED" />
+            android:pathData="M20,42 L20,24 L32,36 L44,24 L44,42"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M38.6,11.6 A21,21 0 0,1 52.4,27.4"
+            android:strokeColor="#5C95F5"
+            android:strokeWidth="2.6"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M52.4,27.4 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"
+            android:fillColor="#5C95F5" />
     </group>
 </vector>

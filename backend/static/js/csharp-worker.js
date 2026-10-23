@@ -1,4 +1,4 @@
-/* Forge C# browser worker (static GitHub Pages copy).
+/* Meridian C# browser worker (static GitHub Pages copy).
  *
  * Runs the real Roslyn compiler on the .NET WebAssembly runtime, from the
  * same @live-codes/blazor-wasm bundle the hosted judge executes under

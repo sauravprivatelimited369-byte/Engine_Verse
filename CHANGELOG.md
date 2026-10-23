@@ -1,6 +1,6 @@
 # Changelog
 
-Notable changes to Forge (formerly EngineVerse). The format follows
+Notable changes to Meridian (formerly EngineVerse). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are not yet
 tagged, so everything below is listed under **Unreleased** until the first
 release.
@@ -9,21 +9,45 @@ release.
 
 ### Changed
 
-- **The product is now FORGE — "Where engineers are made."** A full identity
-  rebuild (see [docs/BRAND.md](docs/BRAND.md) for the naming rationale and the
-  runner-up names): new name and tagline everywhere a learner looks, a new
-  anvil-and-spark mark (favicon, PWA icons, Android launcher/splash, store
-  listing — regenerate with `scripts/gen_brand_icons.py`), and a new
-  "Obsidian Forge" tempered-glass design system across the website, the
-  GitHub Pages copy and the Android app: smoked/frosted glass over warm
-  charcoal (dark) or warm paper (light), one ember accent family
-  (`#f97316` / `#fbbf24` / `#f43f5e`), machined corners, and a rebuilt
-  homepage ("Where engineers are forged", the Heat → Strike → Temper cycle,
-  and a short "Why Forge?" manifesto). The Android release asset is now
-  `Forge.apk`. Deliberately unchanged, so nothing breaks: all URLs and the
-  Pages base path, the `engineverse` package and `ENGINEVERSE_*` settings,
-  stored-progress formats and storage keys (old exports still import), the
-  Android application id, and acceptance of legacy `EngineVerse.apk` links.
+- **The product is now MERIDIAN — "Engineering, studied properly."** This
+  replaces the previous name and theme completely (see
+  [docs/BRAND.md](docs/BRAND.md) for the naming rationale and the runner-up
+  names). New name and tagline everywhere a learner looks; a new mark (an M
+  inside a meridian ring with the orbit's signal dot: favicon, PWA icons,
+  Android launcher/splash, store listing — regenerate with
+  `scripts/gen_brand_icons.py`); and a rebuilt **"Meridian Glass"** identity
+  across the website, the GitHub Pages copy and the Android app.
+- **The homepage was rebuilt, not repainted.** It now leads with a reading
+  serif headline, a warm-paper canvas and a real workspace preview (today's
+  plan, with the actual topic and problem the catalogue picked), followed by a
+  library list with figures, the interactive four-step plan, the
+  Learn → Practise → Review loop, three feature rows showing real interface
+  previews, and a branch index. Every number comes from the catalogue; the
+  invented-proof patterns (floating glass chip collage, six-count stat strip,
+  gradient headline, "why our name" manifesto) are gone.
+- **New palette and type.** Warm paper (`#f5f2ea`), navy ink (`#10243d`) and one
+  signal blue (`#1d5bd6`) replace ember-on-obsidian; headings are now
+  **Newsreader**, a self-hosted reading serif (SIL OFL), with Inter retained for
+  interface and body copy. Glass is now light, hairline-bordered and reserved
+  for chrome and working surfaces, with solid, reduced-transparency,
+  forced-colors and print fallbacks. The new visual layer lives in
+  `backend/static/css/meridian.css` and re-skins every existing page through
+  the components `app.css` already defines.
+- **Course pages no longer paint headings in a language's brand colour.** The
+  catalogue stores a colour per language; it was applied to the `<h1>` and the
+  card titles, which failed contrast for several stored values and broke the
+  one-accent rule. The colour is now a short rule above the title (a marker,
+  not ink), so the text stays navy and every language still reads as distinct.
+- **Page headers got a measure.** The intro paragraph on every `page-hero`
+  (explore, practice, planner, programming, and the rest) is capped at 64
+  characters and set as a lede instead of stretching the full card width.
+- The Android release asset is now `Meridian.apk` (legacy `Meridian.apk` /
+  `EngineVerse.apk` links still validate), the Compose entry points are
+  `MeridianApp` / `MeridianTheme`, and the app palette matches the website.
+- **Deliberately unchanged, so nothing breaks:** all URLs and the Pages base
+  path, the `engineverse` package and `ENGINEVERSE_*` settings, the stored
+  progress format and `ev-*` storage keys (old exports still import), and the
+  Android application id.
 
 ### Fixed
 

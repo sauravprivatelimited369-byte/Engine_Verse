@@ -63,12 +63,26 @@ def test_forms_redirected_to_hosting_never_post():
     assert 'method="get"' in html and 'action="/EngineVerse/hosting/"' in html
 
 
+def _hero(html: str) -> str:
+    """The first screen only: what a reader is told before scrolling."""
+    return html.split("</section>", 1)[0]
+
+
 def test_static_home_page_makes_no_account_claims(client, monkeypatch):
-    """The Pages copy has no accounts, so the hero must not promise them."""
+    """The Pages copy has no accounts, so the hero must not promise them.
+
+    Asserted on meaning rather than on one sentence: the exported hero has to
+    say where progress lives (this browser), and must not tell a reader that an
+    account keeps it, or send them to a server this copy does not have. The
+    hosted copy is the mirror image. Copy may be rewritten; the claim may not.
+    """
     monkeypatch.setenv("ENGINEVERSE_STATIC_EXPORT", "1")
-    html = client.get("/").text
-    assert "One account keeps progress across devices" not in html
-    assert "Progress stays in this browser" in html
-    assert "self-hosted" not in html.split("</section>", 1)[0]
+    static_hero = _hero(client.get("/").text)
+    assert "this browser" in static_hero
+    assert "account keeps progress" not in static_hero
+    assert "self-hosted" not in static_hero
+
     monkeypatch.delenv("ENGINEVERSE_STATIC_EXPORT")
-    assert "One account keeps progress across devices" in client.get("/").text
+    hosted_hero = _hero(client.get("/").text)
+    assert "One account keeps progress across devices" in hosted_hero
+    assert "this browser" not in hosted_hero

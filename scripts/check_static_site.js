@@ -184,7 +184,7 @@ async function importCheck() {
   await feed("{not json");
   check("import: invalid JSON reported", /not valid JSON/.test($(d, "#ev-settings-status").textContent));
   await feed(JSON.stringify({ hello: "world" }));
-  check("import: foreign file refused", /not a Forge progress export/.test($(d, "#ev-settings-status").textContent));
+  check("import: foreign file refused", /not a Meridian progress export/.test($(d, "#ev-settings-status").textContent));
   await feed(JSON.stringify({
     format: "engineverse-local-progress", version: 1,
     profile: {

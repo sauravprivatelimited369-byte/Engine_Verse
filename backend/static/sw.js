@@ -1,4 +1,4 @@
-/* Forge service worker (codename: engineverse).
+/* Meridian service worker (codename: engineverse).
  * Cache-first for immutable WebAssembly compiler toolchains and static assets,
  * network-first with cache fallback for app scripts/styles and pages,
  * never caches authenticated or mutating requests.
@@ -15,8 +15,8 @@
 // pre-cache worker entrypoints for instant offline compiler boot.
 // v12: the 2026 visual layer, self-hosted Inter/Sora variable fonts, scroll.js
 // (topbar auto-hide + study-plan progress) and the new home/dashboard markup.
-// v13: the FORGE rebrand — Obsidian Forge glass theme, new mark, ember accents.
-const VERSION = "forge-v13";
+// v14: the MERIDIAN identity — warm-paper glass, navy ink, signal blue.
+const VERSION = "meridian-v14";
 const SHELL = [
   "/static/css/app.css",
   "/static/css/codelab.css",

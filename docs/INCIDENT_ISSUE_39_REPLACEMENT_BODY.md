@@ -1,4 +1,4 @@
-### Automated Forge Learner Vault Sync — redacted 2026-10-19
+### Automated Meridian Learner Vault Sync — redacted 2026-10-19
 
 This issue was opened on 2026-10-16 by the pre-fix static-copy sync flow, which
 embedded a learner snapshot **including credential material** in the issue body.

@@ -18,7 +18,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "Python is a high-level, dynamically typed language whose syntax is close to "
             "how people write steps in English. That is why it is the usual first language "
             "in universities, data work, automation and machine learning.\n\n"
-            "Forge itself is written in Python. The same language that runs this site "
+            "Meridian itself is written in Python. The same language that runs this site "
             "is the one you will type in the first modules.\n\n"
             "**Where it is used.** Scripts that rename a folder of files. APIs. Data analysis. "
             "Teaching. Glue between other systems.\n\n"
@@ -43,7 +43,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "and spaces is an error.\n\n"
             "Run with `python hello.py` (or `python3` on some systems). The file name is not "
             "magic; the contents are.",
-            "print('Hello, Forge')  # first program\n"
+            "print('Hello, Meridian')  # first program\n"
             "print(2 + 2)\n"
             "print('year', 2026)",
             "Create hello.py, print your name and today's date, and run it until the output is exactly what you intended.",
@@ -242,7 +242,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "lets the JVM find your code.",
             "public class Hello {\n"
             "    public static void main(String[] args) {\n"
-            "        System.out.println(\"Hello, Forge\");\n"
+            "        System.out.println(\"Hello, Meridian\");\n"
             "        int year = 2026;\n"
             "        System.out.println(year);\n"
             "    }\n"
@@ -378,7 +378,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "A statement usually ends at the newline. Semicolons are optional and still "
             "recommended in teams that want ASI surprises gone.\n\n"
             "Template strings use backticks: `` `Hello, ${name}` ``.",
-            "const name = 'Forge';\n"
+            "const name = 'Meridian';\n"
             "let year = 2026;\n"
             "console.log(`Hello, ${name} in ${year}`);",
             "Write hello.js that prints your name and 2 ** 8, and run it with node.",
@@ -458,7 +458,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "function greet(name: string): string {\n"
             "  return `Hello, ${name}`;\n"
             "}\n"
-            "console.log(greet('Forge'));",
+            "console.log(greet('Meridian'));",
             "Write add(a: number, b: number): number and try to call it with a string. Read the error. Then fix it.",
         ),
         (
@@ -531,7 +531,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "#include <iostream>\n"
             "int main() {\n"
             "    int year = 2026;\n"
-            "    std::cout << \"Hello, Forge \" << year << '\\n';\n"
+            "    std::cout << \"Hello, Meridian \" << year << '\\n';\n"
             "    return 0;\n"
             "}",
             "Compile with -Wall and fix every warning. Print 19 + 23.",
@@ -547,7 +547,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "#include <string>\n"
             "int main() {\n"
             "    int a = 17, b = 5;\n"
-            "    std::string name = \"Forge\";\n"
+            "    std::string name = \"Meridian\";\n"
             "    std::cout << a / b << ' ' << a / 5.0 << '\\n';\n"
             "    std::cout << name << ' ' << (a > b) << '\\n';\n"
             "}",
@@ -623,7 +623,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "package main\n"
             "import \"fmt\"\n"
             "func main() {\n"
-            "    name := \"Forge\"\n"
+            "    name := \"Meridian\"\n"
             "    year := 2026\n"
             "    fmt.Println(name, year)\n"
             "}",
@@ -711,7 +711,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "`let x = 3;` is immutable. `let mut x = 3;` can change. Immutability by default "
             "is a professional default in any language; Rust enforces it.",
             "fn main() {\n"
-            "    let name = \"Forge\";\n"
+            "    let name = \"Meridian\";\n"
             "    let year = 2026;\n"
             "    println!(\"Hello, {name} in {year}\");\n"
             "}",
@@ -794,7 +794,7 @@ FOUNDATION_MODULES: dict[str, list[tuple]] = {
             "Warnings are errors in waiting. Add `-Werror` once the file is clean.",
             "#include <stdio.h>\n"
             "int main(void) {\n"
-            "    printf(\"Hello, Forge\\n\");\n"
+            "    printf(\"Hello, Meridian\\n\");\n"
             "    printf(\"year %d\\n\", 2026);\n"
             "    return 0;\n"
             "}",

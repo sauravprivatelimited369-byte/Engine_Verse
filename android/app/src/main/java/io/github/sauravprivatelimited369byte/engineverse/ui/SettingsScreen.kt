@@ -76,7 +76,7 @@ fun SettingsScreen(store: AppStore, onBack: () -> Unit, openWeb: (String) -> Uni
             }
             item {
                 SettingsCard("About") {
-                    Text("Forge ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Meridian ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyLarge)
                     Text("Open source under the MIT licence.", style = MaterialTheme.typography.bodyMedium)
                     ActionCard(R.drawable.ic_open_in_new, "Source code", "GitHub repository", { openExternal(context, BuildConfig.REPO_URL) })
                     ActionCard(R.drawable.ic_open_in_new, "Report a problem", "Open an issue on GitHub", { openExternal(context, BuildConfig.REPO_URL + "/issues") })

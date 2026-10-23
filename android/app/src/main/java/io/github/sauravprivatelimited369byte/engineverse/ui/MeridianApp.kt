@@ -56,7 +56,7 @@ private val TABS = listOf(
 )
 
 @Composable
-fun ForgeApp(store: AppStore, catalog: Catalog, policy: UrlPolicy) {
+fun MeridianApp(store: AppStore, catalog: Catalog, policy: UrlPolicy) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val current = entry?.destination?.route
