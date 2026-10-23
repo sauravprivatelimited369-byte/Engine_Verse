@@ -30,6 +30,7 @@ BACKEND = ROOT / "backend"
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
 from engineverse import project  # noqa: E402
+from engineverse.config import normalise_assistant_url  # noqa: E402
 from engineverse.distribution import normalise_apk_url  # noqa: E402
 
 FORBIDDEN = (
@@ -1207,8 +1208,59 @@ def reading_copy_controls(text: str) -> str:
     return text.replace("data-lab-mode-notice hidden", "data-lab-mode-notice")
 
 
-def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = None, apk_url: str = "") -> str:
+#: The base.html block that carries the assistant's browser configuration.
+#: Matched as a whole element so the static copy can replace it without
+#: touching any other script tag (the CSP nonce ones stay in the app).
+ASSISTANT_TAG = re.compile(
+    r'<script type="application/json" id="ev-assistant-config">.*?</script>', re.S
+)
+
+
+def assistant_config(public_url: str = "", path: str = "/assistant") -> dict:
+    """The static copy's assistant configuration.
+
+    On GitHub Pages there is no Python process, so the only way the assistant
+    can work is for the browser to call the n8n Chat Trigger directly. That is
+    a deliberate, limited exception: the webhook is public by design, the
+    workflow must allowlist the Pages origin, and the published site cannot
+    hold a credential either way.
+
+    With no URL configured the mode is ``off``: the page then says the
+    assistant is not connected on this copy instead of showing a chat box that
+    cannot answer.
+    """
+    from engineverse import assistant
+
+    url = normalise_assistant_url(public_url, allow_local_http=False)
+    config = assistant.client_config(path)
+    if url:
+        config.update({
+            "mode": "direct",
+            "endpoint": url,
+            "statusEndpoint": "",
+            # The browser is talking to n8n across the internet with no proxy
+            # to absorb a queue, so it gets a slightly longer budget.
+            "timeoutMs": 30000,
+        })
+    else:
+        config.update({"mode": "off", "endpoint": "", "statusEndpoint": ""})
+    return config
+
+
+def patch_assistant_config(text: str, base: str, public_url: str = "") -> str:
+    """Replace the assistant's JSON block with the static copy's variant."""
+    config = assistant_config(public_url)
+    blob = json.dumps(config, ensure_ascii=False).replace("<", "\\u003c")
+    tag = '<script type="application/json" id="ev-assistant-config">' + blob + "</script>"
+    if ASSISTANT_TAG.search(text):
+        return ASSISTANT_TAG.sub(lambda _match: tag, text, count=1)
+    return text
+
+
+def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = None,
+           apk_url: str = "", assistant_url: str = "") -> str:
     text = reading_copy_controls(rewrite_html(text, base))
+    text = patch_assistant_config(text, base, assistant_url)
     text = text.replace('href="/explore?year=1"', f'href="{rewrite_url("/explore/first-year", base)}"', 1)
     # The year link may already have been rewritten before this replacement.
     year = rewrite_url("/explore", base)
@@ -1432,7 +1484,8 @@ def fill_shell(home_html: str, title: str, main: str, *, private: bool = True) -
     return text
 
 
-def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
+def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
+           assistant_url: str = "") -> int:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
@@ -1464,7 +1517,8 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
         if response.status_code != 200 or "text/html" not in response.headers.get("content-type", ""):
             failed.append(f"{path} -> {response.status_code}")
             continue
-        body = inject(response.text, base, search=(path == "/search"), dpp_dates=dpp_dates, apk_url=apk_url)
+        body = inject(response.text, base, search=(path == "/search"), dpp_dates=dpp_dates,
+                      apk_url=apk_url, assistant_url=assistant_url)
         if path.startswith("/practice/problems/") and path.count("/") == 3:
             body = enable_problem_editor(body)
         if path == "/install":
@@ -1494,7 +1548,8 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
     written += 1
 
     missing = client.get("/this-page-is-not-in-the-catalogue")
-    not_found = inject(missing.text, base, search=False, apk_url=apk_url) if missing.text else home_html
+    not_found = inject(missing.text, base, search=False, apk_url=apk_url,
+                       assistant_url=assistant_url) if missing.text else home_html
     (site / "404.html").write_text(not_found, encoding="utf-8")
 
     index = search_index(base)
@@ -1540,6 +1595,9 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "") -> int:
     (site / "deployment.json").write_text(json.dumps({
         "revision": revision, "mode": "reading-copy", "base": base, "pages": written,
         "capabilities": [rewrite_url(path, base) for path in ("/apis", "/studio", "/workflows", "/swarm")],
+        # Whether the assistant works on this copy, never the webhook itself:
+        # deployment.json is public.
+        "assistant": "direct" if assistant_url else "off",
     }, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {written} pages and {len(index)} search rows to {site}")
     return written
@@ -1763,6 +1821,9 @@ def main() -> int:
                         help="full app HTTPS origin (default: $ENGINEVERSE_APP_URL)")
     parser.add_argument("--apk-url", default=None,
                         help="versioned signed GitHub Release APK URL (default: $ENGINEVERSE_APK_URL)")
+    parser.add_argument("--assistant-url", default=None,
+                        help="public n8n Chat Trigger URL for the static copy "
+                             "(default: $ENGINEVERSE_ASSISTANT_PUBLIC_URL)")
     parser.add_argument("--gateway", action="store_true",
                         help="publish a gateway to the hosted app instead of the reading copy")
     parser.add_argument("--reading-copy", action="store_true",
@@ -1781,6 +1842,14 @@ def main() -> int:
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from None
+    try:
+        assistant_url = normalise_assistant_url(
+            args.assistant_url if args.assistant_url is not None
+            else os.environ.get("ENGINEVERSE_ASSISTANT_PUBLIC_URL", ""),
+            allow_local_http=False,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc).replace("ENGINEVERSE_ASSISTANT_URL", "ENGINEVERSE_ASSISTANT_PUBLIC_URL")) from None
     if args.gateway and not app_url:
         raise SystemExit("Refusing to publish a gateway without a hosted full app origin.")
     if (args.gateway or app_url) and not args.reading_copy:
@@ -1791,7 +1860,7 @@ def main() -> int:
     os.environ.update(env)
     if not args.skip_seed:
         seed(env, db_path)
-    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url)
+    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url, assistant_url=assistant_url)
     return 0
 
 

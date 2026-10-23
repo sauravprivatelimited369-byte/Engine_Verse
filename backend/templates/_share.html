@@ -1,0 +1,13 @@
+{# Share + copy link, used on pages worth sending to a classmate.
+
+   No referral parameter is added: EngineVerse does not track visitors, so a
+   ?ref= would only decorate the URL without measuring anything. The native
+   share sheet is offered only where the browser has one; copy-link always works
+   and is the fallback on desktop. #}
+<div class="share" data-ev-share>
+  <button type="button" class="btn btn-ghost btn-sm" data-ev-share-native hidden>
+    Share<span class="sr-only"> this page</span>
+  </button>
+  <button type="button" class="btn btn-ghost btn-sm" data-ev-share-copy>Copy link</button>
+  <span class="tiny muted" data-ev-share-status role="status" aria-live="polite"></span>
+</div>

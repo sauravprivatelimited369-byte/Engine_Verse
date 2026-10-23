@@ -1,0 +1,187 @@
+{
+  "name": "EngineVerse · Learning content drafting (human review required)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "22f794bf-5079-5337-a3a5-aaaee49e423c",
+      "name": "Start (after choosing a topic)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "Manual on purpose: content is drafted, reviewed by a person, and only then published by hand.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// A brief the operator edits before running. Nothing is fetched from a private\n// account, scraped, or posted automatically.\nconst brief = $json.brief || {};\nreturn [{\n  json: {\n    topic: String(brief.topic || \"Pointers in C\").slice(0, 160),\n    audience: String(brief.audience || \"first-year engineering students\").slice(0, 120),\n    platform: String(brief.platform || \"blog\").slice(0, 40),\n    sourceUrl: String(brief.sourceUrl || \"\").slice(0, 300),\n    approvedSourcesOnly: true,\n  },\n}];\n"
+      },
+      "id": "30e551f7-5d36-5ebf-9ba4-bf81d4af2614",
+      "name": "Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'You write short, accurate teaching notes for engineering students. Use only the facts you are sure of. Mark anything uncertain. Output markdown with a title, 3 short sections and one exercise.' },{ role: 'user', content: `Topic: ${$json.topic}. Audience: ${$json.audience}.` }], temperature: 0.4, max_tokens: 900 }) }}"
+      },
+      "id": "2d87995b-d099-5732-bf42-8b879aea879a",
+      "name": "Draft with model (disabled until reviewed)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Disabled by default so a fresh import cannot spend money. Enable after reviewing the prompt and the model cost.",
+      "notesInFlow": true,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Deterministic formatting per channel, with the lengths the platform allows.\n// No hashtag stuffing, no engagement bait, no invented statistics.\nconst data = $json || {};\nconst draft = String(data.choices?.[0]?.message?.content || data.output || \"\").trim();\nif (!draft) {\n  return [{ json: { ready: false, reason: \"No draft yet - enable the model node or paste a draft.\" } }];\n}\nconst firstLine = draft.split(\"\\n\").find((line) => line.trim()) || \"EngineVerse\";\nconst clean = (text, max) => (text.length <= max ? text : text.slice(0, max - 1).replace(/\\s+\\S*$/, \"\") + \"…\");\nreturn [{\n  json: {\n    ready: true,\n    blog: { title: firstLine.replace(/^#+\\s*/, \"\"), bodyMarkdown: draft },\n    telegram: clean(`${firstLine}\\n\\n${draft}`.replace(/[#*`]/g, \"\"), 3800),\n    instagram: clean(draft.replace(/[#*`]/g, \"\"), 2100),\n    youtube: { title: clean(firstLine.replace(/^#+\\s*/, \"\"), 95), description: clean(draft, 4500) },\n    whatsapp: clean(`${firstLine}\\n\\n${draft}`.replace(/[#*`]/g, \"\"), 900),\n    reviewChecklist: [\n      \"A subject teacher has read the draft end to end.\",\n      \"Every claim is checkable, and no citation was invented.\",\n      \"The code example was run and its output matches the text.\",\n      \"Links point at official or primary sources.\",\n      \"The post says EngineVerse is free and open source, without exaggeration.\",\n    ],\n  },\n}];\n"
+      },
+      "id": "b650661a-98ab-5f3b-a4bf-0bf921923f78",
+      "name": "Platform variants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ],
+      "notes": "Platform-specific lengths and a human review checklist. Nothing is published here.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/sauravprivatelimited369-byte/Engine_Verse/issues",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: `Content draft: ${$('Brief').item.json.topic}`.slice(0, 120), body: `A draft is ready for human review.\\n\\n\\`\\`\\`\\n${$json.blog.bodyMarkdown.slice(0, 4000)}\\n\\`\\`\\`\\n\\n`+ $json.reviewChecklist.map((line) => `- [ ] ${line}`).join('\\n'), labels: ['content', 'needs-review'] }) }}"
+      },
+      "id": "072857f9-b71d-545d-b6ff-4d7e066fe750",
+      "name": "Open a review issue (optional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        0
+      ],
+      "notes": "Disabled by default. Uses a GitHub credential with issues:write. Review happens on the issue; publishing stays manual.",
+      "notesInFlow": true,
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "id": "a2fd08e6-d984-5c69-b471-09182d5affe5",
+      "name": "Await human review",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        0
+      ],
+      "notes": "Deliberate stop. Distribution is a person's decision, not a schedule.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Start (after choosing a topic)": {
+      "main": [
+        [
+          {
+            "node": "Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brief": {
+      "main": [
+        [
+          {
+            "node": "Draft with model (disabled until reviewed)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft with model (disabled until reviewed)": {
+      "main": [
+        [
+          {
+            "node": "Platform variants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Platform variants": {
+      "main": [
+        [
+          {
+            "node": "Open a review issue (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open a review issue (optional)": {
+      "main": [
+        [
+          {
+            "node": "Await human review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "A → draft → platform variants → review issue → manual publish. Never auto-posts."
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

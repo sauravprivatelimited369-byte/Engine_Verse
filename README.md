@@ -36,6 +36,7 @@ push either way.
 ## Contents
 
 - [What you can do](#what-you-can-do)
+- [The study assistant (n8n)](#the-study-assistant-n8n)
 - [Architecture](#architecture)
 - [Run it locally](#run-it-locally)
 - [Tests and checks](#tests-and-checks)
@@ -57,6 +58,7 @@ push either way.
 | **Track**: dashboard, streak heatmap and portfolio of completed work | ✓ On this device | ✓ Across devices |
 | **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |
 | **Help**: support and feedback, privacy and terms, a 404 page | ✓ (feedback through GitHub issues) | ✓ |
+| **Assistant**: an n8n-backed AI study assistant, with a floating launcher and a full page | ✓ when `ENGINEVERSE_ASSISTANT_PUBLIC_URL` is configured | ✓ when `ENGINEVERSE_ASSISTANT_URL` is configured |
 | Accounts, two-factor sign-in, community posts, leaderboard, certificates | n/a | ✓ |
 
 ### Code playground
@@ -76,6 +78,39 @@ Each language runs on its real compiler or interpreter. Nothing is simulated.
   configures one. Production defaults to `ENGINEVERSE_JUDGE=disabled`.
 
 More detail on every feature is in [docs/FEATURES.md](docs/FEATURES.md).
+
+## The study assistant (n8n)
+
+`/assistant` is an AI assistant backed by an n8n **Chat Trigger**, plus a
+floating launcher on every page. It is off by default and says so: with no
+webhook configured the page explains that it is not connected and points at the
+notes tutor, instead of showing a chat box that cannot answer.
+
+- **Self-hosted:** the browser posts to this server's `/api/assistant/chat`,
+  which calls n8n. The webhook URL never reaches the browser, so the CSP stays
+  `connect-src 'self'` and n8n can live on a private network.
+- **GitHub Pages:** there is no server, so the browser calls the Chat Trigger
+  directly — only when the repository variable
+  `ENGINEVERSE_ASSISTANT_PUBLIC_URL` is set. CORS on the workflow must allow the
+  Pages origin.
+- **Honest by construction:** answers are labelled AI-generated, the page lists
+  what the assistant cannot do, no transcript is stored by Meridian, and the
+  audit log keeps character counts rather than questions. See
+  [docs/ASSISTANT.md](docs/ASSISTANT.md).
+- **Bounded:** 2–800 characters per question, a per-IP `ai` limit, a per-session
+  limit and a per-session budget inside the workflow. Timeouts, 429s and outages
+  become a sentence a student can act on, with a retry.
+
+Eight importable n8n workflows live in [`n8n/workflows/`](n8n/workflows):
+student assistance, feedback intake, content drafting with human review,
+onboarding, unsubscribe, analytics rollup and operations monitoring. They import
+inactive with placeholder credential slots, and the manual setup steps are in
+[docs/N8N_AUTOMATION.md](docs/N8N_AUTOMATION.md).
+
+> **Not verified in this repository:** a message sent to the owner's n8n Cloud
+> workspace. The transport is tested against a local server that speaks the Chat
+> Trigger contract (`scripts/mock_n8n.py`), and `scripts/verify_assistant.py`
+> sends one real message once a URL is configured.
 
 ## Architecture
 
@@ -162,6 +197,8 @@ python -m pytest backend/tests -q -m "not slow"   # skip real compile/run tests
 
 npm install --prefix .toolchain/jsdom jsdom@26    # once, for the static-site checks
 node scripts/check_static_site.js site            # 64 checks on the exported pages
+node scripts/check_assistant.js site              # 29 checks on the assistant widget
+python scripts/check_n8n_workflows.py             # structure + embedded JS of n8n workflows
 node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
 node scripts/check_browser_runtimes.js site       # needs the runtimes fetched above
 
@@ -254,6 +291,10 @@ Don't use a public issue.
 - **The server's local code runner is not a container boundary.** Production
   refuses local execution; an isolated Judge0 instance is the operator's
   responsibility.
+- **The assistant needs its own configuration and budget.** It answers only
+  when an n8n Chat Trigger is configured, and every message costs one n8n
+  execution plus one model call. The static copy can only reach it directly,
+  which needs the workflow's Allowed Origins to include the Pages site.
 - **Opportunity deadlines change.** The page links to official sites and does
   not copy dates. A weekly CI job checks the links.
 
@@ -262,6 +303,9 @@ Don't use a public issue.
 | Topic | Document |
 |---|---|
 | Every feature in depth | [docs/FEATURES.md](docs/FEATURES.md) |
+| The study assistant, configuration and limits | [docs/ASSISTANT.md](docs/ASSISTANT.md) |
+| n8n workflows, credentials, costs, manual steps | [docs/N8N_AUTOMATION.md](docs/N8N_AUTOMATION.md) |
+| Growth, SEO and a 30-day student acquisition plan | [docs/GROWTH.md](docs/GROWTH.md) |
 | Name, logo and the Meridian Glass design system | [docs/BRAND.md](docs/BRAND.md) |
 | Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |

@@ -1,0 +1,211 @@
+{
+  "name": "EngineVerse · Feedback intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "engineverse/feedback",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://sauravprivatelimited369-byte.github.io,http://localhost:8000,http://127.0.0.1:8000"
+        }
+      },
+      "id": "a942f29b-e2e6-5dd0-aad6-bdf4be97a66e",
+      "name": "Feedback webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "POST { message, email?, consent, page } from an EngineVerse form. CORS is restricted to the origins above.",
+      "notesInFlow": true,
+      "webhookId": "cb46f9a7-75e1-543c-8e38-e8b83cc0c670"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Consent is explicit: an optional contact address is only kept when the\n// student ticked the box. Everything is length-bounded before it is stored or\n// classified, and no field is treated as HTML.\nconst body = $json.body ?? $json;\nconst text = String(body.message ?? \"\").trim();\nconst email = String(body.email ?? \"\").trim().toLowerCase();\nconst consent = body.consent === true || body.consent === \"true\" || body.consent === \"on\";\nconst page = String(body.page ?? \"\").slice(0, 200);\n\nconst problems = [];\nif (text.length < 10) problems.push(\"Please describe the issue in at least 10 characters.\");\nif (text.length > 4000) problems.push(\"Please keep feedback under 4000 characters.\");\nif (consent && email && !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$/.test(email)) {\n  problems.push(\"That email address does not look valid.\");\n}\n\n// A simple, explainable first pass. A human reviews anything ambiguous.\nconst lower = text.toLowerCase();\nconst categories = [\n  [\"bug\", /(broken|error|crash|not working|500|404|bug|fail)/],\n  [\"content\", /(wrong|typo|incorrect|outdated|mistake|note)/],\n  [\"accessibility\", /(screen reader|contrast|keyboard|aria|font size)/],\n  [\"account\", /(login|sign in|password|otp|email)/],\n  [\"request\", /(please add|would like|suggest|feature)/],\n];\nconst category = (categories.find(([, pattern]) => pattern.test(lower)) || [\"other\"])[0];\n\nreturn [{\n  json: {\n    valid: problems.length === 0,\n    problems,\n    message: text.slice(0, 4000),\n    contact: consent ? email.slice(0, 254) : \"\",\n    consent,\n    page,\n    category,\n    receivedAt: new Date().toISOString(),\n    // Deduplicate accidental double-submits without storing anything extra.\n    dedupeKey: `${category}:${text.slice(0, 120)}:${Math.floor(Date.now() / 600000)}`,\n  },\n}];\n"
+      },
+      "id": "363467ed-4c91-5d8b-979d-bb42ec55fa6f",
+      "name": "Validate and sanitise",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ],
+      "notes": "Consent-gated contact details, bounded text, explainable categories.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ad56f2a3-853e-5df7-a901-731564eeaa2a",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ba6c6324-33e3-5182-b5a6-a6f738c3852a",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO feedback_events\n                  (occurred_at, category, message, contact, consent, page, dedupe_key)\n                VALUES (now(), $1, $2, $3, $4, $5, $6)\n                ON CONFLICT (dedupe_key) DO NOTHING",
+        "options": {
+          "queryReplacement": "={{ $json.category }},{{ $json.message }},{{ $json.contact }},{{ $json.consent }},{{ $json.page }},{{ $json.dedupeKey }}"
+        }
+      },
+      "id": "32271261-42fb-5668-bb38-efa15f5d1e05",
+      "name": "Store feedback (optional)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        460,
+        0
+      ],
+      "notes": "Disabled until an operator creates the table and picks a retention period. The unique dedupe_key makes a double submit harmless.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_POSTGRES_CREDENTIAL",
+          "name": "EngineVerse Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, category: $json.category, message: 'Thank you - your feedback was received.' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a473cc46-9475-5868-a4ca-23ce37e3dbe0",
+      "name": "Acknowledgement",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        680,
+        0
+      ],
+      "notes": "Same-origin POSTs from EngineVerse also need CORS on this node.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, problems: $json.problems }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "9310e15e-a09b-5d53-bc72-b33740ca609d",
+      "name": "Rejected",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Feedback webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate and sanitise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and sanitise": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Store feedback (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store feedback (optional)": {
+      "main": [
+        [
+          {
+            "node": "Acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Validate → consent → store (optional) → classify → acknowledge."
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

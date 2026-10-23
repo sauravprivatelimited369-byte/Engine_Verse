@@ -50,6 +50,14 @@ services:
       ENGINEVERSE_SMTP_URL: ${ENGINEVERSE_SMTP_URL:-}
       ENGINEVERSE_SMS_URL: ${ENGINEVERSE_SMS_URL:-}
       ENGINEVERSE_MAIL_FROM: "${ENGINEVERSE_MAIL_FROM:-EngineVerse <no-reply@localhost>}"
+      # n8n study assistant. Server-side only: the browser never receives this
+      # URL, and an unset value simply means the assistant page reports that it
+      # is not configured. Kept on both the release and web services so the
+      # production config check sees the same values in each process.
+      ENGINEVERSE_ASSISTANT_URL: ${ENGINEVERSE_ASSISTANT_URL:-}
+      ENGINEVERSE_ASSISTANT_ENABLED: ${ENGINEVERSE_ASSISTANT_ENABLED:-true}
+      ENGINEVERSE_ASSISTANT_TIMEOUT_MS: ${ENGINEVERSE_ASSISTANT_TIMEOUT_MS:-25000}
+      ENGINEVERSE_ASSISTANT_SESSION_LIMIT: ${ENGINEVERSE_ASSISTANT_SESSION_LIMIT:-20}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in deploy/.env}
     read_only: true
     tmpfs:
@@ -89,6 +97,14 @@ services:
       ENGINEVERSE_SMTP_URL: ${ENGINEVERSE_SMTP_URL:-}
       ENGINEVERSE_SMS_URL: ${ENGINEVERSE_SMS_URL:-}
       ENGINEVERSE_MAIL_FROM: "${ENGINEVERSE_MAIL_FROM:-EngineVerse <no-reply@localhost>}"
+      # n8n study assistant. Server-side only: the browser never receives this
+      # URL, and an unset value simply means the assistant page reports that it
+      # is not configured. Kept on both the release and web services so the
+      # production config check sees the same values in each process.
+      ENGINEVERSE_ASSISTANT_URL: ${ENGINEVERSE_ASSISTANT_URL:-}
+      ENGINEVERSE_ASSISTANT_ENABLED: ${ENGINEVERSE_ASSISTANT_ENABLED:-true}
+      ENGINEVERSE_ASSISTANT_TIMEOUT_MS: ${ENGINEVERSE_ASSISTANT_TIMEOUT_MS:-25000}
+      ENGINEVERSE_ASSISTANT_SESSION_LIMIT: ${ENGINEVERSE_ASSISTANT_SESSION_LIMIT:-20}
       ENGINEVERSE_JAVA_SANDBOX_JAR: /app/engineverse-sandbox.jar
     ports:
       # Bound to loopback. Put a TLS reverse proxy in front and publish that,

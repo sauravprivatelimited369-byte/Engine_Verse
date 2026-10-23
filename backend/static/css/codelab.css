@@ -254,6 +254,12 @@
   top: 76px;
   z-index: 40;
 }
+.cl-mobile-tabs {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .cl-mobile-tab {
   flex: 1 1 0;
   border: 0;

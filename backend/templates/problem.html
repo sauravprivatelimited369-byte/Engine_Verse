@@ -2,6 +2,7 @@
 {% block title %}{{ problem.title }} — {{ brand.site_name }}{% endblock %}
 {% block content %}
 <div class="editor-shell">
+  {% include "_share.html" %}
   <section>
     <div class="between mb">
       <div><h1 style="font-size:1.6rem;margin-bottom:4px">{{ problem.title }}</h1>
