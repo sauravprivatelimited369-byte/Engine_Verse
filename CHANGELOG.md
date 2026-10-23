@@ -38,6 +38,11 @@ release.
   card titles, which failed contrast for several stored values and broke the
   one-accent rule. The colour is now a short rule above the title (a marker,
   not ink), so the text stays navy and every language still reads as distinct.
+- **Legacy lessons gained a course rail.** A module that predates the
+  structured unit format rendered as one narrow card with half the page empty;
+  it now sits in the same two-column layout as a structured lesson, with a rail
+  carrying the course index, its stage, previous/next and the honest "nothing
+  here is graded" note. Its content and wording are unchanged.
 - **Page headers got a measure.** The intro paragraph on every `page-hero`
   (explore, practice, planner, programming, and the rest) is capped at 64
   characters and set as a lede instead of stretching the full card width.
