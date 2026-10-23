@@ -334,7 +334,9 @@ with `-m "not slow"`.
 | Android app | **fail** — identical failure on `main` before this branch (the "Unit tests" step exits 1 with 0 tests executed); not caused by this change and not fixed here |
 | Links · external URLs | skipped by design on push |
 
-The earlier red run on this branch was the AGP assertion described in §3; it is green now.
+The earlier red run on this branch was the AGP assertion described in §3. On the final commit
+the push run and the pull-request run are both green (`CI` 8m47s and 9m32s; `GitHub Pages`
+4m10s with the deploy job skipped).
 
 ### 7.2 Honesty ledger
 
