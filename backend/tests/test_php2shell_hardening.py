@@ -229,7 +229,12 @@ class TestDeploymentStaysSlimAndPatched:
 
         config = yaml.safe_load((REPO_ROOT / ".github/dependabot.yml").read_text(encoding="utf-8"))
         ecosystems = {entry["package-ecosystem"] for entry in config["updates"]}
-        assert {"pip", "github-actions", "docker-compose", "docker", "maven", "npm"} <= ecosystems
+        # "docker" left with services/otp: the remaining Dockerfiles use
+        # suffixed names Dependabot does not scan (see the note in the config).
+        assert {"pip", "github-actions", "docker-compose", "gradle", "maven", "npm"} <= ecosystems
+        for entry in config["updates"]:
+            directory = REPO_ROOT / entry["directory"].lstrip("/")
+            assert directory.is_dir(), f"{entry['package-ecosystem']}: {entry['directory']} does not exist"
 
 
 # ---------------------------------------------------------------------------
