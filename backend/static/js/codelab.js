@@ -22,9 +22,42 @@
   const STORAGE_LANG_KEY = "ev_codelab_active_lang_v1";
   const STORAGE_FONT_KEY = "ev_codelab_fontsize_v1";
 
+  let csrfOverride = "";
+
   function csrfToken() {
+    if (csrfOverride) return csrfOverride;
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.content : "";
+  }
+
+  /* Ask the server for a token bound to the browser's *current* CSRF cookie.
+   *
+   * The meta tag is rendered with the page, so it can outlive the cookie that
+   * signs it: an expired session, a cleared cookie jar or a long-idle tab all
+   * leave the page holding a token the next POST will reject. Before this,
+   * that rejection came back as `{ok:false,error:"CSRF token missing or
+   * invalid."}` with no `status` field, the console rendered nothing, and Run
+   * looked like a dead button. */
+  async function refreshCsrfToken() {
+    try {
+      const res = await fetch("/api/csrf", {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      const ct = res.headers.get("content-type") || "";
+      if (!res.ok || !ct.includes("application/json")) return "";
+      const data = await res.json();
+      const token = data && (data.csrfToken || data.token) ? (data.csrfToken || data.token) : "";
+      if (token) {
+        csrfOverride = token;
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) meta.content = token;
+      }
+      return token;
+    } catch (_err) {
+      return "";
+    }
   }
 
   function escapeHtml(text) {
@@ -72,6 +105,8 @@
       this._languages = new Map();
       this._provider = { name: "disabled", available: false, runnableCount: 0 };
       this._limits = { maxSourceChars: 65536, maxStdinChars: 20000 };
+      this._missingToolchains = [];
+      this._toolchainHint = "";
       this.mode = "server";
       if (bootstrap) {
         this.hydrate(bootstrap);
@@ -83,6 +118,10 @@
       this._languages.clear();
       this._provider = payload.provider || this._provider;
       this._limits = payload.limits || this._limits;
+      this._missingToolchains = Array.isArray(payload.missingToolchains)
+        ? payload.missingToolchains.filter((item) => item && item.id)
+        : [];
+      this._toolchainHint = typeof payload.toolchainHint === "string" ? payload.toolchainHint : "";
       for (const entry of payload.languages) {
         this._languages.set(entry.id, { ...entry });
       }
@@ -149,6 +188,17 @@
 
     limits() {
       return this._limits;
+    }
+
+    /* Languages whose toolchain is simply not installed on this host, with the
+     * command that installs it. Empty when every language can run, or when the
+     * judge itself is unavailable (then no install would help). */
+    missingToolchains() {
+      return this._missingToolchains;
+    }
+
+    toolchainHint() {
+      return this._toolchainHint;
     }
   }
 
@@ -290,21 +340,33 @@
       const controller = new AbortController();
       this._controller = controller;
       try {
-        const response = await fetch("/api/execute", {
-          method: "POST",
-          credentials: "same-origin",
-          signal: controller.signal,
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            "X-CSRF-Token": csrfToken(),
-          },
-          body: JSON.stringify({
-            language: spec.id,
-            sourceCode,
-            stdin: stdin || "",
-          }),
-        });
+        const post = (token) =>
+          fetch("/api/execute", {
+            method: "POST",
+            credentials: "same-origin",
+            signal: controller.signal,
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              "X-CSRF-Token": token,
+            },
+            body: JSON.stringify({
+              language: spec.id,
+              sourceCode,
+              stdin: stdin || "",
+            }),
+          });
+
+        let response = await post(csrfToken());
+        // A stale token is recoverable: fetch one bound to the current cookie
+        // and retry once. Only the token is refreshed - the submission is
+        // byte-identical, so a retry can never run different code.
+        if (response.status === 403) {
+          const fresh = await refreshCsrfToken();
+          if (fresh) {
+            response = await post(fresh);
+          }
+        }
         if (response.status === 429) {
           return {
             ok: false,
@@ -320,8 +382,7 @@
             status: "service_unavailable",
           };
         }
-        const payload = await response.json();
-        return payload;
+        return this._normalisePayload(await this._readPayload(response), response, spec);
       } catch (err) {
         if (err && err.name === "AbortError") {
           return {
@@ -357,6 +418,71 @@
           this._controller = null;
         }
       }
+    }
+
+    /* Reads the body without assuming JSON.
+     *
+     * A reverse proxy in front of the app answers with an HTML error page, not
+     * the API's JSON, and `response.json()` then throws - which used to be
+     * reported as "could not reach the execution server" even though the
+     * server had answered. Keep the text so the learner sees the real status.
+     */
+    async _readPayload(response) {
+      let text = "";
+      try {
+        text = await response.text();
+      } catch (_err) {
+        return null;
+      }
+      if (!text) return null;
+      try {
+        const parsed = JSON.parse(text);
+        return parsed && typeof parsed === "object" ? parsed : { raw: text };
+      } catch (_err) {
+        return { raw: text };
+      }
+    }
+
+    /* Guarantees the console always has a status, a message and a runtime.
+     *
+     * Server refusals such as the CSRF rejection, a 401 from an expired
+     * session or a 503 from the judge carry `error` but no `status`. Returning
+     * them unchanged made OutputConsole show "Idle" with three empty tabs, so
+     * Run looked like it did nothing at all. */
+    _normalisePayload(payload, response, spec) {
+      const out = payload && typeof payload === "object" ? { ...payload } : {};
+      const httpStatus = response ? response.status : 0;
+      const message = String(out.error || out.message || out.detail || "").trim();
+      if (!out.language) out.language = spec.id;
+      if (!out.languageName) out.languageName = spec.name;
+      if (!out.runtime) out.runtime = spec.runtimeLabel || spec.executionEnv || "";
+      if (typeof out.executionTime !== "number") out.executionTime = 0;
+
+      if (!out.status) {
+        out.status = out.ok === true ? "success" : "service_unavailable";
+      }
+      if (!out.stderr) {
+        if (httpStatus === 401) {
+          out.stderr = "Your session expired. Reload the page and sign in again, then run the code.";
+        } else if (httpStatus === 403) {
+          out.stderr =
+            "The server rejected the request's security token. Reload the page and run again.";
+        } else if (httpStatus >= 500) {
+          out.stderr = `The execution server failed (HTTP ${httpStatus}). ${message}`.trim();
+        } else if (out.raw) {
+          out.stderr = `The execution server returned an unexpected response (HTTP ${httpStatus}). ${String(out.raw).slice(0, 800)}`.trim();
+        } else if (message) {
+          out.stderr = message;
+        }
+      }
+      delete out.raw;
+      if (typeof out.ok !== "boolean") {
+        out.ok = out.status === "success";
+      }
+      if (out.executed === undefined) {
+        out.executed = out.status !== "service_unavailable";
+      }
+      return out;
     }
 
     async _executeInIsolatedWorker(spec, sourceCode, stdin) {
@@ -1209,21 +1335,36 @@
 
     renderResult(res) {
       this._stopTimer();
-      this._lastResult = res;
-      const status = res.status || "idle";
+      const result = res && typeof res === "object" ? { ...res } : {};
+      // A result that arrives without a status is still a result: fall back to
+      // the error text (or to a visible failure) instead of rendering "Idle"
+      // with three empty tabs, which made a failed run look like a dead button.
+      if (!result.status) {
+        result.status = result.error || result.message ? "service_unavailable" : "runtime_error";
+      }
+      if (!result.stderr && (result.error || result.message)) {
+        result.stderr = String(result.error || result.message);
+      }
+      if (!result.stdout && !result.stderr && !result.compileOutput) {
+        result.stderr =
+          `Execution finished with status "${result.status}" but the server returned no output. ` +
+          "Reload the page and try again; if it repeats, the execution service is misconfigured.";
+      }
+      this._lastResult = result;
+      const status = result.status;
       this._setStatus(status, STATUS_LABELS[status] || status);
 
-      const stdout = res.stdout || "";
-      const stderr = res.stderr || "";
-      const compileOut = res.compileOutput || "";
+      const stdout = result.stdout || "";
+      const stderr = result.stderr || "";
+      const compileOut = result.compileOutput || "";
 
-      this.metaRuntime.textContent = res.runtime || "";
+      this.metaRuntime.textContent = result.runtime || "";
       const parts = [];
-      if (typeof res.executionTime === "number") {
-        parts.push(`Time: ${res.executionTime} ms`);
+      if (typeof result.executionTime === "number") {
+        parts.push(`Time: ${result.executionTime} ms`);
       }
-      if (res.exitCode !== null && res.exitCode !== undefined) {
-        parts.push(`Exit code: ${res.exitCode}`);
+      if (result.exitCode !== null && result.exitCode !== undefined) {
+        parts.push(`Exit code: ${result.exitCode}`);
       }
       this.metaMetrics.textContent = parts.join(" · ") || "—";
 
@@ -1369,7 +1510,10 @@
         this.runtimeBannerDot.classList.add("off");
         this.runtimeBannerText.textContent = "Execution service unavailable on this host";
         if (this.unavailableNote) {
+          const providerHint =
+            (this.registry.provider && this.registry.provider().hint) || "";
           this.unavailableNote.textContent =
+            providerHint ||
             "No compiler runtimes are active on this host. Configure local sandbox namespaces/toolchains or ENGINEVERSE_JUDGE0_URL.";
         }
         return null;
@@ -1392,9 +1536,16 @@
       }
 
       if (this.unavailableNote) {
-        this.unavailableNote.textContent = unavailable.length
+        const missing = this.registry.missingToolchains ? this.registry.missingToolchains() : [];
+        const hint = this.registry.toolchainHint ? this.registry.toolchainHint() : "";
+        let note = unavailable.length
           ? `Active verified compilers (${executable.length}): ${executable.map((l) => l.shortLabel).join(", ")}. Not installed on this host (disabled): ${unavailable.map((l) => l.name).join(", ")}.`
           : `All ${executable.length} registered toolchains verified active on this host.`;
+        if (missing.length) {
+          note += ` Missing: ${missing.map((m) => `${m.name} (${m.missingBinary || "toolchain"})`).join(", ")}.`;
+        }
+        if (hint) note += ` ${hint}`;
+        this.unavailableNote.textContent = note;
       }
 
       const target =

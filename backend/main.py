@@ -211,7 +211,24 @@ class CsrfMiddleware(BaseHTTPMiddleware):
             accepts_html = "text/html" in (request.headers.get("accept") or "")
             if accepts_html:
                 return RedirectResponse("/login?error=csrf", status_code=303)
-            return JSONResponse({"ok": False, "error": "CSRF token missing or invalid."}, status_code=403)
+            # `status` and `stderr` are part of the answer, not decoration:
+            # every JSON client reads a run result by those fields, and a
+            # rejection that only carried `error` was rendered by CodeLab as no
+            # result at all (the console showed "Idle" and the Run button
+            # looked dead). Clients can also recover by fetching
+            # GET /api/csrf and retrying once with the new token.
+            message = "CSRF token missing or invalid. Reload the page and try again."
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "executed": False,
+                    "error": message,
+                    "stderr": message,
+                    "status": "service_unavailable",
+                    "csrfTokenUrl": "/api/csrf",
+                },
+                status_code=403,
+            )
         return await call_next(request)
 
 

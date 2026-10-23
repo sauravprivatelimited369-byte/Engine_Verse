@@ -191,6 +191,14 @@ def terminal_languages() -> list[dict]:
     A language without a template here still appears (generic starter) so the
     compiler page can never quietly drop a taught language; ``can_run`` comes
     from the active judge, not from the seed-time flag.
+
+    If the catalogue table is empty - a fresh checkout that has not been
+    seeded, or a database whose content tables were reset - the page used to
+    render with an empty language drop-down, no starter program and a
+    permanently disabled Run button: "the compiler does not work at all".
+    CodeLab's static language registry is the same catalogue and needs no
+    database, so it is used as the fallback. Availability still comes from the
+    live judge either way.
     """
     runnable = set(runnable_languages())
     rows = []
@@ -205,6 +213,26 @@ def terminal_languages() -> list[dict]:
             "note": template.get("note", ""),
             "sample_input": template.get("sample_input", ""),
             "code": template.get("code", f"# {language['name']} program\n"),
+        })
+    if rows:
+        return rows
+
+    from . import codelab
+
+    for spec in codelab.LANGUAGE_SPECS:
+        template = TERMINAL_TEMPLATES.get(spec["id"], {})
+        rows.append({
+            "slug": spec["id"],
+            "name": spec["name"],
+            "judge_slug": spec["id"],
+            "can_run": spec["id"] in runnable,
+            "runtime": template.get("runtime", spec.get("executionEnv", "")),
+            "note": template.get(
+                "note",
+                "Catalogue not seeded on this host; showing the built-in CodeLab starter.",
+            ),
+            "sample_input": template.get("sample_input", spec.get("defaultStdin", "")),
+            "code": template.get("code", spec.get("starterCode", f"# {spec['name']} program\n")),
         })
     return rows
 

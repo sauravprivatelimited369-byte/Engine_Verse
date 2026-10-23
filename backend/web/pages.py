@@ -610,6 +610,29 @@ async def codelab_page(request: Request, lang: str | None = None):
     )
 
 
+def _host_runtime_hint() -> dict:
+    """Explains a partial/absent toolchain set in operator terms.
+
+    A host with one installed compiler used to say only "limited runtimes on
+    this server" - true, but it left a learner clicking disabled options and an
+    operator with no next step. The registry knows which binary each disabled
+    language needs and the command that installs it, so the page can say so.
+    """
+    from engineverse import codelab
+
+    try:
+        registry = codelab.language_registry_payload()
+    except Exception:  # noqa: BLE001 - the page must render even if a probe fails
+        return {"toolchain_hint": "", "provider_hint": ""}
+    missing = registry.get("missingToolchains") or []
+    provider = registry.get("provider") or {}
+    return {
+        "toolchain_hint": registry.get("toolchainHint", "") if missing else "",
+        "provider_hint": "" if provider.get("available") else provider.get("hint", ""),
+        "missing_toolchains": missing,
+    }
+
+
 @router.get("/compiler")
 async def compiler_page(request: Request, lang: str | None = None):
     """The website compiler/terminal: every catalogue language, one editor.
@@ -634,6 +657,7 @@ async def compiler_page(request: Request, lang: str | None = None):
         runnable_now=runnable_now,
         default_language=default_language,
         judge_info=judge.provider_info(),
+        **_host_runtime_hint(),
         page_title="Code compiler",
         page_intro=(
             "Pick a language, write a complete program, give it input, run it. "
@@ -658,6 +682,7 @@ async def python_compiler_page(request: Request):
         runnable_now=runnable_now,
         default_language="python",
         judge_info=judge.provider_info(),
+        **_host_runtime_hint(),
         page_title="Python compiler",
         page_intro=(
             "Write Python, press Run, see real output. On the hosted app this is CPython on the "

@@ -89,13 +89,20 @@ def _paths_to_hide() -> list[Path]:
 
 
 def _processes_for_uid(uid: int) -> int:
-    """Counts processes already owned by ``uid``.
+    """Counts the *tasks* already owned by ``uid``.
 
-    RLIMIT_NPROC is enforced against the *total* number of processes owned by
-    the real uid, not against the child's own process tree. Setting it to a flat
-    32 therefore blocks the child from forking at all once the application
-    server already has a few dozen threads and processes running - which breaks
-    ordinary submissions. The budget has to be measured, not assumed.
+    RLIMIT_NPROC is enforced against the total number of tasks (threads, not
+    just processes) owned by the real uid, not against the child's own process
+    tree. Setting it to a flat 32 therefore blocks the child from forking at
+    all once the application server already has a few dozen threads running -
+    which breaks ordinary submissions.
+
+    Counting /proc entries alone was wrong for the same reason: a JVM, Node or
+    the application server holds one /proc entry and dozens of threads, so the
+    budget was computed from a number many times smaller than the one the
+    kernel enforces. The result was `pthread_create failed (EAGAIN)` inside
+    Java compiles - visible to learners as "Java does not work" - whenever the
+    host was busy. Count tasks.
     """
     if not hasattr(os, "listdir") or not os.path.isdir("/proc"):
         return 0
@@ -105,12 +112,16 @@ def _processes_for_uid(uid: int) -> int:
             continue
         try:
             with open(f"/proc/{entry}/status", "rb") as handle:
+                owner = None
+                threads = 1
                 for line in handle:
                     if line.startswith(b"Uid:"):
-                        if int(line.split()[1]) == uid:
-                            count += 1
-                        break
-        except OSError:
+                        owner = int(line.split()[1])
+                    elif line.startswith(b"Threads:"):
+                        threads = max(1, int(line.split()[1]))
+                if owner == uid:
+                    count += threads
+        except (OSError, ValueError, IndexError):
             continue
     return count
 
@@ -318,7 +329,21 @@ RUNNERS: dict[str, dict] = {
     "bash": {"file": "main.sh", "check": [_SHELL_BIN, "-n", "main.sh"], "run": [_SHELL_BIN, "main.sh"]},
     "java": {
         "file": "Main.java",
-        "compile": ["javac", "-Xlint:none", "Main.java"],
+        # javac runs on a JVM of its own. With the sandbox's address-space cap
+        # in place its default compressed-class-space reservation (1 GB) and
+        # code cache do not fit, and the JVM aborts before compiling anything
+        # ("Could not allocate compressed class space"), which reached learners
+        # as "Java gives a compilation error" for valid code. Pin javac's JVM
+        # the same way the run step pins its own.
+        "compile": [
+            "javac",
+            "-J-Xmx256m",
+            "-J-XX:CompressedClassSpaceSize=64m",
+            "-J-XX:ReservedCodeCacheSize=64m",
+            "-J-XX:ActiveProcessorCount=2",
+            "-Xlint:none",
+            "Main.java",
+        ],
         "run": [
             "java",
             "-XX:CompressedClassSpaceSize=64m",
@@ -329,6 +354,10 @@ RUNNERS: dict[str, dict] = {
             "Main",
         ],
         "vlimit": 2 * 1024 * 1024,
+        # The JVM starts ~24 threads before it runs a line of bytecode; with a
+        # 32-task allowance javac/java died with pthread_create(EAGAIN) on a
+        # loaded host and the learner saw a "compilation error" for valid code.
+        "nproc": 128,
         "compile_bonus_s": 5,
     },
     "go": {
@@ -423,6 +452,8 @@ if _CSHARP_WASM_RUNNER.is_file() and shutil.which("node"):
     RUNNERS["csharp"] = {
         "file": "Program.cs",
         "run": ["node", str(_CSHARP_WASM_RUNNER), "Program.cs"],
+        "nproc": 64,
+        "retry_host_crash": 1,
         "vlimit": 32 * 1024 * 1024,
         # The runtime streams ~100 reference assemblies into memory at once;
         # at the default 64-descriptor cap its parallel downloads hit EMFILE.
@@ -472,6 +503,11 @@ if _RUBY_WASM_RUNNER.is_file() and shutil.which("node"):
     RUNNERS["ruby"] = {
         "file": "main.rb",
         "run": ["node", str(_RUBY_WASM_RUNNER), "main.rb"],
+        "nproc": 64,
+        # CRuby-on-WASM inside Node segfaults on a fraction of cold starts in
+        # some containers. Re-run the interpreter once; the submission itself
+        # is unchanged and its working directory is discarded either way.
+        "retry_host_crash": 2,
         "vlimit": 16 * 1024 * 1024,
         "nofile": 256,
         "compile_bonus_s": 10,
@@ -716,7 +752,16 @@ class LocalSandboxProvider:
         # Hard caps enforced through setrlimit in the child. NPROC is the one
         # that matters most: without it a fork bomb exhausts the host and the
         # application server is killed alongside the submission.
-        max_processes = 32
+        # Budget of *extra* tasks the submission may create, on top of what
+        # this uid already runs. A JVM needs roughly two dozen threads to boot
+        # (GC, JIT compiler, reference handler, ...), so java declares a larger
+        # allowance than a plain single-threaded program.
+        max_processes = int(runner.get("nproc", 32))
+        # Absolute ceiling: what this uid already runs (threads included) plus
+        # the submission's allowance. RLIMIT_NPROC is a uid-wide count, so both
+        # the preexec rlimit and the shell's `ulimit -u` must use this number,
+        # not the allowance on its own.
+        nproc_budget = _processes_for_uid(os.getuid()) + max_processes
         memory_kb = max(vlimit_kb, memory_kb)
 
         workdir = Path(tempfile.mkdtemp(prefix="evjudge-"))
@@ -730,7 +775,11 @@ class LocalSandboxProvider:
                 cls_name = _detect_java_main_class(code)
                 if cls_name != "Main":
                     source_file = f"{cls_name}.java"
-                    compile_argv = ["javac", "-Xlint:none", source_file]
+                    compile_argv = [
+                        "javac", "-J-Xmx256m", "-J-XX:CompressedClassSpaceSize=64m",
+                        "-J-XX:ReservedCodeCacheSize=64m", "-J-XX:ActiveProcessorCount=2",
+                        "-Xlint:none", source_file,
+                    ]
                     run_argv = [*run_argv[:-1], cls_name]
 
             (workdir / source_file).write_text(code, encoding="utf-8")
@@ -753,7 +802,12 @@ class LocalSandboxProvider:
                 f"ulimit -v {vlimit_kb} 2>/dev/null || true",
                 f"ulimit -t {timeout_seconds} 2>/dev/null || true",
                 f"ulimit -n {int(runner.get('nofile', 64))} 2>/dev/null || true",
-                "ulimit -u 32 2>/dev/null || true",
+                # Same number the child sets via RLIMIT_NPROC. This line used
+                # to hard-code 32 while the Python side computed a budget from
+                # what the uid already runs - so a JVM with 24 boot threads
+                # plus javac's own threads hit EAGAIN and every Java compile
+                # on a busy host was reported as a compilation error.
+                f"ulimit -u {nproc_budget} 2>/dev/null || true",
             ]
             if check_argv:
                 script.append(
@@ -823,27 +877,52 @@ class LocalSandboxProvider:
             input_path = workdir / "input.txt"
             input_path.write_bytes((stdin or "")[:20_000].encode("utf-8", "replace"))
 
-            with input_path.open("rb") as in_fh, out_path.open("wb") as out_fh, \
-                    err_path.open("wb") as err_fh:
-                process = subprocess.Popen(
-                    argv,
-                    cwd=workdir,
-                    env=env,
-                    stdin=in_fh,
-                    stdout=out_fh,
-                    stderr=err_fh,
-                    preexec_fn=_preexec(max_processes, memory_kb, timeout_seconds, open_files=nofile),
-                    start_new_session=True,
+            # Some runners are not the learner's program but a host interpreter
+            # for it (the vendored CRuby/Roslyn builds run inside Node). Those
+            # hosts can die on their own - CRuby-on-WASM segfaults on roughly
+            # one cold start in ten on a loaded machine - and that is not a
+            # verdict about the submission. Such runners declare
+            # `retry_host_crash`, and a signal-killed attempt that produced no
+            # output is re-run once before it is reported.
+            retries_left = int(runner.get("retry_host_crash", 0))
+            while True:
+                out_path.write_bytes(b"")
+                err_path.write_bytes(b"")
+                with input_path.open("rb") as in_fh, out_path.open("wb") as out_fh, \
+                        err_path.open("wb") as err_fh:
+                    process = subprocess.Popen(
+                        argv,
+                        cwd=workdir,
+                        env=env,
+                        stdin=in_fh,
+                        stdout=out_fh,
+                        stderr=err_fh,
+                        preexec_fn=_preexec(max_processes, memory_kb, timeout_seconds, open_files=nofile),
+                        start_new_session=True,
+                    )
+                    try:
+                        process.wait(timeout=(effective_timeout_ms + 3000) / 1000)
+                    except subprocess.TimeoutExpired:
+                        _kill_tree(process)
+                        return RunResult(status="timeout", stderr="Time limit exceeded.", runtime_ms=_ms(started))
+                    finally:
+                        # Whatever the outcome, nothing from the submission's process
+                        # tree should outlive the verdict.
+                        _kill_tree(process)
+
+                # `timeout` reports a signalled child as 128+signal, so a
+                # segfault arrives as 139 rather than -11.
+                rc = process.returncode
+                host_crash = (
+                    rc is not None
+                    and (rc < 0 or rc >= 128)
+                    and rc not in (124, 137, 152, 153)
+                    and not out_path.read_bytes()[:1]
                 )
-                try:
-                    process.wait(timeout=(effective_timeout_ms + 3000) / 1000)
-                except subprocess.TimeoutExpired:
-                    _kill_tree(process)
-                    return RunResult(status="timeout", stderr="Time limit exceeded.", runtime_ms=_ms(started))
-                finally:
-                    # Whatever the outcome, nothing from the submission's process
-                    # tree should outlive the verdict.
-                    _kill_tree(process)
+                if host_crash and retries_left > 0:
+                    retries_left -= 1
+                    continue
+                break
 
             # Read after the process is gone. Truncated on read rather than
             # streamed, so a submission that writes without limit cannot make
@@ -874,10 +953,14 @@ class LocalSandboxProvider:
                     runtime_ms=runtime_ms,
                 )
 
-            # `timeout -s KILL` surfaces as a negative return code (signal);
-            # `ulimit -t` surfaces as SIGXCPU (152/153). Either way the wall
-            # clock tells us the truth.
-            killed = returncode is not None and (returncode < 0 or returncode in (124, 137, 152, 153))
+            # `timeout -s KILL` surfaces as 137, SIGXCPU as 152/153 and a
+            # genuine crash as 128+signal (139 for SIGSEGV). Only the
+            # time-limit signals are timeouts; calling every signal a timeout
+            # told a learner whose interpreter segfaulted that they were too
+            # slow.
+            killed = returncode in (124, 137, 152, 153) or (
+                returncode is not None and returncode < 0 and -returncode in (signal.SIGKILL, signal.SIGXCPU, signal.SIGTERM)
+            )
             if killed or runtime_ms >= effective_timeout_ms - 50:
                 return RunResult(
                     status="timeout",
@@ -888,10 +971,36 @@ class LocalSandboxProvider:
                     runtime_ms=runtime_ms,
                 )
             if returncode != 0:
+                if returncode >= 128 and not stdout.strip() and runner.get("retry_host_crash"):
+                    # A signal death before any output is the interpreter
+                    # crashing, not the learner's program failing: say so,
+                    # because "Process exited with code 139" reads like a
+                    # verdict on their code.
+                    name = signal.Signals(returncode - 128).name if returncode - 128 in signal.valid_signals() else f"signal {returncode - 128}"
+                    return RunResult(
+                        status="runtime_error",
+                        stdout=stdout,
+                        stderr=(
+                            f"The {language} runtime crashed ({name}) before producing output. "
+                            "This is a fault in the sandbox runtime, not in your program - run it again."
+                        ),
+                        compile_output=compile_text,
+                        exit_code=returncode,
+                        runtime_ms=runtime_ms,
+                    )
+                diagnostic = _clean(stderr)
+                if not diagnostic and returncode >= 128:
+                    # A program killed by a signal has no stderr of its own;
+                    # name the signal instead of only echoing the exit code.
+                    signo = returncode - 128
+                    try:
+                        diagnostic = f"Program terminated by {signal.Signals(signo).name} (exit code {returncode})."
+                    except ValueError:
+                        diagnostic = f"Program terminated by signal {signo} (exit code {returncode})."
                 return RunResult(
                     status="runtime_error",
                     stdout=stdout,
-                    stderr=_clean(stderr) or f"Process exited with code {returncode}",
+                    stderr=diagnostic or f"Process exited with code {returncode}",
                     compile_output=compile_text,
                     exit_code=returncode,
                     runtime_ms=runtime_ms,
