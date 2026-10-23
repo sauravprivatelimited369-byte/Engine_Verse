@@ -1,4 +1,4 @@
-"""The n8n-backed study assistant (EngineVerse × n8n).
+"""The n8n-backed study assistant (Forge / EngineVerse × n8n).
 
 What this module is
 -------------------
@@ -54,6 +54,7 @@ __all__ = [
     "MAX_QUESTION_CHARS",
     "ask",
     "client_config",
+    "identity",
     "sanitise_question",
     "session_id_for",
     "status",
@@ -73,8 +74,28 @@ DISCLOSURE = (
 )
 
 #: What the assistant is, said plainly. The UI repeats this; the API returns it
-#: so a second client cannot quietly drop the label.
-IDENTITY = "EngineVerse study assistant (an AI assistant, not a person)"
+#: so a second client cannot quietly drop the label. The product name comes from
+#: the brand table at request time, so a renamed deployment is not mislabelled.
+IDENTITY_TEMPLATE = "{site} study assistant (an AI assistant, not a person)"
+
+
+def _site_name() -> str:
+    """The configured product name, without making the module depend on the DB.
+
+    ``brand.get`` reads ``site_config``; the assistant is also used by scripts and
+    tests that never open a database, and a label is never worth failing a
+    request over, so any problem falls back to the shipped name.
+    """
+    try:
+        from . import brand
+
+        return brand.get("site_name") or "Forge"
+    except Exception:  # pragma: no cover - defensive: a label must never raise
+        return "Forge"
+
+
+def identity() -> str:
+    return IDENTITY_TEMPLATE.format(site=_site_name())
 
 #: Page-aware suggestions. A student on a coding problem does not want to be
 #: asked what they are revising; a student on the planner does.
@@ -258,7 +279,7 @@ def status() -> dict[str, Any]:
     return {
         "mode": mode,
         "available": mode == "proxy",
-        "identity": IDENTITY,
+        "identity": identity(),
         "disclosure": DISCLOSURE,
         "limitations": list(LIMITATIONS),
         "maxChars": MAX_QUESTION_CHARS,
@@ -291,12 +312,14 @@ def client_config(path: str = "/") -> dict[str, Any]:
         "maxChars": MAX_QUESTION_CHARS,
         "prompts": suggestions_for(path),
         "welcome": (
-            "I am the EngineVerse study assistant. Ask about a topic, an error "
+            f"I am the {_site_name()} study assistant. Ask about a topic, an error "
             "message, a revision plan or a project idea. I am an AI, so check "
             "anything important."
         ),
         "disclosure": DISCLOSURE,
-        "identity": IDENTITY,
+        "identity": identity(),
+        "launcherLabel": f"Open the {_site_name()} study assistant",
+        "launcherCloseLabel": f"Close the {_site_name()} study assistant",
     }
 
 
@@ -417,6 +440,6 @@ async def ask(
     return {
         "answer": answer,
         "latency_ms": round((time.perf_counter() - started) * 1000, 1),
-        "identity": IDENTITY,
+        "identity": identity(),
         "disclosure": DISCLOSURE,
     }

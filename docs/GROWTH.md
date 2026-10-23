@@ -1,6 +1,6 @@
 # Growth, discoverability and measurement
 
-EngineVerse's growth goal is that a student who needs it can find it. This
+Forge's growth goal is that a student who needs it can find it. This
 document records what the code now does, what it deliberately does not do, and a
 practical plan a single maintainer can run.
 
@@ -8,7 +8,7 @@ Two rules run through everything here:
 
 1. **Do not manufacture numbers.** No fake testimonials, no invented user counts,
    no "12,000 students" badges, no engagement bait, no bot traffic.
-2. **Do not measure what you have not disclosed.** EngineVerse loads no
+2. **Do not measure what you have not disclosed.** Forge loads no
    third-party analytics. That means some metrics below are *not available*, and
    this document says so instead of estimating them.
 
@@ -47,7 +47,7 @@ own domain. It is not harmful in either case.
 
 ## 2. Measurement: what can actually be known
 
-| Question | Can EngineVerse answer it? | How |
+| Question | Can Forge answer it? | How |
 |---|---|---|
 | Is the assistant working? | **Yes** | `audit_logs` actions `assistant.asked` / `assistant.failed` / `assistant.limited`, with `latency_ms` in `meta`. Workflow `06-analytics-rollup.json` queries it. |
 | How many questions were answered / failed? | **Yes**, on a self-hosted instance | As above. On the static Pages copy there is no server, so **no**. |

@@ -439,7 +439,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="EngineVerse",
+        title="Forge",
         description="Structured engineering education: notes, practice, coding, projects and revision.",
         version="1.0.0",
         lifespan=lifespan,
@@ -590,7 +590,7 @@ def create_app() -> FastAPI:
         payload = {
             "ok": True,
             "uptime_s": round(time.time() - app.state.started_at, 1),
-            "brand": brand.get("site_name", "EngineVerse"),
+            "brand": brand.get("site_name", "Forge"),
         }
         # Row counts are useful on a laptop and noisy on a public health check.
         if not get_settings().is_production:

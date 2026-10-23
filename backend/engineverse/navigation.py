@@ -492,7 +492,7 @@ COMMUNITY = Section(
             icon="trophy",
         ),
         Destination(
-            "About EngineVerse", "/about",
+            "About Forge", "/about",
             "What this platform is, what it is not, and how it is built.",
             icon="info",
         ),
@@ -510,7 +510,7 @@ GUIDE = Section(
     in_footer=False,
     destinations=(
         Destination(
-            "Everything on EngineVerse", "/resources",
+            "Everything on Forge", "/resources",
             "The complete index of every page and tool here, grouped, with live counts.",
             match=("/resources",), icon="grid",
         ),
@@ -582,7 +582,7 @@ EXTRA_FOOTER_SECTIONS: tuple[Section, ...] = (
         icon="download",
         destinations=(
             Destination("Install the app", "/install",
-                        "Add EngineVerse to your home screen and use it like an app.",
+                        "Add Forge to your home screen and use it like an app.",
                         icon="download"),
             Destination("Offline help", "/offline",
                         "What still works when the connection does not.", minor=True),

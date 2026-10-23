@@ -203,7 +203,7 @@ class Settings:
     # go, so it must not be handed to the caller instead. See engineverse.notify.
     smtp_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_SMTP_URL", ""))
     mail_from: str = field(default_factory=lambda: os.environ.get(
-        "ENGINEVERSE_MAIL_FROM", "EngineVerse <no-reply@localhost>"))
+        "ENGINEVERSE_MAIL_FROM", "Forge <no-reply@localhost>"))
     #: Shows the reset token in the page instead of emailing it. Development
     #: only, and refused outright when env is production. Default off: turning
     #: it on makes POST /forgot-password an account-takeover endpoint.

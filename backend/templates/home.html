@@ -24,24 +24,26 @@
 {% endblock %}
 
 {% block content %}
-{# Homepage: editorial, content-first. Every number below comes from the
-   catalogue (site.*) and every row links to a real page. No testimonials,
-   user counts or invented progress. #}
+{# Homepage: FORGE. Editorial, content-first, tempered glass. Every number
+   below comes from the catalogue (site.*) and every row links to a real page.
+   No testimonials, user counts or invented progress. The forge metaphor maps
+   to the real workflow (docs/BRAND.md): heat = learn, strike = practise,
+   temper = review. #}
 <div class="home">
 
   <section class="home-hero" aria-labelledby="ev-hero-title">
+    <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+    <span class="hero-glow hero-glow-b" aria-hidden="true"></span>
+    <span class="hero-grid-lines" aria-hidden="true"></span>
     <div class="hero-copy">
-      <p class="ev-eyebrow">Notes · Practice sheets · Progress</p>
-      <h1 class="hero-title" id="ev-hero-title">Learn with purpose.<br>Practise with confidence.</h1>
-      <p class="hero-lead">Your study notes, practice activities, and learning progress — organised in one place.</p>
+      <p class="hero-badge">{{ site.branches }} branches · {{ site.subjects }} subjects · free, no card, no trial timer</p>
+      <h1 class="hero-title" id="ev-hero-title">Where engineers<br>are <span class="grad">forged.</span></h1>
+      <p class="hero-lead">{{ brand.site_name }} turns scattered study into a system: structured notes, daily practice,
+        judged code and a progress record that proves you did the work — across every branch of engineering.</p>
       <div class="hero-actions">
-        {% if user %}
-          <a class="btn btn-primary btn-lg" href="/dpp">Start practising {{ icon("chevron", 15) }}</a>
-          <a class="btn btn-ghost btn-lg" href="/explore">Explore notes</a>
-        {% else %}
-          <a class="btn btn-primary btn-lg" href="/dpp">Start practising {{ icon("chevron", 15) }}</a>
-          <a class="btn btn-ghost btn-lg" href="/explore">Explore notes</a>
-        {% endif %}
+        <a class="btn btn-primary btn-lg" href="/dpp">Start today's practice {{ icon("chevron", 15) }}</a>
+        <a class="btn btn-ghost btn-lg" href="/explore">Browse the notes</a>
+        <a class="hero-install" href="/install">{{ icon("download", 15) }} Get the Android app</a>
       </div>
       <ul class="hero-proof" aria-label="What you get">
         <li>{{ icon("check", 14) }} Read and practise in the browser — no download, no setup</li>
@@ -55,14 +57,15 @@
       <details class="hero-fineprint">
         <summary>What runs where?</summary>
         <p>On this public copy, code runs in your browser (WebAssembly) and progress is kept on this device.
-          A hosted EngineVerse server adds accounts and a server-side judge. See <a href="/install">what works where</a>.</p>
+          A hosted {{ brand.site_name }} server adds accounts and a server-side judge. See <a href="/install">what works where</a>.</p>
       </details>
     </div>
 
-    <aside class="hero-panel" aria-label="Your study desk for today — every row opens a real page">
+    <aside class="hero-panel" aria-label="Your bench for today — every row opens a real page">
       <div class="hp-head">
-        <span class="hp-title">Study desk</span>
-        <span class="tiny muted"><span data-local-date>Today</span> · about 65 minutes</span>
+        <span class="hp-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="hp-title">Your bench today</span>
+        <span class="tiny muted hp-live"><span data-local-date>Today</span> · about 65 minutes</span>
       </div>
       <div class="hp-list">
         <a class="hp-row" href="/dpp">
@@ -71,20 +74,20 @@
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
         <a class="hp-row" href="/revision">
-          <span class="hp-ico">{{ icon("cards", 17) }}</span>
+          <span class="hp-ico hp-ico-b">{{ icon("cards", 17) }}</span>
           <span class="hp-text"><strong>Due flashcards</strong><span>Spaced repetition · ~10 min</span></span>
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
         {% if sample_problems %}
         <a class="hp-row" href="/practice/problems/{{ sample_problems[0].slug }}">
-          <span class="hp-ico">{{ icon("terminal", 17) }}</span>
+          <span class="hp-ico hp-ico-c">{{ icon("terminal", 17) }}</span>
           <span class="hp-text"><strong>{{ sample_problems[0].title }}</strong><span>Judged coding · {{ sample_problems[0].difficulty }}</span></span>
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
         {% endif %}
         {% if featured_topics %}
         <a class="hp-row" href="/topics/{{ featured_topics[0].slug }}">
-          <span class="hp-ico">{{ icon("book", 17) }}</span>
+          <span class="hp-ico hp-ico-d">{{ icon("book", 17) }}</span>
           <span class="hp-text"><strong>{{ featured_topics[0].title }}</strong><span>Notes · {{ featured_topics[0].est_minutes }} min read · {{ featured_topics[0].subject }}</span></span>
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
@@ -95,8 +98,10 @@
           <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
         </a>
       </div>
-      <p class="hp-foot">Every row opens a real page. Nothing here is a mock-up.</p>
+      <p class="hp-foot">{{ icon("flame", 13, true) }} Every row opens a real page. Nothing here is a mock-up.</p>
     </aside>
+    <span class="hero-float hero-float-a" aria-hidden="true">{{ icon("check", 13) }} Code judged in your browser</span>
+    <span class="hero-float hero-float-b" aria-hidden="true">{{ icon("flame", 13, true) }} A fresh set every day</span>
   </section>
 
   <section class="hero-stats" aria-label="What is inside {{ brand.site_name }}">
@@ -113,8 +118,8 @@
       <div class="plan-head">
         <div>
           <p class="ev-eyebrow">Today's plan · <span data-local-date>today</span> · about 65 minutes</p>
-          <h2 id="ev-plan-title">Four steps. One solid study day.</h2>
-          <p class="section-sub">Practise, revise, code, learn — in that order. Tick each step off as you finish it. Short on time? Step one alone still counts.</p>
+          <h2 id="ev-plan-title">Four strikes. One solid study day.</h2>
+          <p class="section-sub">Strike, temper, test, shape — in that order. Tick each step off as you finish it. Short on time? Step one alone still counts.</p>
         </div>
         <div class="plan-progress" data-plan-progress-box>
           <div class="plan-progress-meta">
@@ -130,7 +135,7 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">01</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("target", 20) }}</span>
-          <div class="plan-body"><h3>Solve today's DPP</h3>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Strike</span><h3>Solve today's DPP</h3>
             <p>A fresh mixed set for today's date — the fastest way to keep concepts warm across subjects.</p></div>
           <div class="plan-side"><span class="chip">~30 min</span>
             <a class="plan-go" href="/dpp">Start the set {{ icon("chevron", 13) }}</a>
@@ -139,8 +144,8 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">02</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("cards", 20) }}</span>
-          <div class="plan-body"><h3>Revise due flashcards</h3>
-            <p>Spaced repetition shows each card just before you would forget it. Ten minutes here saves hours later.</p></div>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Temper</span><h3>Revise due flashcards</h3>
+            <p>Spaced repetition shows each card just before you would forget it — tempering memory until it holds. Ten minutes here saves hours later.</p></div>
           <div class="plan-side"><span class="chip">~10 min</span>
             <a class="plan-go" href="/revision">Review cards {{ icon("chevron", 13) }}</a>
             <label class="plan-check"><input type="checkbox" data-plan-step="revise" aria-label="Mark flashcards as done"><span class="plan-check-box" aria-hidden="true">{{ icon("check", 12) }}</span><span>Done</span></label></div>
@@ -148,7 +153,7 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">03</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("terminal", 20) }}</span>
-          <div class="plan-body"><h3>Code one problem</h3>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Test the edge</span><h3>Code one problem</h3>
             <p>{% if sample_problems %}Try “{{ sample_problems[0].title }}” ({{ sample_problems[0].difficulty }}) in the judged practice area.{% else %}One judged problem in the practice area, run and tested right in your browser.{% endif %}</p></div>
           <div class="plan-side"><span class="chip">~15 min</span>
             <a class="plan-go" href="{% if sample_problems %}/practice/problems/{{ sample_problems[0].slug }}{% else %}/practice{% endif %}">Open problem {{ icon("chevron", 13) }}</a>
@@ -157,7 +162,7 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">04</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("book", 20) }}</span>
-          <div class="plan-body"><h3>Learn one new topic</h3>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">New steel</span><h3>Learn one new topic</h3>
             <p>{% if featured_topics %}Start with “{{ featured_topics[0].title }}” — {{ featured_topics[0].est_minutes }} minutes, with notes and a worked example.{% else %}Pick any topic from the catalogue and read it end to end.{% endif %}</p></div>
           <div class="plan-side"><span class="chip">{% if featured_topics %}~{{ featured_topics[0].est_minutes }} min{% else %}~15 min{% endif %}</span>
             <a class="plan-go" href="{% if featured_topics %}/topics/{{ featured_topics[0].slug }}{% else %}/explore{% endif %}">Read the topic {{ icon("chevron", 13) }}</a>
@@ -170,30 +175,47 @@
 
   <section class="section" aria-labelledby="ev-how-title">
     <div class="section-head"><div>
-      <p class="ev-eyebrow">How it works</p>
-      <h2 id="ev-how-title">Learn → Practise → Review</h2>
-      <p class="section-sub">The same loop for every topic, so you always know what to do next.</p>
+      <p class="ev-eyebrow">The Forge cycle</p>
+      <h2 id="ev-how-title">Heat → Strike → Temper</h2>
+      <p class="section-sub">How steel is shaped — and how a concept actually sticks. The same loop for every topic, so you always know what to do next.</p>
     </div></div>
     <ol class="how-grid">
       <li class="how-step">
         <span class="how-num" aria-hidden="true">1</span>
-        <h3>Learn</h3>
+        <h3>Heat — learn it properly</h3>
         <p>Read the notes: definition, intuition, a diagram and a worked example — written to be finished, not skimmed.</p>
         <a href="/explore">Browse the notes {{ icon("chevron", 13) }}</a>
       </li>
       <li class="how-step">
         <span class="how-num" aria-hidden="true">2</span>
-        <h3>Practise</h3>
+        <h3>Strike — practise under pressure</h3>
         <p>Answer questions and run judged coding problems. Wrong answers are kept in your mistake notebook, not lost.</p>
         <a href="/practice">Open practice {{ icon("chevron", 13) }}</a>
       </li>
       <li class="how-step">
         <span class="how-num" aria-hidden="true">3</span>
-        <h3>Review</h3>
+        <h3>Temper — review until it holds</h3>
         <p>Flashcards return on a spaced-repetition schedule, and your progress page shows what is actually sticking.</p>
         <a href="/revision">Review due cards {{ icon("chevron", 13) }}</a>
       </li>
     </ol>
+  </section>
+
+  <section class="section" aria-labelledby="ev-why-title">
+    <div class="manifesto">
+      <div>
+        <p class="ev-eyebrow">Why “{{ brand.site_name }}”?</p>
+        <h2 class="manifesto-big" id="ev-why-title">Engineers aren't born.<br>They're <span class="grad">forged</span> — one honest hour at a time.</h2>
+      </div>
+      <div>
+        <p>A forge takes raw metal and, through heat and repeated strikes, turns it into a tool that holds an edge.
+          That is exactly what studying is. Nobody crams their way to competence the night before — you heat a concept,
+          strike it with practice, and temper it with review until it holds.</p>
+        <p>{{ brand.site_name }} is built around that cycle and nothing else: no motivational wallpaper, no inflated
+          promises. It is free, open-source and tracker-free, and every count on this page comes from the real catalogue.</p>
+        <p><a href="/about">More about the project {{ icon("chevron", 13) }}</a></p>
+      </div>
+    </div>
   </section>
 
   {% if trending %}
@@ -219,7 +241,7 @@
     </div><a class="section-link" href="/explore">All {{ site.branches }} branches {{ icon("chevron", 13) }}</a></div>
     <div class="tiles path-grid">
       {% for branch in paths[:12] %}
-        <a class="tile path-tile" href="/branches/{{ branch.slug }}" style="--tile-c: {{ branch.color or '#2563eb' }}">
+        <a class="tile path-tile" href="/branches/{{ branch.slug }}" style="--tile-c: {{ branch.color or '#f97316' }}">
           <span class="tile-mark">{{ branch.short }}</span>
           <span class="nm">{{ branch.name }}</span>
           <span class="ct">{{ branch.subject_count or 0 }} subject{{ '' if (branch.subject_count or 0) == 1 else 's' }}</span>
@@ -321,23 +343,23 @@
   <section class="section" aria-labelledby="ev-features-title">
     <div class="section-head"><div>
       <p class="ev-eyebrow">What's inside</p>
-      <h2 id="ev-features-title">Three tools, one workspace</h2>
+      <h2 id="ev-features-title">Three tools, one workshop</h2>
     </div></div>
     <div class="feature-list">
       <article class="feature-row">
         <span class="pillar-mark" aria-hidden="true">{{ icon("book", 20) }}</span>
-        <div><h3>Notes</h3><p>Structured notes for every subject — definition, intuition, diagram, derivation and a worked example, at four depths.</p></div>
+        <div><h3>Notes</h3><p>The raw material, refined: structured notes for every subject — definition, intuition, diagram, derivation and a worked example, at four depths.</p></div>
         <a href="/explore">Browse notes {{ icon("chevron", 13) }}</a>
       </article>
       <article class="feature-row">
         <span class="pillar-mark" aria-hidden="true">{{ icon("target", 20) }}</span>
-        <div><h3>Practice sheets</h3><p>Daily problem sets, question banks and judged coding sheets. Mistakes are saved to a notebook so you can revisit them.</p></div>
+        <div><h3>Practice sheets</h3><p>The hammer work: daily problem sets, question banks and judged coding sheets. Mistakes are saved to a notebook so you can revisit them.</p></div>
         <a href="/practice">Open practice sheets {{ icon("chevron", 13) }}</a>
       </article>
       <article class="feature-row">
         <span class="pillar-mark" aria-hidden="true">{{ icon("chart", 20) }}</span>
         <div><h3>Progress{% if not static_export %} &amp; leaderboard{% endif %}</h3>
-          <p>{% if static_export %}Your streak, XP and completed topics, saved on this device and exportable as JSON. The leaderboard runs on the hosted app, which needs accounts.{% else %}Your streak, XP and completed topics — plus a leaderboard on this hosted instance so you can see where you stand.{% endif %}</p></div>
+          <p>{% if static_export %}The inspection record: your streak, XP and completed topics, saved on this device and exportable as JSON. The leaderboard runs on the hosted app, which needs accounts.{% else %}The inspection record: your streak, XP and completed topics — plus a leaderboard on this hosted instance so you can see where you stand.{% endif %}</p></div>
         <a href="/dashboard">{{ 'My progress' if static_export else 'Progress & leaderboard' }} {{ icon("chevron", 13) }}</a>
       </article>
     </div>
@@ -347,11 +369,11 @@
     <div class="cta-panel between">
       <div class="cta-panel-copy">
         <p class="ev-eyebrow">Web · Android · Your data stays yours</p>
-        <h2 id="ev-install-title">Use it online or on your phone</h2>
+        <h2 id="ev-install-title">Take the forge with you</h2>
         {% if static_export %}
-        <p>Solve practice sets, run code and read the notes in your browser. This public copy has no accounts: progress is saved on this device only, and you can export it as JSON from Settings.</p>
+        <p>Solve practice sets, run code and read the notes in your browser, or install the Android app for the offline catalogue and planner. This public copy has no accounts: progress is saved on this device only, and you can export it as JSON from Settings.</p>
         {% else %}
-        <p>Solve practice sets and read the notes in your browser. Signing in saves your progress to this server so it follows you between devices; you can download a copy from Settings at any time.</p>
+        <p>Solve practice sets and read the notes in your browser, or install the Android app for the offline catalogue and planner. Signing in saves your progress to this server so it follows you between devices; you can download a copy from Settings at any time.</p>
         {% endif %}
       </div>
       <div class="cta-panel-actions">

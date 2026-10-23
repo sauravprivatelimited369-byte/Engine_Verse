@@ -281,7 +281,7 @@ def test_successful_answer_is_returned_and_audited_without_the_question(client, 
         assert question == "How do I reverse a linked list?"
         assert kwargs["session_id"].startswith("ev-")
         return {"answer": "Use three pointers.", "latency_ms": 12.3,
-                "identity": assistant.IDENTITY, "disclosure": assistant.DISCLOSURE}
+                "identity": assistant.identity(), "disclosure": assistant.DISCLOSURE}
 
     monkeypatch.setattr(assistant, "ask", fake)
     response = post_question(client, "How do I reverse a linked list?")
@@ -318,7 +318,7 @@ def test_per_session_question_budget(client, monkeypatch, configured):
     reload_settings()
 
     async def fake(question, **kwargs):
-        return {"answer": "ok", "latency_ms": 1, "identity": assistant.IDENTITY,
+        return {"answer": "ok", "latency_ms": 1, "identity": assistant.identity(),
                 "disclosure": assistant.DISCLOSURE}
 
     monkeypatch.setattr(assistant, "ask", fake)

@@ -11,7 +11,7 @@ judge can compose and this repository can verify end to end (see
 ``scripts/check_problems.py``), and shipping a Java stub whose harness has never
 been run would be offering a language that does not work.
 
-The statements are written to be readable *inside* EngineVerse: no problem tells
+The statements are written to be readable *inside* Forge: no problem tells
 the learner to go and look something up on another site, and each editorial
 explains the pattern well enough to stand alone.
 """

@@ -1,4 +1,4 @@
-"""Per-topic diagrams for EngineVerse notes.
+"""Per-topic diagrams for Forge notes.
 
 Every entry here is a *scene* for `engineverse.diagrams`, not markup: a list of
 primitives with numbers and plain strings. `diagrams.render()` validates it and

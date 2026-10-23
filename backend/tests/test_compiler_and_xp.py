@@ -205,7 +205,7 @@ class TestJavaScriptDrivers:
             if wrapper == "raw":
                 assert driver == ""
             else:
-                assert "EngineVerse harness" in driver and "__EV_" not in driver, wrapper
+                assert "Forge harness" in driver and "__EV_" not in driver, wrapper
 
     def test_javascript_signature_entrypoints_parse(self):
         assert entrypoint("function twoSum(nums, target) {") == "twoSum"
@@ -215,7 +215,7 @@ class TestJavaScriptDrivers:
     def test_compose_appends_the_javascript_harness(self):
         program = compose("javascript", "function twoSum(a, b) { return []; }",
                           "list-target", "function twoSum(nums, target) {")
-        assert "twoSum" in program and "EngineVerse harness" in program
+        assert "twoSum" in program and "Forge harness" in program
         # Languages without a driver set still run verbatim - never pretend.
         assert compose("java", "public class Main {}", "int-list-int", None) == "public class Main {}"
 
@@ -306,7 +306,7 @@ class TestStaticCopyExecution:
 
         problems = json.loads((tmp_path / "coding-problems.json").read_text(encoding="utf-8"))
         two_sum = problems["two-sum"]
-        assert "EngineVerse harness" in two_sum["driverPython"]
+        assert "Forge harness" in two_sum["driverPython"]
         assert "two_sum" in two_sum["driverPython"]
 
     def test_fetch_pyodide_self_check(self):

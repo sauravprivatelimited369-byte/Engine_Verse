@@ -404,7 +404,7 @@ def python_driver(wrapper: str, entry: str) -> str:
     body = _python_body(wrapper, entry)
     if not body:
         return ""
-    return "\n\n# ---- EngineVerse harness (appended by the judge) ----\n" + body.strip() + "\n"
+    return "\n\n# ---- Forge harness (appended by the judge) ----\n" + body.strip() + "\n"
 
 
 #: JavaScript equivalent of the Python drivers: ONE harness with a wrapper
@@ -424,13 +424,13 @@ _JS_PRELUDE = """let _evUserWrote = false;
 """
 
 _JS_HARNESS = r'''
-// ---- EngineVerse harness (appended by the judge) ----
+// ---- Forge harness (appended by the judge) ----
 (() => {
   const _evWrapper = "__EV_WRAPPER__";
   const _evEntry = typeof __EV_ENTRY__ !== "undefined" ? __EV_ENTRY__ : null;
   if (_evEntry === null) {
     if (typeof _evUserWrote !== "undefined" && _evUserWrote) return;
-    console.error("EngineVerse harness: entry point '__EV_ENTRY__' is not defined. Define the function named in the stub.");
+    console.error("Forge harness: entry point '__EV_ENTRY__' is not defined. Define the function named in the stub.");
     process.exit(1);
   }
   const _evText = require("fs").readFileSync(0, "utf8");
@@ -601,7 +601,7 @@ def java_driver(wrapper: str, entry: str) -> str:
         return ""
     if wrapper == "int-list-int":
         return f"""
-    // ---- EngineVerse harness ----
+    // ---- Forge harness ----
     public static void main(String[] args) throws Exception {{
         java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(System.in));
         String l1 = br.readLine(); String l2 = br.readLine();

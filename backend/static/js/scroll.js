@@ -1,5 +1,5 @@
 /* ===========================================================================
-   EngineVerse — home feed behaviour
+   Forge — home feed behaviour
    Reveal-on-scroll, animated counters, the study-plan ticks and a top bar that
    gets out of the way while you read.
 

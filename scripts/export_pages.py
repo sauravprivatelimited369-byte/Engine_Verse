@@ -303,13 +303,13 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
     deploy_doc = f"{REPO}/blob/main/docs/DEPLOYMENT.md"
     if app_url:
         server = (
-            '<p>A hosted EngineVerse server is available. It adds accounts, progress that follows you between '
+            '<p>A hosted Forge server is available. It adds accounts, progress that follows you between '
             'devices, discussions and server-side code judging where the host has enabled it.</p>'
             f'<p class="row"><a class="btn btn-primary" href="{html.escape(app_url, quote=True)}/">Open the hosted site</a></p>'
         )
     else:
         server = (
-            '<p>No hosted EngineVerse server is linked from this copy yet. Anyone can run one: it is a Python '
+            '<p>No hosted Forge server is linked from this copy yet. Anyone can run one: it is a Python '
             'FastAPI application with a SQL database. The deployment guide covers it step by step.</p>'
             f'<p class="row"><a class="btn btn-ghost" href="{html.escape(deploy_doc, quote=True)}" '
             'rel="noopener noreferrer">Deployment guide</a></p>'
@@ -322,8 +322,8 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
     return f"""
 <section class="page-hero">
   <p class="ev-eyebrow">Platform · how this site works</p>
-  <h1>Use EngineVerse here</h1>
-  <p class="lead">This site is a static copy of EngineVerse that runs entirely in your browser. You do not need to
+  <h1>Use Forge here</h1>
+  <p class="lead">This site is a static copy of Forge that runs entirely in your browser. You do not need to
     download or install anything to use it.</p>
 </section>
 <div class="grid g2 about-grid">
@@ -344,7 +344,7 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
   <section class="panel">
     <h2>What needs a server</h2>
     <p>Accounts, progress that syncs between devices, posting in discussions, leaderboards with other learners and
-      certificates with a verification ID all need a hosted EngineVerse server with a database.</p>
+      certificates with a verification ID all need a hosted Forge server with a database.</p>
     {server}
   </section>
 </div>
@@ -368,14 +368,14 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
     """
     android_ci = f"{REPO}/actions/workflows/android-build.yml"
     hosted = (
-        f'<p class="small muted">A hosted EngineVerse server is also available at '
+        f'<p class="small muted">A hosted Forge server is also available at '
         f'<a href="{html.escape(app_url, quote=True)}/">{html.escape(app_url)}</a>, with accounts that sync '
         'between devices.</p>'
         if app_url else ""
     )
     if apk_url:
         apk_body = (
-            '<p>The native EngineVerse Android app is published as a signed GitHub Release. It includes an '
+            '<p>The native Forge Android app is published as a signed GitHub Release. It includes an '
             'offline subject catalogue, the study planner and settings, and opens lessons in a secure in-app '
             'viewer.</p>'
             f'<p><a class="btn btn-primary" href="{html.escape(apk_url, quote=True)}" '
@@ -383,7 +383,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
             '<ol class="steps">'
             '<li>Download the APK from the official GitHub Release.</li>'
             '<li>Open it on your Android phone and allow installation from your browser if asked.</li>'
-            '<li>Launch <strong>EngineVerse</strong>.</li>'
+            '<li>Launch <strong>Forge</strong>.</li>'
             '</ol>'
             '<p class="small muted">Only install the APK from the official release, never from a forwarded '
             'copy. Check the SHA-256 checksum published with the release.</p>'
@@ -391,7 +391,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
     else:
         apk_body = (
             '<p>No signed release of the native Android app has been published yet, so there is no APK '
-            'download here. Do not install an EngineVerse APK from any other source.</p>'
+            'download here. Do not install an Forge APK from any other source.</p>'
             f'<p class="small muted">Testers can download unsigned debug builds from the '
             f'<a href="{html.escape(android_ci, quote=True)}" rel="noopener noreferrer">Android build '
             'workflow</a> on GitHub (a GitHub account is required, and builds expire). Debug builds are for '
@@ -402,7 +402,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
 <section class="page-hero">
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
   <p class="ev-eyebrow">Install · Android · iPhone</p>
-  <h1>Use EngineVerse on your phone</h1>
+  <h1>Use Forge on your phone</h1>
   <p class="lead">This website works in any modern mobile browser. You can also add it to your home screen so it
     opens like an app. There is no account: your progress is saved in the browser on each device.</p>
   {hosted}
@@ -879,7 +879,7 @@ STATIC_RUNNER_NOTICE = (
     "(Roslyn), TypeScript, Go and SQL (SQLite) - each downloaded once, only when "
     "first used. A language whose runtime files are missing from this copy is "
     "<strong>not executed</strong> and is never marked as passed; the hosted "
-    "EngineVerse compiler runs every language through its configured judge.</div>"
+    "Forge compiler runs every language through its configured judge.</div>"
 )
 
 
@@ -934,7 +934,7 @@ def _no_accounts_main(heading: str, intro: str) -> str:
 <div class="grid g2 about-grid">
   <section class="panel">
     <h2>Your progress stays on this device</h2>
-    <p>This public copy of EngineVerse runs entirely in your browser. There are no accounts or passwords, and nothing
+    <p>This public copy of Forge runs entirely in your browser. There are no accounts or passwords, and nothing
       you do here is uploaded. Streaks, completed topics, solved problems, bookmarks and your study planner are
       saved in this browser's local storage.</p>
     <p class="row"><a class="btn btn-primary btn-sm" href="/dashboard">My progress</a>
@@ -944,7 +944,7 @@ def _no_accounts_main(heading: str, intro: str) -> str:
     <h2>Moving to another device</h2>
     <p>Export your progress as a JSON file from <a href="/settings">Settings</a>, then import it on the other
       device. Clearing this browser's site data deletes your progress, so export first if you want to keep it.</p>
-    <p>Accounts, synced progress, discussions and certificates with a verification ID need a hosted EngineVerse
+    <p>Accounts, synced progress, discussions and certificates with a verification ID need a hosted Forge
       server. The <a href="/hosting">hosting page</a> explains how to run one.</p>
   </section>
 </div>
@@ -980,7 +980,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     local_note = ('<p class="chips-row"><span class="chip ok">Saved on this device only</span>'
                   '<span class="chip">Nothing is uploaded</span></p>')
     pages_spec: dict[str, tuple[str, str]] = {
-        "/dashboard": ("My progress - EngineVerse", f"""
+        "/dashboard": ("My progress - Forge", f"""
 <div data-ev-page="dashboard">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · progress</p>
@@ -1009,11 +1009,11 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     </section>
   </div>
 </div>"""),
-        "/profile": ("My profile - EngineVerse", f"""
+        "/profile": ("My profile - Forge", f"""
 <div data-ev-page="profile">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · profile</p>
-    <h1 id="ev-profile-name">EngineVerse learner</h1>
+    <h1 id="ev-profile-name">Forge learner</h1>
     <p class="lead"><span id="ev-profile-branch">Branch not set</span> · <span id="ev-profile-xp">0 XP</span></p>
     <p id="ev-profile-bio" class="muted"></p>
     {local_note}
@@ -1033,7 +1033,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     </section>
   </div>
 </div>"""),
-        "/settings": ("Settings - EngineVerse", f"""
+        "/settings": ("Settings - Forge", f"""
 <div data-ev-page="settings">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · settings</p>
@@ -1088,7 +1088,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     </section>
   </div>
 </div>"""),
-        "/today": ("Today's plan - EngineVerse", """
+        "/today": ("Today's plan - Forge", """
 <div data-ev-page="today">
   <section class="page-hero">
     <p class="ev-eyebrow">Progress · today</p>
@@ -1111,7 +1111,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
         <a class="btn btn-ghost btn-sm" href="/planner">Plan tomorrow</a></p></section>
   </div>
 </div>"""),
-        "/mistakes": ("Mistake notebook - EngineVerse", f"""
+        "/mistakes": ("Mistake notebook - Forge", f"""
 <div data-ev-page="mistakes">
   <section class="page-hero">
     <p class="ev-eyebrow">Practice · mistakes</p>
@@ -1123,7 +1123,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
   <p class="panel muted" data-ev-empty="ev-mistakes-list">No mistakes recorded. Answer questions in the
     <a href="/practice/questions">question bank</a> or <a href="/dpp">daily practice</a>.</p>
 </div>"""),
-        "/portfolio": ("Portfolio - EngineVerse", """
+        "/portfolio": ("Portfolio - Forge", """
 <div data-ev-page="portfolio">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · portfolio</p>
@@ -1143,7 +1143,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
       <p class="muted" data-ev-empty="ev-portfolio-problems">No problems solved yet.</p></section>
   </div>
 </div>"""),
-        "/certificates": ("Certificates - EngineVerse", """
+        "/certificates": ("Certificates - Forge", """
 <div data-ev-page="certificates">
   <section class="page-hero">
     <p class="ev-eyebrow">Platform · certificates</p>
@@ -1157,23 +1157,23 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
       <li>Track completed topics and solved problems on <a href="/dashboard">My progress</a>.</li>
       <li>Print a summary of your work from the <a href="/portfolio">portfolio page</a>. It is clearly marked as
         unverified.</li>
-      <li>Run your own EngineVerse server to issue verifiable certificates. See the <a href="/hosting">hosting page</a>.</li>
+      <li>Run your own Forge server to issue verifiable certificates. See the <a href="/hosting">hosting page</a>.</li>
     </ul>
   </section>
 </div>"""),
-        "/login": ("Sign in - EngineVerse", _no_accounts_main(
-            "No sign-in needed", "This public copy of EngineVerse has no accounts.")),
-        "/register": ("Create an account - EngineVerse", _no_accounts_main(
-            "No account needed", "This public copy of EngineVerse has no accounts. Start learning straight away.")),
-        "/forgot-password": ("Password help - EngineVerse", _no_accounts_main(
-            "There are no passwords here", "This public copy of EngineVerse has no accounts, so there is nothing to reset.")),
-        "/reset-password": ("Password help - EngineVerse", _no_accounts_main(
-            "There are no passwords here", "This public copy of EngineVerse has no accounts, so there is nothing to reset.")),
-        "/logout": ("Sign out - EngineVerse", _no_accounts_main(
-            "Nothing to sign out of", "This public copy of EngineVerse has no accounts. To remove your progress from this browser, use Settings.")),
-        "/notifications": ("Notifications - EngineVerse", _no_accounts_main(
-            "No notifications on this copy", "Notifications need an account on a hosted EngineVerse server.")),
-        "/onboarding": ("Get started - EngineVerse", _no_accounts_main(
+        "/login": ("Sign in - Forge", _no_accounts_main(
+            "No sign-in needed", "This public copy of Forge has no accounts.")),
+        "/register": ("Create an account - Forge", _no_accounts_main(
+            "No account needed", "This public copy of Forge has no accounts. Start learning straight away.")),
+        "/forgot-password": ("Password help - Forge", _no_accounts_main(
+            "There are no passwords here", "This public copy of Forge has no accounts, so there is nothing to reset.")),
+        "/reset-password": ("Password help - Forge", _no_accounts_main(
+            "There are no passwords here", "This public copy of Forge has no accounts, so there is nothing to reset.")),
+        "/logout": ("Sign out - Forge", _no_accounts_main(
+            "Nothing to sign out of", "This public copy of Forge has no accounts. To remove your progress from this browser, use Settings.")),
+        "/notifications": ("Notifications - Forge", _no_accounts_main(
+            "No notifications on this copy", "Notifications need an account on a hosted Forge server.")),
+        "/onboarding": ("Get started - Forge", _no_accounts_main(
             "Get started", "Set your branch in Settings, then open your stream to see the subjects for it.")),
     }
     count = 0
@@ -1326,9 +1326,9 @@ def copy_static(site: Path, base: str) -> None:
             rewrite_html(html_file.read_text(encoding="utf-8"), base), encoding="utf-8"
         )
     manifest = {
-        "name": "EngineVerse",
-        "short_name": "EngineVerse",
-        "description": "EngineVerse: Engineering notes, coding practice, labs, Android app and GitHub sync.",
+        "name": "Forge",
+        "short_name": "Forge",
+        "description": "Forge: Engineering notes, coding practice, labs, Android app and GitHub sync.",
         "start_url": rewrite_url("/", base),
         "scope": rewrite_url("/", base),
         "display": "standalone",
@@ -1522,7 +1522,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
         if path.startswith("/practice/problems/") and path.count("/") == 3:
             body = enable_problem_editor(body)
         if path == "/install":
-            body = fill_shell(body, "Install EngineVerse", rewrite_html(reading_copy_install_main(app_url, apk_url), base), private=False)
+            body = fill_shell(body, "Install Forge", rewrite_html(reading_copy_install_main(app_url, apk_url), base), private=False)
         # First-year page should not keep a query-string link to itself as the only year view.
         if path == "/explore/first-year":
             body = body.replace("<title>", "<title>First year - ", 1)
@@ -1541,7 +1541,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     branch_list = [(row["slug"], row["name"]) for row in catalog.list_branches()]
     written += write_account_pages(site, base, home_html, apk_url=apk_url, branches=branch_list)
 
-    hosting = fill_shell(home_html, "Use EngineVerse", rewrite_html(hosting_main(app_url, apk_url), base))
+    hosting = fill_shell(home_html, "Use Forge", rewrite_html(hosting_main(app_url, apk_url), base))
     hosting_path = output_path(site, "/hosting")
     hosting_path.parent.mkdir(parents=True, exist_ok=True)
     hosting_path.write_text(hosting, encoding="utf-8")
@@ -1579,7 +1579,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     # site (owner.github.io/<repo>/) this file is not that root, so it mainly
     # serves a copy deployed on its own domain; it never blocks anything.
     (site / "robots.txt").write_text(
-        "# EngineVerse static reading copy. Personal pages carry noindex.\n"
+        "# Forge static reading copy. Personal pages carry noindex.\n"
         "User-agent: *\nAllow: /\n"
         f"Sitemap: {origin}/sitemap.xml\n",
         encoding="utf-8",
@@ -1666,14 +1666,14 @@ def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = F
             f'<a class="btn btn-primary" href="{home}" id="gateway-open">Open full website</a>'
             f'<a class="btn btn-ghost" href="{login}" id="gateway-signin">Sign in</a>'
             f'<a class="btn btn-ghost" href="{register}">Create account</a></p>'
-            f'<p><a href="{install}">Use EngineVerse on your phone</a></p>'
+            f'<p><a href="{install}">Use Forge on your phone</a></p>'
             '<p class="small muted">Accounts and progress live on the hosted app, not on GitHub Pages. '
             'Code execution is available only if that host has a judge configured.</p>'
         )
         if apk_url:
             actions += (
                 f'<p><a class="btn btn-soft" href="{html.escape(apk_url, quote=True)}" '
-                'rel="noopener noreferrer">Download signed EngineVerse.apk</a></p>'
+                'rel="noopener noreferrer">Download signed Forge.apk</a></p>'
             )
         # GitHub Pages serves its 404.html for old bookmarked catalogue paths.
         # Route those to the same path on the app (not blindly to /login). The
@@ -1736,7 +1736,7 @@ def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = F
 """
 
 
-def export_gateway(site: Path, base: str, app_url: str, site_name: str = "EngineVerse",
+def export_gateway(site: Path, base: str, app_url: str, site_name: str = "Forge",
                    apk_url: str = "") -> int:
     if site.exists():
         shutil.rmtree(site)
@@ -1787,13 +1787,13 @@ def self_check() -> None:
             pass
         else:
             raise AssertionError(f"accepted {bad!r}")
-    gate = gateway_page("/EngineVerse/", "https://learn.example.org", "EngineVerse")
+    gate = gateway_page("/EngineVerse/", "https://learn.example.org", "Forge")
     assert 'href="https://learn.example.org/login"' in gate and "/EngineVerse/static/css/app.css" in gate
     assert 'id="gateway-open"' in gate and "location.replace" in gate
-    assert "Not hosted yet" in gateway_page("/EngineVerse/", "", "EngineVerse")
+    assert "Not hosted yet" in gateway_page("/EngineVerse/", "", "Forge")
     assert "Download signed" not in gate
     assert "Download signed" in gateway_page(
-        "/EngineVerse/", "https://learn.example.org", "EngineVerse",
+        "/EngineVerse/", "https://learn.example.org", "Forge",
         apk_url=project.release_download_prefix() + "android-v1.0.0/EngineVerse.apk"
     )
     # /apis is a page, not part of /api/. This boundary once silently dropped

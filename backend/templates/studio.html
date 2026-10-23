@@ -39,13 +39,13 @@
 <h2 id="policies-title">RLS policy matrix & access boundaries</h2>
 <p class="callout">{{ schema.disclosure }}</p>
 <div class="tablewrap"><table><caption class="sr-only">Catalogue and account access policy matrix</caption><thead><tr><th scope="col">Scope</th><th scope="col">Read</th><th scope="col">Write</th><th scope="col">Enforcement</th></tr></thead><tbody>{% for policy in schema.policies %}<tr><th scope="row">{{ policy.scope }}</th><td>{{ policy.read }}</td><td>{{ policy.write }}</td><td>{{ policy.enforcement }}</td></tr>{% endfor %}</tbody></table></div>
-<p class="tiny muted">A public SDK key identifies a client, not its authority. Native PostgreSQL RLS, provider document rules and EngineVerse's route authorization are different mechanisms. This lab neither changes them nor claims that a policy example has been applied.</p>
+<p class="tiny muted">A public SDK key identifies a client, not its authority. Native PostgreSQL RLS, provider document rules and {{ brand.site_name }}'s route authorization are different mechanisms. This lab neither changes them nor claims that a policy example has been applied.</p>
 </section>
 
 <section class="section panel" aria-labelledby="sql-title">
 <h2 id="sql-title">Read-only SELECT runner</h2>
-<p class="muted">Single SELECTs, joins and SELECT-only CTEs are supported. DDL/DML, private tables, schema introspection, extension functions and unsafe functions are blocked. The same isolation is used even when EngineVerse runs on PostgreSQL.</p>
-<p class="callout warning" data-lab-mode-notice hidden>This is a static reading copy. The schema and seeded query example are readable here; executing SQL requires a self-hosted EngineVerse backend.</p>
+<p class="muted">Single SELECTs, joins and SELECT-only CTEs are supported. DDL/DML, private tables, schema introspection, extension functions and unsafe functions are blocked. The same isolation is used even when {{ brand.site_name }} runs on PostgreSQL.</p>
+<p class="callout warning" data-lab-mode-notice hidden>This is a static reading copy. The schema and seeded query example are readable here; executing SQL requires a self-hosted {{ brand.site_name }} backend.</p>
 <form id="studio-form" action="/api/studio/query" method="post" data-live-only>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="studio-sql">SQL query</label><textarea id="studio-sql" name="sql" class="mono" maxlength="{{ schema.limits.sql_chars }}" rows="6" required data-live-control>{{ sql }}</textarea>

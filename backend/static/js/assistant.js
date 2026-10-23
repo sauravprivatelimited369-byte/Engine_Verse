@@ -1,4 +1,4 @@
-/* EngineVerse study assistant — the browser side of the n8n Chat Trigger.
+/* Study assistant — the browser side of the n8n Chat Trigger.
  *
  * Two mounts share one implementation:
  *   - the floating launcher included by base.html on every page;
@@ -36,6 +36,8 @@
   const PROMPTS = Array.isArray(config.prompts) ? config.prompts.slice(0, 4).filter((p) => typeof p === "string") : [];
   const WELCOME = typeof config.welcome === "string" && config.welcome ? config.welcome : "Ask me a study question.";
   const DISCLOSURE = typeof config.disclosure === "string" ? config.disclosure : "AI-generated; it can be wrong.";
+  const LABEL_OPEN = typeof config.launcherLabel === "string" && config.launcherLabel ? config.launcherLabel : "Open the study assistant";
+  const LABEL_CLOSE = typeof config.launcherCloseLabel === "string" && config.launcherCloseLabel ? config.launcherCloseLabel : "Close the study assistant";
 
   const launcherRoot = document.getElementById("ev-assistant-root");
   const pageRoot = document.getElementById("ev-assistant-page");
@@ -369,7 +371,7 @@
       panel.hidden = !next;
       launcherRoot.classList.toggle("is-open", next);
       button.setAttribute("aria-expanded", next ? "true" : "false");
-      button.setAttribute("aria-label", next ? "Close the EngineVerse study assistant" : "Open the EngineVerse study assistant");
+      button.setAttribute("aria-label", next ? LABEL_CLOSE : LABEL_OPEN);
       if (next && launcher) requestAnimationFrame(() => launcher.input.focus());
       else button.focus();
     };
