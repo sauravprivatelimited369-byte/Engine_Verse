@@ -81,6 +81,34 @@ def runtime_version(language: str) -> str:
     return ""
 
 
+#: The executable each language's runner needs on PATH. Used only to explain a
+#: disabled language to the learner/operator - it never decides availability
+#: (``LocalSandboxProvider.supports()`` does, from the real runner table).
+TOOLCHAIN_BINARIES: dict[str, str] = {
+    "python": "python3",
+    "java": "javac",
+    "javascript": "node",
+    "typescript": "tsc (or node with --experimental-strip-types)",
+    "c": "gcc",
+    "cpp": "g++",
+    "go": "go",
+    "rust": "rustc",
+    "csharp": "dotnet (8+) or the vendored Roslyn WASM runner",
+    "sql": "python3 (SQLite is in the standard library)",
+    "bash": "sh",
+    "ruby": "ruby (or the vendored CRuby WASM runner)",
+}
+
+#: Shown when the judge itself cannot run anything on this host. The languages
+#: that are disabled for this reason are not fixable with a toolchain install.
+MISSING_PROVIDER_HINT = (
+    "This host cannot execute code at all: the local sandbox needs unprivileged "
+    "user, network, PID and mount namespaces, and they are unavailable here. "
+    "Enable them (or set ENGINEVERSE_JUDGE=judge0 with ENGINEVERSE_JUDGE0_URL "
+    "pointing at a sandbox service)."
+)
+
+
 LANGUAGE_SPECS: tuple[dict[str, Any], ...] = (
     {
         "id": "python",
@@ -764,6 +792,52 @@ LANGUAGE_SPECS: tuple[dict[str, Any], ...] = (
         "keywords": ["using", "class", "static", "void", "string", "int", "Console"],
         "examples": [],
     },
+    {
+        # Ruby was in the judge's KNOWN_LANGUAGES and had a real runner (CRuby,
+        # or the vendored CRuby/WASM build) but no CodeLab entry, so
+        # /api/execute answered 400 "Unsupported language 'ruby'" on a host
+        # where Ruby demonstrably ran. Every runnable language must be
+        # selectable, and every selectable one must be runnable.
+        "id": "ruby",
+        "name": "Ruby",
+        "shortLabel": "Ruby",
+        "extension": ".rb",
+        "fileName": "main.rb",
+        "compiled": False,
+        "indentSize": 2,
+        "executionEnv": "CRuby interpreter (isolated sandbox)",
+        "syntaxFamily": "python",
+        "starterCode": (
+            "# CodeLab — Ruby (CRuby)\n"
+            "name = $stdin.read.strip\n"
+            "name = \"Engineer\" if name.empty?\n"
+            "puts \"Hello, #{name}! Welcome to EngineVerse CodeLab.\"\n"
+            "squares = (1..5).map { |n| n * n }\n"
+            "puts \"First 5 squares: #{squares.inspect} (sum = #{squares.sum})\"\n"
+        ),
+        "defaultStdin": "Asha\n",
+        "keywords": [
+            "def", "end", "if", "elsif", "else", "unless", "while", "until", "for",
+            "in", "do", "class", "module", "require", "begin", "rescue", "ensure",
+            "raise", "yield", "return", "puts", "print", "gets", "each", "map",
+            "select", "reduce", "nil", "true", "false", "self", "attr_accessor",
+        ],
+        "examples": [
+            {
+                "id": "rb-blocks",
+                "title": "Blocks, Hashes & stdin",
+                "stdin": "Asha\n",
+                "code": (
+                    "name = $stdin.read.strip\n"
+                    "name = \"Engineer\" if name.empty?\n"
+                    "circuits = { \"ECE\" => 12.0, \"EEE\" => 24.0, \"MECH\" => 6.0 }\n"
+                    "puts \"Hello, #{name}!\"\n"
+                    "circuits.each { |branch, volts| puts \"#{branch}: #{volts} V\" }\n"
+                    "puts \"Average: #{circuits.values.sum / circuits.size} V\"\n"
+                ),
+            },
+        ],
+    },
 )
 
 _BY_ID: dict[str, dict[str, Any]] = {spec["id"]: spec for spec in LANGUAGE_SPECS}
@@ -803,9 +877,28 @@ def language_registry_payload() -> dict[str, Any]:
             "version": ver,
             "runtimeLabel": runtime_label if is_available else f"{spec['name']} toolchain not configured on this host",
         }
+        if not is_available and provider_available:
+            # The provider works, so the only missing piece is this language's
+            # own toolchain. Say which binary is absent and the exact command
+            # that provisions it: without that, a host with one installed
+            # compiler looks like "CodeLab only runs one language" with no
+            # indication of why or what to do.
+            entry["missingBinary"] = TOOLCHAIN_BINARIES.get(lang_id, "")
+            entry["installCommand"] = f"python3 scripts/setup_toolchains.py {lang_id}"
         languages.append(entry)
         if is_available:
             executable_ids.append(lang_id)
+
+    missing = [
+        {
+            "id": entry["id"],
+            "name": entry["name"],
+            "missingBinary": entry.get("missingBinary", ""),
+            "installCommand": entry.get("installCommand", ""),
+        }
+        for entry in languages
+        if not entry["available"] and entry.get("installCommand")
+    ]
 
     return {
         "ok": True,
@@ -813,9 +906,21 @@ def language_registry_payload() -> dict[str, Any]:
             "name": provider_name,
             "available": provider_available,
             "runnableCount": len(executable_ids),
+            "hint": (
+                ""
+                if provider_available
+                else MISSING_PROVIDER_HINT
+            ),
         },
         "executable": executable_ids,
         "languages": languages,
+        "missingToolchains": missing,
+        "toolchainHint": (
+            "Install the missing toolchains on the server with: "
+            "python3 scripts/setup_toolchains.py " + " ".join(item["id"] for item in missing)
+            if missing
+            else ""
+        ),
         "limits": {
             "maxSourceChars": MAX_SOURCE_CHARS,
             "maxStdinChars": MAX_STDIN_CHARS,

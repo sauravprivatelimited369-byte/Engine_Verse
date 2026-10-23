@@ -40,21 +40,38 @@ function pathToFileURLSafe(p) {
   return new URL("file://" + path.resolve(p)).href;
 }
 
+/* Leave without tearing the WebAssembly instance down underneath itself.
+ *
+ * `process.exit()` while the WASI VM is still live kills its worker threads
+ * mid-flight and segfaults Node (exit 139). Measured on Node 22.22 with
+ * @ruby/3.3-wasm-wasi: 6 of 15 runs died that way, and the rate did not depend
+ * on --max-old-space-size or --stack-size. Setting `process.exitCode` and
+ * letting the event loop drain exited cleanly in 15 of 15. The unref'd timer
+ * is only a backstop for a program that leaves a handle open: `unref` means it
+ * never keeps the process alive on its own.
+ */
+function finish(status) {
+  process.exitCode = Number.isFinite(status) ? status : 1;
+  const watchdog = setTimeout(() => process.exit(process.exitCode || 0), 5000);
+  if (typeof watchdog.unref === "function") watchdog.unref();
+}
+
 try {
   const result = vm.eval(wrapped);
   // `exit(n)` in the program raises SystemExit which the VM surfaces as an
   // error carrying the status; honour it instead of always failing.
   const msg = result && result.toString ? result.toString() : "";
   void msg;
-  process.exit(0);
+  finish(0);
 } catch (e) {
   const message = String((e && e.message) || e);
   const match = /exit(?: |\()*(\d+)/.exec(message) || message.match(/SystemExit/);
   if (/SystemExit|exit status|exit\(/.test(message)) {
     const status = match && match[1] ? parseInt(match[1], 10) : 0;
     process.stderr.write(message + "\n");
-    process.exit(Number.isFinite(status) ? status : 0);
+    finish(Number.isFinite(status) ? status : 0);
+  } else {
+    process.stderr.write(message + "\n");
+    finish(1);
   }
-  process.stderr.write(message + "\n");
-  process.exit(1);
 }

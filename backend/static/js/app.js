@@ -857,5 +857,11 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
     });
   }
 
-  window.EV = { api, toast, escapeHtml };
+  // Merge into the namespace instead of replacing it. i18n.js loads before
+  // this file and publishes `window.EV.i18n`; replacing the object dropped
+  // that member, so i18n's own DOMContentLoaded init threw
+  // "Cannot set properties of undefined (setting 'picker')" on every page and
+  // the language picker was never built. Anything another script added to EV
+  // (i18n today, the browser terminal on the static copy) must survive.
+  window.EV = Object.assign(window.EV || {}, { api, toast, escapeHtml });
 })();

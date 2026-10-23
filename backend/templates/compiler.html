@@ -14,8 +14,12 @@
 {% elif runnable_now | length != languages | length %}
 <div class="callout mb" id="cpl-host-note"><span class="label">Limited runtimes on this server</span>
   Runnable here (judge: {{ judge_info.name }}): {{ runnable_now | sort | join(', ') }}. Other languages show
-  their starter but cannot execute on this host — the editor says which, instead of pretending a run happened.</div>
+  their starter but cannot execute on this host — the editor says which, instead of pretending a run happened.
+  {% if toolchain_hint %}<br><span class="tiny">Install the missing compilers on the server with
+  <code>{{ toolchain_hint }}</code> — see <code>scripts/setup_toolchains.py</code>, then reload this page.</span>{% endif %}
+</div>
 {% endif %}
+{% if provider_hint %}<div class="callout mb" id="cpl-provider-note"><span class="label">Judge unavailable</span> {{ provider_hint }}</div>{% endif %}
 
 <section class="panel">
   <div class="editor-bar">

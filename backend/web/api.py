@@ -147,6 +147,39 @@ def split_tags(value: Any) -> list[str]:
 # Session and profile
 # ---------------------------------------------------------------------------
 
+@router.get("/csrf")
+async def csrf_token(request: Request):
+    """Issues a CSRF token bound to this browser's *current* cookie/session.
+
+    A page's meta token is minted when the page renders, so it goes stale as
+    soon as the cookie behind it changes (session expiry, cleared cookies, a
+    tab left open for days). Clients used to have no way back: every later
+    POST was rejected with a 403 whose body carried no ``status`` field, which
+    the UI rendered as nothing at all. CodeLab now calls this endpoint once on
+    that 403 and retries with a token the server has just signed.
+
+    Safe to expose: it is a GET, returns no account data, and the token it
+    issues is only usable from the same browser that receives the cookie.
+    """
+    from engineverse.security import csrf as csrf_mod
+    from .deps import session_id
+
+    token = csrf_mod.issue_token(session_id(request))
+    response = JSONResponse(
+        {"ok": True, "csrfToken": token, "header": csrf_mod.CSRF_HEADER}
+    )
+    # Anonymous callers get the browser-bound cookie here too: the HTML
+    # renderer is the only other place that sets it, so a client whose first
+    # request was this JSON endpoint would otherwise keep requesting tokens it
+    # can never use.
+    anonymous = getattr(request.state, "ev_anonymous_csrf", None)
+    if anonymous and current_user(request) is None:
+        response.set_cookie(csrf_mod.cookie_name(), anonymous, **csrf_mod.cookie_options())
+    response.headers["Cache-Control"] = "private, no-store, max-age=0"
+    response.headers["Vary"] = "Cookie"
+    return response
+
+
 @router.get("/me")
 async def me(request: Request):
     viewer = current_user(request)
