@@ -1,20 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- FORGE mark: an anvil and the spark of a hammer strike, on obsidian glass.
-       The anvil is where raw metal becomes a tool; the spark is the moment of
-       work. Source of truth for every app icon — see scripts/gen_brand_icons.py -->
+  <!-- MERIDIAN mark: an M inside a meridian ring, with the orbit's signal dot.
+       The M is the study path (up, over, up); the ring is the line of reference;
+       the blue dot is the point the reader is working toward. Source of truth
+       for every app icon - see scripts/gen_brand_icons.py -->
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#261b11"/>
-      <stop offset=".55" stop-color="#14100d"/>
-      <stop offset="1" stop-color="#0b0908"/>
+      <stop offset="0" stop-color="#19375f"/>
+      <stop offset=".58" stop-color="#0f2544"/>
+      <stop offset="1" stop-color="#0a1a30"/>
     </linearGradient>
-    <linearGradient id="ember" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fbbf24"/>
-      <stop offset="1" stop-color="#f97316"/>
+    <linearGradient id="orbit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8fb6ff"/>
+      <stop offset="1" stop-color="#2f7cf6"/>
     </linearGradient>
   </defs>
-  <rect x="3" y="3" width="58" height="58" rx="15" fill="url(#tile)"/>
-  <rect x="3.6" y="3.6" width="56.8" height="56.8" rx="14.4" fill="none" stroke="url(#ember)" stroke-opacity=".55" stroke-width="1.2"/>
-  <path d="M45 6.5 L47 11.3 L52 13.3 L47 15.3 L45 20.1 L43 15.3 L38 13.3 L43 11.3 Z" fill="url(#ember)"/>
-  <path d="M11 24.5 H36 Q43.5 26.8 50.5 29.4 Q43.5 31.6 36 32.8 H32.5 V37.8 L35.8 40.6 V43.8 H41 V49.6 H16 V43.8 H21.2 V40.6 L24.5 37.8 V32.8 H11 Z" fill="#fff7ed"/>
+  <rect x="3" y="3" width="58" height="58" rx="14" fill="url(#tile)"/>
+  <rect x="3.6" y="3.6" width="56.8" height="56.8" rx="13.4" fill="none" stroke="#dbe8ff" stroke-opacity=".16" stroke-width="1.2"/>
+  <g id="mark">
+    <circle cx="32" cy="32" r="21" fill="none" stroke="#dbe8ff" stroke-opacity=".3" stroke-width="1.6"/>
+    <path d="M20 42 V24 L32 36 L44 24 V42" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M38.6 11.6A21 21 0 0 1 52.4 27.4" fill="none" stroke="url(#orbit)" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="52.4" cy="27.4" r="2.5" fill="#2f7cf6"/>
+  </g>
 </svg>

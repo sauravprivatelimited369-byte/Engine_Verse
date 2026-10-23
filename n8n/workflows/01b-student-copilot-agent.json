@@ -1,0 +1,169 @@
+{
+  "name": "EngineVerse · Student copilot (agent + memory)",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {
+          "allowedOrigins": "https://sauravprivatelimited369-byte.github.io,http://localhost:8000,http://127.0.0.1:8000"
+        }
+      },
+      "id": "7717a2fe-88e4-501c-99ab-965e1367f8ca",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "Embedded Chat variant. Requires the LangChain nodes bundled with n8n.",
+      "notesInFlow": true,
+      "webhookId": "d68074b5-733d-59cc-ae7d-c6b36c321f34"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are the EngineVerse study assistant: an AI assistant for engineering\nstudents, mostly in India and also internationally. EngineVerse is a free study\nplatform with notes for 93 subjects, coding practice, a study planner, projects\nand placement preparation.\n\nHow to answer\n- Be direct and warm. Prefer short paragraphs, then a bullet list or a small\n  worked example.\n- Teach, do not just answer: name the idea, show one concrete example, and say\n  what a student should try next.\n- Use fenced code blocks for code, with the language tag.\n- If the student writes in Hindi or Hinglish, answer in the same language.\n  Otherwise answer in the language they used.\n- Keep the usual answer under 250 words unless the student asks for depth.\n\nHonesty rules (do not break these)\n- You cannot run code, browse the web, open files or see the student's account.\n  Say so if asked, and suggest an EngineVerse page that can help instead.\n- If you are unsure or the question needs very recent or local information,\n  say that plainly. Never invent a citation, a statistic, a deadline or a URL.\n- Do not claim to be a person. You are an AI assistant.\n- Never ask for passwords, API keys, Aadhaar/ID numbers, phone numbers or\n  anything about another person. If a student pastes a secret, tell them to\n  rotate it and do not repeat it back.\n\nScope\n- Programming (Python, Java, C, C++, JavaScript, DSA), web development, AI/ML\n  basics, study plans, revision schedules, interview and hackathon preparation,\n  project ideas and portfolios.\n- For medical, legal or financial decisions, give general study guidance and\n  point to a qualified professional.\n"
+        }
+      },
+      "id": "2b8cae6c-ef41-562e-bb5a-705879810e2a",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        20,
+        0
+      ],
+      "notes": "Answers the student. The model and memory arrive through the ai_languageModel and ai_memory connections below.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 800
+        }
+      },
+      "id": "37ed45c3-b519-55b7-ab5b-597a73070cb9",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -40,
+        220
+      ],
+      "notes": "Choose any chat model. Select your own credential after importing.",
+      "notesInFlow": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat Trigger').item.json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "7f3689eb-0a43-55ea-b5ef-134d9cf04ed2",
+      "name": "Window Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        180,
+        220
+      ],
+      "notes": "Keeps the last 10 turns per EngineVerse session. EngineVerse sends a stable but unguessable session id; no account data is involved.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// The agent returns its answer in `output`. Keep the contract explicit.\nconst text = ($json.output ?? $json.text ?? \"\").toString().trim();\nreturn [{ json: { output: text || \"I could not answer that. Please rephrase the question.\" } }];\n"
+      },
+      "id": "dfcfb9e8-38da-5ac9-82f7-d9f612647343",
+      "name": "Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "The same assistant built on the AI Agent node, with a 10-turn window memory keyed by EngineVerse's session id."
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

@@ -6,12 +6,66 @@ in production. Nothing here reaches out to a third-party service.
 from __future__ import annotations
 
 import os
+import re
 import secrets
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#: Hosts that may be reached over plain HTTP. Everything else in production
+#: must be HTTPS: the assistant receives a student's question, and a plaintext
+#: hop would expose it to anyone on the path.
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+#: A chat webhook URL must not carry a username or password. Credentials in a
+#: URL end up in proxy logs and browser history, and n8n's Chat Trigger needs
+#: none: the workflow is identified by its own path.
+_BAD_URL_CHARS = re.compile(r"[\s<>\"'\\]")
+
+
+def normalise_assistant_url(value: str | None, *, allow_local_http: bool = False) -> str:
+    """Validate an n8n Chat Trigger webhook URL, or return an empty string.
+
+    The assistant is the one place where this application talks to a service it
+    does not host, so the URL is treated as configuration that can be wrong:
+    a typo must fail at startup, not silently send questions to a stranger's
+    host. Raises ``ValueError`` with a message naming the variable; never
+    echoes the rejected value, which may contain a token.
+    """
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    if _BAD_URL_CHARS.search(raw):
+        raise ValueError(
+            "ENGINEVERSE_ASSISTANT_URL contains whitespace, quotes or backslashes"
+        )
+    parts = urlsplit(raw)
+    if parts.scheme not in {"http", "https"}:
+        raise ValueError("ENGINEVERSE_ASSISTANT_URL must start with https:// (or http:// on localhost)")
+    if not parts.hostname:
+        raise ValueError("ENGINEVERSE_ASSISTANT_URL is missing a host name")
+    if parts.username or parts.password:
+        raise ValueError(
+            "ENGINEVERSE_ASSISTANT_URL must not carry credentials; put them in the n8n workflow instead"
+        )
+    if parts.fragment:
+        raise ValueError("ENGINEVERSE_ASSISTANT_URL must not contain a # fragment")
+    if parts.scheme == "http" and not (allow_local_http and parts.hostname in LOCAL_HOSTS):
+        raise ValueError(
+            "ENGINEVERSE_ASSISTANT_URL must use https://; plain HTTP is only allowed for localhost"
+        )
+    # A bare origin is almost always a mistake: the n8n editor lives there,
+    # not a chat webhook. Ask for the webhook path so the failure is visible
+    # at configuration time rather than as a redirect to a sign-in page.
+    if parts.path in {"", "/"}:
+        raise ValueError(
+            "ENGINEVERSE_ASSISTANT_URL must be the Chat Trigger webhook URL "
+            "(for example https://your-n8n.example/webhook/engineverse/chat), not the n8n home page"
+        )
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))
 
 
 def _load_dotenv() -> None:
@@ -149,7 +203,7 @@ class Settings:
     # go, so it must not be handed to the caller instead. See engineverse.notify.
     smtp_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_SMTP_URL", ""))
     mail_from: str = field(default_factory=lambda: os.environ.get(
-        "ENGINEVERSE_MAIL_FROM", "Forge <no-reply@localhost>"))
+        "ENGINEVERSE_MAIL_FROM", "Meridian <no-reply@localhost>"))
     #: Shows the reset token in the page instead of emailing it. Development
     #: only, and refused outright when env is production. Default off: turning
     #: it on makes POST /forgot-password an account-takeover endpoint.
@@ -205,6 +259,39 @@ class Settings:
             return normalise_apk_url(self.apk_url)
         except ValueError:
             return ""
+
+    @property
+    def assistant_webhook(self) -> str:
+        """The validated server-side Chat Trigger URL, or ``""``.
+
+        Invalid configuration yields an empty string rather than an exception:
+        the page then reports the assistant as unavailable, which is true, and
+        the reason is named by :meth:`production_problems` at startup.
+        """
+        try:
+            return normalise_assistant_url(self.assistant_url, allow_local_http=not self.is_production)
+        except ValueError:
+            return ""
+
+    @property
+    def assistant_public_webhook(self) -> str:
+        """The validated URL published to the static Pages copy, or ``""``."""
+        try:
+            return normalise_assistant_url(self.assistant_public_url, allow_local_http=False)
+        except ValueError:
+            return ""
+
+    @property
+    def assistant_mode(self) -> str:
+        """``proxy`` on the server, ``off`` when unconfigured or switched off.
+
+        The static export chooses ``direct`` separately (see export_pages.py);
+        a Python process never asks the browser to reach n8n directly, so the
+        Content-Security-Policy can stay ``connect-src 'self'``.
+        """
+        if not self.assistant_enabled:
+            return "off"
+        return "proxy" if self.assistant_webhook else "off"
 
     @property
     def signin_required(self) -> bool:
@@ -328,6 +415,35 @@ class Settings:
             pass
         # Keep order, drop duplicates.
         return list(dict.fromkeys(candidates))
+    # --- n8n study assistant ---------------------------------------------
+    # Two URLs, deliberately separate:
+    #
+    # * ``assistant_url`` is the Chat Trigger webhook the *server* calls. It
+    #   never reaches the browser, so a self-hosted instance can keep it on a
+    #   private network or behind an origin only this host may use.
+    # * ``assistant_public_url`` is the same webhook, published on purpose for
+    #   the static GitHub Pages copy, where no server exists to proxy. It is
+    #   safe to publish in the sense that it is not a secret - n8n's Chat
+    #   Trigger is a public endpoint by design - but it must be restricted to
+    #   the production origins in the workflow itself (Allowed Origins), and
+    #   the workflow must carry its own rate limits and spend guard.
+    #
+    # Empty means "not configured": the UI then says so instead of showing a
+    # chat box that cannot answer.
+    assistant_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_ASSISTANT_URL", "").strip())
+    assistant_public_url: str = field(
+        default_factory=lambda: os.environ.get("ENGINEVERSE_ASSISTANT_PUBLIC_URL", "").strip()
+    )
+    #: Kill switch. An operator who hits an n8n execution cap or a cost surprise
+    #: turns this off and the site keeps working; only the assistant stops.
+    assistant_enabled: bool = field(default_factory=lambda: _bool("ENGINEVERSE_ASSISTANT_ENABLED", True))
+    #: Long enough for a slow model behind a queue, short enough that a student
+    #: is not left watching a spinner. The browser adds its own margin.
+    assistant_timeout_ms: int = field(default_factory=lambda: _int("ENGINEVERSE_ASSISTANT_TIMEOUT_MS", 25000))
+    #: Questions allowed per browser session per hour, in addition to the
+    #: per-IP limiter in main.RateLimitMiddleware. A shared campus NAT still
+    #: gets a fair per-student budget.
+    assistant_session_limit: int = field(default_factory=lambda: _int("ENGINEVERSE_ASSISTANT_SESSION_LIMIT", 20))
 
     # --- hosting ----------------------------------------------------------
     host: str = field(default_factory=lambda: os.environ.get("HOST", "0.0.0.0"))
@@ -437,6 +553,21 @@ class Settings:
                 "ENGINEVERSE_JUDGE_TIMEOUT_MS must be at least 500 and "
                 "ENGINEVERSE_JUDGE_MEMORY_KB at least 65536"
             )
+        try:
+            normalise_assistant_url(self.assistant_url, allow_local_http=False)
+        except ValueError as exc:
+            problems.append(str(exc))
+        try:
+            normalise_assistant_url(self.assistant_public_url, allow_local_http=False)
+        except ValueError as exc:
+            problems.append(str(exc).replace("ENGINEVERSE_ASSISTANT_URL", "ENGINEVERSE_ASSISTANT_PUBLIC_URL"))
+        if self.assistant_timeout_ms < 2000 or self.assistant_timeout_ms > 120_000:
+            problems.append(
+                "ENGINEVERSE_ASSISTANT_TIMEOUT_MS must be between 2000 and 120000"
+            )
+        if self.assistant_session_limit < 1 or self.assistant_session_limit > 500:
+            problems.append("ENGINEVERSE_ASSISTANT_SESSION_LIMIT must be between 1 and 500")
+
         judge = (self.judge or "").lower()
         if judge in LOCAL_JUDGES:
             shown = judge or "auto"

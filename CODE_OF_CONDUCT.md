@@ -1,6 +1,6 @@
 # Code of Conduct
 
-Forge is built for students, many of them learning in public for the
+Meridian is built for students, many of them learning in public for the
 first time. We want every contributor and learner to feel safe asking a basic
 question or pointing out a mistake.
 

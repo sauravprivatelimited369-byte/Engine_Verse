@@ -1,4 +1,4 @@
-# Forge features in depth
+# Meridian features in depth
 
 The [README](../README.md) is the overview. This page describes what the full
 FastAPI website contains and how its major features work. Counts come from a
@@ -24,7 +24,7 @@ what is seeded today, not a completeness guarantee.
 | **My stream** | Each branch has a study hub at `/stream/{slug}` that gathers the subjects, notes, formula sheets, flashcards, question mix, sheets and projects that branch actually has, with the counts taken from the database rather than promised. `/stream` opens on the branch saved in the profile and `/streams` switches between them. Every stream also reaches the branch-neutral pattern sheets and the interview set, so no branch gets an empty page. |
 | **Projects** | 17 project briefs with ordered steps, skills and resources, spanning hardware, engineering software, full-stack apps and a model-free study planner with an optional allowlisted, confirmation-gated agent — including a substantial capstone brief linked to each of the ten language paths. |
 | **Revision and roadmaps** | 281 public flashcards are browsable at `/flashcards` and searchable without indexing their answers; personal SM-2 schedules are at `/revision`. The seed also includes 5 roadmaps and 57 roadmap nodes. |
-| **Study helper** | A retrieval-grounded tutor that composes answers from Forge's own indexed material and cites its sources. It does not make an external model call by default and should say when the catalogue has no relevant coverage. |
+| **Study helper** | A retrieval-grounded tutor that composes answers from Meridian's own indexed material and cites its sources. It does not make an external model call by default and should say when the catalogue has no relevant coverage. |
 
 Studying does not require leaving the site. Notes, worked examples, diagrams and
 3D models, formula sheets, flashcards, the practice bank, the coding judge and
@@ -206,6 +206,25 @@ instead of erroring as rustc does. A language whose runtime files fail to
 download is omitted from `runtimes/manifest.json` and reports NOT RUN with
 the reason — never a simulation, on either copy.
 
+## Study assistant (n8n)
+
+An AI chat assistant backed by an n8n Chat Trigger, available as a floating
+launcher on every page and as a full page at `/assistant`.
+
+- **Two transports.** Self-hosted, the browser calls `/api/assistant/chat` and
+  the server forwards to n8n, so the webhook URL stays private and the CSP stays
+  `connect-src 'self'`. On the static Pages copy the browser calls the Chat
+  Trigger directly, and only when the operator publishes the URL deliberately.
+- **Honest states.** With no webhook configured, the launcher is absent and the
+  page says the assistant is not connected; it does not display a chat box that
+  cannot answer. Every answer carries an AI-generated label.
+- **Page-aware prompts**, session continuity, timeouts, retry, offline
+  detection, keyboard and screen-reader support, and a reduced-motion path.
+- **Bounded.** 2–800 characters per question, per-IP and per-session limits, a
+  time budget, and no transcript stored by Meridian.
+- **Full detail:** [ASSISTANT.md](ASSISTANT.md). The workflows that power it and
+  the automation around it: [N8N_AUTOMATION.md](N8N_AUTOMATION.md).
+
 ## Security overview
 
 Security is part of the application design, not a deployment afterthought. The
@@ -249,7 +268,7 @@ Never commit `.env`, database files, private keys or real learner data.
 
 Production refuses to start with delivered sign-in codes enabled unless at
 least one mail or SMS transport is configured. SMS is deliberately an operator-run HTTP
-gateway: Forge does not provide a hosted SMS service, queue, delivery
+gateway: Meridian does not provide a hosted SMS service, queue, delivery
 receipt or carrier fallback, so the operator owns its availability and abuse
 controls. A verified phone is optional; email remains the default channel when
 mail is configured. An enrolled TOTP authenticator satisfies the every-login
@@ -258,7 +277,7 @@ check without a delivered code.
 ## CodeLab — Online Compiler
 
 `/codelab` (**CodeLab — Online Compiler**, top-bar tab **CodeLab**) provides a
-full multi-language compiler workspace built on Forge's isolated sandbox
+full multi-language compiler workspace built on Meridian's isolated sandbox
 and Judge0 execution architecture:
 
 - **Language-specific real runtimes (`backend/engineverse/codelab.py`)**:

@@ -15,7 +15,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ brand.site_name }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
-  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f4f1ea{% else %}#0a1120{% endif %}">
+  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f5f2eb{% else %}#0a1524{% endif %}">
   <script nonce="{{ request.state.csp_nonce }}">
     // Runs before first paint: a stored theme preference wins over the site
     // default. Sign-in state is never guessed from browser storage: on the
@@ -38,7 +38,7 @@
           theme = saved;
         }
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "light" ? "#faf6f0" : "#0b0908");
+        if (meta) meta.setAttribute("content", theme === "light" ? "#f5f2eb" : "#0a1524");
       } catch (e) { /* storage blocked - fall back to the server default */ }
     })();
   </script>
@@ -47,33 +47,47 @@
   <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/static/fonts/sora-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/app.css">
   <link rel="stylesheet" href="/static/css/voice.css">
+  {# The assistant's own sheet: launcher, panel and the /assistant page. Kept
+     separate so a page that never opens it still pays only for app.css. #}
+  <link rel="stylesheet" href="/static/css/assistant.css">
+  {# The Meridian design layer re-skins every component app.css defines, so no
+     page needs its own colours, and one file is the whole visual identity.
+     It loads last so it can re-skin assistant chrome too. #}
+  <link rel="stylesheet" href="/static/css/meridian.css">
   {# The configured accent colours, applied over the stylesheet's defaults.
      These come from site_config and are interpolated into CSS, so they are run
      through safe_css_color in the admin handler; | safe is used because Jinja
      would otherwise escape the '#' and break the declarations. #}
-  <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--grad:linear-gradient(135deg,var(--accent),var(--accent-3))}</style>
+  <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--btn:{{ brand.accent_color | safe }};--grad:{{ brand.accent_color | safe }};--grad-3:{{ brand.accent_color | safe }}}</style>
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta property="og:title" content="{% block og_title %}{{ brand.site_name }}{% endblock %}">
   <meta property="og:description" content="{{ brand.tagline }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ brand.site_name }}">
+  <meta property="og:image" content="{{ og_image }}">
+  <meta property="og:image:alt" content="{{ brand.site_name }} — {{ brand.tagline }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% block twitter_title %}{{ brand.site_name }}{% endblock %}">
+  <meta name="twitter:description" content="{{ brand.tagline }}">
+  <meta name="twitter:image" content="{{ og_image }}">
   {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">
   <meta property="og:url" content="{{ canonical_url }}">{% endif %}
   {% block head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}"{% if gated %} data-signin-gate{% endif %}>
+<body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}{{ ' is-static' if static_export and not user }}"{% if gated %} data-signin-gate{% endif %}>
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="topbar">
   <div class="wrap topbar-inner">
     <a class="logo" href="{{ '/login' if gated else '/' }}" aria-label="{{ brand.site_name }} home">
       <span class="logo-mark" aria-hidden="true">
-        <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true" focusable="false">
-          <path fill="#fbbf24" d="M22.5 3.3 L23.5 5.7 L26 6.7 L23.5 7.7 L22.5 10.1 L21.5 7.7 L19 6.7 L21.5 5.7 Z"/>
-          <path fill="currentColor" d="M5.5 12.3 H18 Q21.8 13.4 25.3 14.7 Q21.8 15.8 18 16.4 H16.3 V18.9 L17.9 20.3 V21.9 H20.5 V24.8 H8 V21.9 H10.6 V20.3 L12.3 18.9 V16.4 H5.5 Z"/>
+        <svg viewBox="0 0 32 32" width="19" height="19" aria-hidden="true" focusable="false">
+          <circle cx="16" cy="16" r="12.4" fill="none" stroke="currentColor" stroke-opacity=".34" stroke-width="1.4"/>
+          <path d="M9.6 22V10.9L16 18l6.4-7.1V22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="22.4" cy="10.9" r="1.7" fill="#2f7cf6"/>
         </svg>
       </span>
       <span class="logo-text">{{ brand.site_name }}<span class="logo-dot" aria-hidden="true">.</span></span>
@@ -84,7 +98,7 @@
 
     <form class="searchbox" action="/search" method="get" role="search">
       <input type="search" name="q" value="{{ query.get('q', '') }}"
-             placeholder="Search everything…"
+             placeholder="{{ 'Search' if static_export else 'Search everything…' }}"
              autocomplete="off" aria-label="Search {{ brand.site_name }}" id="global-search">
       <button type="submit" aria-label="Search">{{ icon("search", 16) }}</button>
       <div class="suggest" id="suggest" hidden></div>
@@ -181,6 +195,12 @@
 {% include "_footer.html" %}
 
 {% if not gated %}
+{# The study assistant's launcher. Hidden until assistant.js confirms a
+   configured Chat Trigger exists, so an unconfigured instance shows no dead
+   bubble. The full page lives at /assistant, which is an ordinary link in the
+   navigation and works without this script. #}
+{% include "_assistant.html" %}
+
 {# The bottom bar. Five slots is the whole budget on a phone, so these are the
    five things a learner returns to every day; everything else is in the menu
    button above, which shows the same groups as the desktop bar.
@@ -208,6 +228,11 @@
 <script type="application/json" id="ev-voice-config" nonce="{{ request.state.csp_nonce }}">
   {"apiBase": "{{ voice_api_base }}", "staticCopy": {{ 'true' if static_export else 'false' }}}
 </script>
+{# The assistant's browser configuration, as data rather than inline script.
+   In proxy mode this contains no endpoint other than the same-origin API path:
+   the n8n webhook URL is server-side only. export_pages.py replaces this block
+   for the static copy, where there is no server to proxy the request. #}
+<script type="application/json" id="ev-assistant-config">{{ assistant | tojson }}</script>
 <script nonce="{{ request.state.csp_nonce }}">
   window.EngineVerse = {
     csrf: "{{ csrf_token }}",
@@ -227,6 +252,7 @@
 <script src="/static/js/engine3d.js" defer></script>
 <script src="/static/js/app.js" defer></script>
 <script src="/static/js/voice.js" defer></script>
+<script src="/static/js/assistant.js" defer></script>
 <script src="/static/js/pages-live.js" defer></script>
 <script src="/static/js/scroll.js" defer></script>
 {% block scripts %}{% endblock %}

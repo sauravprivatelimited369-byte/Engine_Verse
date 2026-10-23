@@ -30,6 +30,7 @@ BACKEND = ROOT / "backend"
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
 from engineverse import project  # noqa: E402
+from engineverse.config import normalise_assistant_url  # noqa: E402
 from engineverse.distribution import normalise_apk_url  # noqa: E402
 
 FORBIDDEN = (
@@ -308,13 +309,13 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
     deploy_doc = f"{REPO}/blob/main/docs/DEPLOYMENT.md"
     if app_url:
         server = (
-            '<p>A hosted Forge server is available. It adds accounts, progress that follows you between '
+            '<p>A hosted Meridian server is available. It adds accounts, progress that follows you between '
             'devices, discussions and server-side code judging where the host has enabled it.</p>'
             f'<p class="row"><a class="btn btn-primary" href="{html.escape(app_url, quote=True)}/">Open the hosted site</a></p>'
         )
     else:
         server = (
-            '<p>No hosted Forge server is linked from this copy yet. Anyone can run one: it is a Python '
+            '<p>No hosted Meridian server is linked from this copy yet. Anyone can run one: it is a Python '
             'FastAPI application with a SQL database. The deployment guide covers it step by step.</p>'
             f'<p class="row"><a class="btn btn-ghost" href="{html.escape(deploy_doc, quote=True)}" '
             'rel="noopener noreferrer">Deployment guide</a></p>'
@@ -327,8 +328,8 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
     return f"""
 <section class="page-hero">
   <p class="ev-eyebrow">Platform · how this site works</p>
-  <h1>Use Forge here</h1>
-  <p class="lead">This site is a static copy of Forge that runs entirely in your browser. You do not need to
+  <h1>Use Meridian here</h1>
+  <p class="lead">This site is a static copy of Meridian that runs entirely in your browser. You do not need to
     download or install anything to use it.</p>
 </section>
 <div class="grid g2 about-grid">
@@ -349,7 +350,7 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
   <section class="panel">
     <h2>What needs a server</h2>
     <p>Accounts, progress that syncs between devices, posting in discussions, leaderboards with other learners and
-      certificates with a verification ID all need a hosted Forge server with a database.</p>
+      certificates with a verification ID all need a hosted Meridian server with a database.</p>
     {server}
   </section>
 </div>
@@ -373,14 +374,14 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
     """
     android_ci = f"{REPO}/actions/workflows/android-build.yml"
     hosted = (
-        f'<p class="small muted">A hosted Forge server is also available at '
+        f'<p class="small muted">A hosted Meridian server is also available at '
         f'<a href="{html.escape(app_url, quote=True)}/">{html.escape(app_url)}</a>, with accounts that sync '
         'between devices.</p>'
         if app_url else ""
     )
     if apk_url:
         apk_body = (
-            '<p>The native Forge Android app is published as a signed GitHub Release. It includes an '
+            '<p>The native Meridian Android app is published as a signed GitHub Release. It includes an '
             'offline subject catalogue, the study planner and settings, and opens lessons in a secure in-app '
             'viewer.</p>'
             f'<p><a class="btn btn-primary" href="{html.escape(apk_url, quote=True)}" '
@@ -388,7 +389,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
             '<ol class="steps">'
             '<li>Download the APK from the official GitHub Release.</li>'
             '<li>Open it on your Android phone and allow installation from your browser if asked.</li>'
-            '<li>Launch <strong>Forge</strong>.</li>'
+            '<li>Launch <strong>Meridian</strong>.</li>'
             '</ol>'
             '<p class="small muted">Only install the APK from the official release, never from a forwarded '
             'copy. Check the SHA-256 checksum published with the release.</p>'
@@ -396,7 +397,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
     else:
         apk_body = (
             '<p>No signed release of the native Android app has been published yet, so there is no APK '
-            'download here. Do not install an Forge APK from any other source.</p>'
+            'download here. Do not install an Meridian APK from any other source.</p>'
             f'<p class="small muted">Testers can download unsigned debug builds from the '
             f'<a href="{html.escape(android_ci, quote=True)}" rel="noopener noreferrer">Android build '
             'workflow</a> on GitHub (a GitHub account is required, and builds expire). Debug builds are for '
@@ -407,7 +408,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
 <section class="page-hero">
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
   <p class="ev-eyebrow">Install · Android · iPhone</p>
-  <h1>Use Forge on your phone</h1>
+  <h1>Use Meridian on your phone</h1>
   <p class="lead">This website works in any modern mobile browser. You can also add it to your home screen so it
     opens like an app. There is no account: your progress is saved in the browser on each device.</p>
   {hosted}
@@ -884,7 +885,7 @@ STATIC_RUNNER_NOTICE = (
     "(Roslyn), TypeScript, Go and SQL (SQLite) - each downloaded once, only when "
     "first used. A language whose runtime files are missing from this copy is "
     "<strong>not executed</strong> and is never marked as passed; the hosted "
-    "Forge compiler runs every language through its configured judge.</div>"
+    "Meridian compiler runs every language through its configured judge.</div>"
 )
 
 
@@ -939,7 +940,7 @@ def _no_accounts_main(heading: str, intro: str) -> str:
 <div class="grid g2 about-grid">
   <section class="panel">
     <h2>Your progress stays on this device</h2>
-    <p>This public copy of Forge runs entirely in your browser. There are no accounts or passwords, and nothing
+    <p>This public copy of Meridian runs entirely in your browser. There are no accounts or passwords, and nothing
       you do here is uploaded. Streaks, completed topics, solved problems, bookmarks and your study planner are
       saved in this browser's local storage.</p>
     <p class="row"><a class="btn btn-primary btn-sm" href="/dashboard">My progress</a>
@@ -949,7 +950,7 @@ def _no_accounts_main(heading: str, intro: str) -> str:
     <h2>Moving to another device</h2>
     <p>Export your progress as a JSON file from <a href="/settings">Settings</a>, then import it on the other
       device. Clearing this browser's site data deletes your progress, so export first if you want to keep it.</p>
-    <p>Accounts, synced progress, discussions and certificates with a verification ID need a hosted Forge
+    <p>Accounts, synced progress, discussions and certificates with a verification ID need a hosted Meridian
       server. The <a href="/hosting">hosting page</a> explains how to run one.</p>
   </section>
 </div>
@@ -985,7 +986,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     local_note = ('<p class="chips-row"><span class="chip ok">Saved on this device only</span>'
                   '<span class="chip">Nothing is uploaded</span></p>')
     pages_spec: dict[str, tuple[str, str]] = {
-        "/dashboard": ("My progress - Forge", f"""
+        "/dashboard": ("My progress - Meridian", f"""
 <div data-ev-page="dashboard">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · progress</p>
@@ -1014,11 +1015,11 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     </section>
   </div>
 </div>"""),
-        "/profile": ("My profile - Forge", f"""
+        "/profile": ("My profile - Meridian", f"""
 <div data-ev-page="profile">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · profile</p>
-    <h1 id="ev-profile-name">Forge learner</h1>
+    <h1 id="ev-profile-name">Meridian learner</h1>
     <p class="lead"><span id="ev-profile-branch">Branch not set</span> · <span id="ev-profile-xp">0 XP</span></p>
     <p id="ev-profile-bio" class="muted"></p>
     {local_note}
@@ -1038,7 +1039,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     </section>
   </div>
 </div>"""),
-        "/settings": ("Settings - Forge", f"""
+        "/settings": ("Settings - Meridian", f"""
 <div data-ev-page="settings">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · settings</p>
@@ -1093,7 +1094,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
     </section>
   </div>
 </div>"""),
-        "/today": ("Today's plan - Forge", """
+        "/today": ("Today's plan - Meridian", """
 <div data-ev-page="today">
   <section class="page-hero">
     <p class="ev-eyebrow">Progress · today</p>
@@ -1116,7 +1117,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
         <a class="btn btn-ghost btn-sm" href="/planner">Plan tomorrow</a></p></section>
   </div>
 </div>"""),
-        "/mistakes": ("Mistake notebook - Forge", f"""
+        "/mistakes": ("Mistake notebook - Meridian", f"""
 <div data-ev-page="mistakes">
   <section class="page-hero">
     <p class="ev-eyebrow">Practice · mistakes</p>
@@ -1128,7 +1129,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
   <p class="panel muted" data-ev-empty="ev-mistakes-list">No mistakes recorded. Answer questions in the
     <a href="/practice/questions">question bank</a> or <a href="/dpp">daily practice</a>.</p>
 </div>"""),
-        "/portfolio": ("Portfolio - Forge", """
+        "/portfolio": ("Portfolio - Meridian", """
 <div data-ev-page="portfolio">
   <section class="page-hero">
     <p class="ev-eyebrow">This device · portfolio</p>
@@ -1148,7 +1149,7 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
       <p class="muted" data-ev-empty="ev-portfolio-problems">No problems solved yet.</p></section>
   </div>
 </div>"""),
-        "/certificates": ("Certificates - Forge", """
+        "/certificates": ("Certificates - Meridian", """
 <div data-ev-page="certificates">
   <section class="page-hero">
     <p class="ev-eyebrow">Platform · certificates</p>
@@ -1162,23 +1163,23 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
       <li>Track completed topics and solved problems on <a href="/dashboard">My progress</a>.</li>
       <li>Print a summary of your work from the <a href="/portfolio">portfolio page</a>. It is clearly marked as
         unverified.</li>
-      <li>Run your own Forge server to issue verifiable certificates. See the <a href="/hosting">hosting page</a>.</li>
+      <li>Run your own Meridian server to issue verifiable certificates. See the <a href="/hosting">hosting page</a>.</li>
     </ul>
   </section>
 </div>"""),
-        "/login": ("Sign in - Forge", _no_accounts_main(
-            "No sign-in needed", "This public copy of Forge has no accounts.")),
-        "/register": ("Create an account - Forge", _no_accounts_main(
-            "No account needed", "This public copy of Forge has no accounts. Start learning straight away.")),
-        "/forgot-password": ("Password help - Forge", _no_accounts_main(
-            "There are no passwords here", "This public copy of Forge has no accounts, so there is nothing to reset.")),
-        "/reset-password": ("Password help - Forge", _no_accounts_main(
-            "There are no passwords here", "This public copy of Forge has no accounts, so there is nothing to reset.")),
-        "/logout": ("Sign out - Forge", _no_accounts_main(
-            "Nothing to sign out of", "This public copy of Forge has no accounts. To remove your progress from this browser, use Settings.")),
-        "/notifications": ("Notifications - Forge", _no_accounts_main(
-            "No notifications on this copy", "Notifications need an account on a hosted Forge server.")),
-        "/onboarding": ("Get started - Forge", _no_accounts_main(
+        "/login": ("Sign in - Meridian", _no_accounts_main(
+            "No sign-in needed", "This public copy of Meridian has no accounts.")),
+        "/register": ("Create an account - Meridian", _no_accounts_main(
+            "No account needed", "This public copy of Meridian has no accounts. Start learning straight away.")),
+        "/forgot-password": ("Password help - Meridian", _no_accounts_main(
+            "There are no passwords here", "This public copy of Meridian has no accounts, so there is nothing to reset.")),
+        "/reset-password": ("Password help - Meridian", _no_accounts_main(
+            "There are no passwords here", "This public copy of Meridian has no accounts, so there is nothing to reset.")),
+        "/logout": ("Sign out - Meridian", _no_accounts_main(
+            "Nothing to sign out of", "This public copy of Meridian has no accounts. To remove your progress from this browser, use Settings.")),
+        "/notifications": ("Notifications - Meridian", _no_accounts_main(
+            "No notifications on this copy", "Notifications need an account on a hosted Meridian server.")),
+        "/onboarding": ("Get started - Meridian", _no_accounts_main(
             "Get started", "Set your branch in Settings, then open your stream to see the subjects for it.")),
     }
     count = 0
@@ -1213,8 +1214,59 @@ def reading_copy_controls(text: str) -> str:
     return text.replace("data-lab-mode-notice hidden", "data-lab-mode-notice")
 
 
-def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = None, apk_url: str = "") -> str:
+#: The base.html block that carries the assistant's browser configuration.
+#: Matched as a whole element so the static copy can replace it without
+#: touching any other script tag (the CSP nonce ones stay in the app).
+ASSISTANT_TAG = re.compile(
+    r'<script type="application/json" id="ev-assistant-config">.*?</script>', re.S
+)
+
+
+def assistant_config(public_url: str = "", path: str = "/assistant") -> dict:
+    """The static copy's assistant configuration.
+
+    On GitHub Pages there is no Python process, so the only way the assistant
+    can work is for the browser to call the n8n Chat Trigger directly. That is
+    a deliberate, limited exception: the webhook is public by design, the
+    workflow must allowlist the Pages origin, and the published site cannot
+    hold a credential either way.
+
+    With no URL configured the mode is ``off``: the page then says the
+    assistant is not connected on this copy instead of showing a chat box that
+    cannot answer.
+    """
+    from engineverse import assistant
+
+    url = normalise_assistant_url(public_url, allow_local_http=False)
+    config = assistant.client_config(path)
+    if url:
+        config.update({
+            "mode": "direct",
+            "endpoint": url,
+            "statusEndpoint": "",
+            # The browser is talking to n8n across the internet with no proxy
+            # to absorb a queue, so it gets a slightly longer budget.
+            "timeoutMs": 30000,
+        })
+    else:
+        config.update({"mode": "off", "endpoint": "", "statusEndpoint": ""})
+    return config
+
+
+def patch_assistant_config(text: str, base: str, public_url: str = "") -> str:
+    """Replace the assistant's JSON block with the static copy's variant."""
+    config = assistant_config(public_url)
+    blob = json.dumps(config, ensure_ascii=False).replace("<", "\\u003c")
+    tag = '<script type="application/json" id="ev-assistant-config">' + blob + "</script>"
+    if ASSISTANT_TAG.search(text):
+        return ASSISTANT_TAG.sub(lambda _match: tag, text, count=1)
+    return text
+
+
+def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = None,
+           apk_url: str = "", assistant_url: str = "") -> str:
     text = reading_copy_controls(rewrite_html(text, base))
+    text = patch_assistant_config(text, base, assistant_url)
     text = text.replace('href="/explore?year=1"', f'href="{rewrite_url("/explore/first-year", base)}"', 1)
     # The year link may already have been rewritten before this replacement.
     year = rewrite_url("/explore", base)
@@ -1280,9 +1332,9 @@ def copy_static(site: Path, base: str) -> None:
             rewrite_html(html_file.read_text(encoding="utf-8"), base), encoding="utf-8"
         )
     manifest = {
-        "name": "Forge",
-        "short_name": "Forge",
-        "description": "Forge: Engineering notes, coding practice, labs, Android app and GitHub sync.",
+        "name": "Meridian",
+        "short_name": "Meridian",
+        "description": "Meridian: Engineering notes, coding practice, labs, Android app and GitHub sync.",
         "start_url": rewrite_url("/", base),
         "scope": rewrite_url("/", base),
         "display": "standalone",
@@ -1439,7 +1491,7 @@ def fill_shell(home_html: str, title: str, main: str, *, private: bool = True) -
 
 
 def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
-           voice_api_url: str = "") -> int:
+           voice_api_url: str = "", assistant_url: str = "") -> int:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
@@ -1476,11 +1528,12 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
         if response.status_code != 200 or "text/html" not in response.headers.get("content-type", ""):
             failed.append(f"{path} -> {response.status_code}")
             continue
-        body = inject(response.text, base, search=(path == "/search"), dpp_dates=dpp_dates, apk_url=apk_url)
+        body = inject(response.text, base, search=(path == "/search"), dpp_dates=dpp_dates,
+                      apk_url=apk_url, assistant_url=assistant_url)
         if path.startswith("/practice/problems/") and path.count("/") == 3:
             body = enable_problem_editor(body)
         if path == "/install":
-            body = fill_shell(body, "Install Forge", rewrite_html(reading_copy_install_main(app_url, apk_url), base), private=False)
+            body = fill_shell(body, "Install Meridian", rewrite_html(reading_copy_install_main(app_url, apk_url), base), private=False)
         # First-year page should not keep a query-string link to itself as the only year view.
         if path == "/explore/first-year":
             body = body.replace("<title>", "<title>First year - ", 1)
@@ -1499,14 +1552,15 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     branch_list = [(row["slug"], row["name"]) for row in catalog.list_branches()]
     written += write_account_pages(site, base, home_html, apk_url=apk_url, branches=branch_list)
 
-    hosting = fill_shell(home_html, "Use Forge", rewrite_html(hosting_main(app_url, apk_url), base))
+    hosting = fill_shell(home_html, "Use Meridian", rewrite_html(hosting_main(app_url, apk_url), base))
     hosting_path = output_path(site, "/hosting")
     hosting_path.parent.mkdir(parents=True, exist_ok=True)
     hosting_path.write_text(hosting, encoding="utf-8")
     written += 1
 
     missing = client.get("/this-page-is-not-in-the-catalogue")
-    not_found = inject(missing.text, base, search=False, apk_url=apk_url) if missing.text else home_html
+    not_found = inject(missing.text, base, search=False, apk_url=apk_url,
+                       assistant_url=assistant_url) if missing.text else home_html
     (site / "404.html").write_text(not_found, encoding="utf-8")
 
     index = search_index(base)
@@ -1536,7 +1590,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     # site (owner.github.io/<repo>/) this file is not that root, so it mainly
     # serves a copy deployed on its own domain; it never blocks anything.
     (site / "robots.txt").write_text(
-        "# Forge static reading copy. Personal pages carry noindex.\n"
+        "# Meridian static reading copy. Personal pages carry noindex.\n"
         "User-agent: *\nAllow: /\n"
         f"Sitemap: {origin}/sitemap.xml\n",
         encoding="utf-8",
@@ -1553,6 +1607,9 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
         "revision": revision, "mode": "reading-copy", "base": base, "pages": written,
         "voiceApi": voice_api_url,
         "capabilities": [rewrite_url(path, base) for path in ("/apis", "/studio", "/workflows", "/swarm")],
+        # Whether the assistant works on this copy, never the webhook itself:
+        # deployment.json is public.
+        "assistant": "direct" if assistant_url else "off",
     }, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {written} pages and {len(index)} search rows to {site}")
     return written
@@ -1640,14 +1697,14 @@ def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = F
             f'<a class="btn btn-primary" href="{home}" id="gateway-open">Open full website</a>'
             f'<a class="btn btn-ghost" href="{login}" id="gateway-signin">Sign in</a>'
             f'<a class="btn btn-ghost" href="{register}">Create account</a></p>'
-            f'<p><a href="{install}">Use Forge on your phone</a></p>'
+            f'<p><a href="{install}">Use Meridian on your phone</a></p>'
             '<p class="small muted">Accounts and progress live on the hosted app, not on GitHub Pages. '
             'Code execution is available only if that host has a judge configured.</p>'
         )
         if apk_url:
             actions += (
                 f'<p><a class="btn btn-soft" href="{html.escape(apk_url, quote=True)}" '
-                'rel="noopener noreferrer">Download signed Forge.apk</a></p>'
+                'rel="noopener noreferrer">Download signed Meridian.apk</a></p>'
             )
         # GitHub Pages serves its 404.html for old bookmarked catalogue paths.
         # Route those to the same path on the app (not blindly to /login). The
@@ -1710,7 +1767,7 @@ def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = F
 """
 
 
-def export_gateway(site: Path, base: str, app_url: str, site_name: str = "Forge",
+def export_gateway(site: Path, base: str, app_url: str, site_name: str = "Meridian",
                    apk_url: str = "") -> int:
     if site.exists():
         shutil.rmtree(site)
@@ -1761,13 +1818,13 @@ def self_check() -> None:
             pass
         else:
             raise AssertionError(f"accepted {bad!r}")
-    gate = gateway_page("/EngineVerse/", "https://learn.example.org", "Forge")
+    gate = gateway_page("/EngineVerse/", "https://learn.example.org", "Meridian")
     assert 'href="https://learn.example.org/login"' in gate and "/EngineVerse/static/css/app.css" in gate
     assert 'id="gateway-open"' in gate and "location.replace" in gate
-    assert "Not hosted yet" in gateway_page("/EngineVerse/", "", "Forge")
+    assert "Not hosted yet" in gateway_page("/EngineVerse/", "", "Meridian")
     assert "Download signed" not in gate
     assert "Download signed" in gateway_page(
-        "/EngineVerse/", "https://learn.example.org", "Forge",
+        "/EngineVerse/", "https://learn.example.org", "Meridian",
         apk_url=project.release_download_prefix() + "android-v1.0.0/EngineVerse.apk"
     )
     # /apis is a page, not part of /api/. This boundary once silently dropped
@@ -1798,6 +1855,9 @@ def main() -> int:
     parser.add_argument("--voice-api-url", default=None,
                         help="public FastAPI origin that serves /api/voice "
                              "(default: $ENGINEVERSE_VOICE_API_URL; empty disables the reader on Pages)")
+    parser.add_argument("--assistant-url", default=None,
+                        help="public n8n Chat Trigger URL for the static copy "
+                             "(default: $ENGINEVERSE_ASSISTANT_PUBLIC_URL)")
     parser.add_argument("--gateway", action="store_true",
                         help="publish a gateway to the hosted app instead of the reading copy")
     parser.add_argument("--reading-copy", action="store_true",
@@ -1820,6 +1880,14 @@ def main() -> int:
         args.voice_api_url if args.voice_api_url is not None
         else os.environ.get("ENGINEVERSE_VOICE_API_URL", "")
     )
+    try:
+        assistant_url = normalise_assistant_url(
+            args.assistant_url if args.assistant_url is not None
+            else os.environ.get("ENGINEVERSE_ASSISTANT_PUBLIC_URL", ""),
+            allow_local_http=False,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc).replace("ENGINEVERSE_ASSISTANT_URL", "ENGINEVERSE_ASSISTANT_PUBLIC_URL")) from None
     if args.gateway and not app_url:
         raise SystemExit("Refusing to publish a gateway without a hosted full app origin.")
     if (args.gateway or app_url) and not args.reading_copy:
@@ -1830,7 +1898,8 @@ def main() -> int:
     os.environ.update(env)
     if not args.skip_seed:
         seed(env, db_path)
-    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url, voice_api_url=voice_api_url)
+    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url,
+           voice_api_url=voice_api_url, assistant_url=assistant_url)
     return 0
 
 

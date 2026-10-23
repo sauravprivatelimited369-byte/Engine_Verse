@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Study assistant — {{ brand.site_name }}
+{% endblock %}
+{% block description %}Ask the {{ brand.site_name }} study assistant about programming, revision plans, errors and projects. An AI assistant powered by n8n, with clear limits and privacy notes.
+{% endblock %}
+{% block content %}
+
+<div class="between">
+  <div class="grow">
+    <h1>Study assistant</h1>
+    <p class="muted">
+      An AI assistant for questions the notes cannot answer: an error message, a revision
+      plan, a project idea, a concept explained a second way. It runs on
+      {{ brand.site_name }}'s own n8n workflow and is labelled wherever it appears.
+    </p>
+  </div>
+  <span class="ev-asst-status chip" data-ev-asst-status role="status" aria-live="polite">
+    {% if assistant.mode == 'proxy' %}Ready{% else %}Not connected{% endif %}
+  </span>
+</div>
+
+<div class="callout callout-ai">
+  <span class="label">AI-generated</span>
+  <p>{{ assistant.disclosure }}</p>
+</div>
+
+<div class="layout-2 mt">
+  <article>
+    <section class="panel" id="ev-assistant-page" data-ev-assistant-mode="page"
+             aria-labelledby="ev-asst-page-heading">
+      <h2 id="ev-asst-page-heading" class="h-sub">Ask a question</h2>
+
+      {% if assistant.mode != 'proxy' %}
+      <div class="ev-asst-note" data-ev-asst-fallback>
+        <p><strong>The assistant is not connected on this copy of the site.</strong></p>
+        {% if static_export %}
+        <p class="muted">This is the static GitHub Pages copy, which has no server to hold an
+          API credential or proxy a request. The assistant is available on the self-hosted
+          site once its operator configures an n8n Chat Trigger.</p>
+        {% else %}
+        <p class="muted">This instance has no n8n Chat Trigger configured. The operator can
+          enable it with <code>ENGINEVERSE_ASSISTANT_URL</code>; the setup steps are in
+          <a href="{{ issues_url }}">the repository</a> under <code>docs/ASSISTANT.md</code>.</p>
+        {% endif %}
+        <p>Meanwhile, the <a href="/tutor">notes tutor</a> answers strictly from this
+          platform's own material and cites the notes it used.</p>
+      </div>
+      {% endif %}
+
+      <div class="ev-asst-body" data-ev-asst-body></div>
+
+      <noscript>
+        <p class="muted mt">The chat needs JavaScript. You can still use the
+          <a href="/tutor">notes tutor</a>, which works on any page load.</p>
+      </noscript>
+    </section>
+
+    <section class="panel mt" aria-labelledby="ev-asst-how">
+      <h2 id="ev-asst-how" class="h-sub">How this works</h2>
+      <ul class="ev-asst-facts">
+        <li>Your message goes to this site's server, which forwards it to an n8n workflow.
+          The workflow's webhook address is never included in the page.</li>
+        <li>The reply is produced by a language model chosen by the site operator. It is
+          generated text, not a quotation from a textbook.</li>
+        <li>{{ brand.site_name }} does not store the transcript. It records only small
+          operational facts — that a question was asked, how long the answer took, and
+          whether it succeeded — so the operator can see if the service is healthy.</li>
+        <li>Do not paste passwords, API keys, identity numbers or anything about another
+          person. Questions are sent to the workflow's model provider.</li>
+      </ul>
+    </section>
+  </article>
+
+  <aside class="ev-asst-aside">
+    <section class="panel" aria-labelledby="ev-asst-can">
+      <h2 id="ev-asst-can" class="h-sub">What it can help with</h2>
+      <ul class="ev-asst-list">
+        <li>{{ icon("terminal", 15) }} Explaining a concept in simpler words</li>
+        <li>{{ icon("code", 15) }} Reading an error message and suggesting a fix</li>
+        <li>{{ icon("target", 15) }} Study and revision plans, interview prep</li>
+        <li>{{ icon("hammer", 15) }} Project ideas and how to build them</li>
+        <li>{{ icon("book", 15) }} Finding the right page of {{ brand.site_name }}</li>
+      </ul>
+    </section>
+
+    <section class="panel mt" aria-labelledby="ev-asst-cannot">
+      <h2 id="ev-asst-cannot" class="h-sub">What it cannot do</h2>
+      <ul class="ev-asst-list ev-asst-list-warn">
+        {% for limit in limitations %}<li>{{ limit }}</li>{% endfor %}
+      </ul>
+      <p class="tiny muted mt">These are limits of the implementation, not modesty. Nothing
+        here claims a capability the workflow does not have.</p>
+    </section>
+
+    <section class="panel mt" aria-labelledby="ev-asst-privacy">
+      <h2 id="ev-asst-privacy" class="h-sub">Privacy</h2>
+      <p class="tiny">Read the <a href="/privacy">privacy notice</a> for what is collected
+        and how long it is kept. Questions are not used to train a model by
+        {{ brand.site_name }}; the model provider's terms apply to the text you send.</p>
+    </section>
+
+    <section class="panel mt" aria-labelledby="ev-asst-other">
+      <h2 id="ev-asst-other" class="h-sub">Prefer a cited answer?</h2>
+      <p class="tiny">The <a href="/tutor">notes tutor</a> answers only from this
+        platform's notes and shows the sources it used. It is slower to surprise you and
+        easier to check.</p>
+    </section>
+  </aside>
+</div>
+
+{% include "_share.html" %}
+{% endblock %}

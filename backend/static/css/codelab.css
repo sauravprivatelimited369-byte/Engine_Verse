@@ -1,6 +1,6 @@
 /* ===========================================================================
    CodeLab — Online Compiler stylesheet
-   Matches FORGE's Obsidian Forge glass theme (warm charcoal editor slab,
+   Matches MERIDIAN's Meridian Glass glass theme (warm charcoal editor slab,
    ember caret), with dedicated touch ergonomics and soft-keyboard handling
    for Android phones.
    =========================================================================== */
@@ -253,6 +253,12 @@
   position: sticky;
   top: 76px;
   z-index: 40;
+}
+.cl-mobile-tabs {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .cl-mobile-tab {
   flex: 1 1 0;

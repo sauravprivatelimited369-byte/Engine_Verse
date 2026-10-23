@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Forge — i18n (internationalisation)
+   Meridian — i18n (internationalisation)
    Client-side language switching for the UI chrome. Content (notes, problems,
    etc.) stays in the author's language but remains browsable everywhere.
    Zero dependencies, strict-CSP safe (loaded as an external script).

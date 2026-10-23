@@ -1,0 +1,207 @@
+{
+  "name": "EngineVerse · Unsubscribe",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "engineverse/unsubscribe",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://sauravprivatelimited369-byte.github.io,http://localhost:8000,http://127.0.0.1:8000"
+        }
+      },
+      "id": "f3d00dab-76e5-5986-ab32-e79a78bede7e",
+      "name": "Unsubscribe webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "Linked from every message. Withdrawing consent must be one click.",
+      "notesInFlow": true,
+      "webhookId": "59ce31ab-9fb1-5ff6-8b6c-fd6905b0dc5e"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = $json.body ?? $json;\nconst email = String(body.email ?? $json.query?.email ?? \"\").trim().toLowerCase().slice(0, 254);\nconst token = String(body.token ?? $json.query?.token ?? \"\").slice(0, 128);\nreturn [{ json: {\n  valid: /^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$/.test(email),\n  email, token, requestedAt: new Date().toISOString(),\n} }];\n"
+      },
+      "id": "d44ad29f-60d6-5797-bed1-c98d7b65775c",
+      "name": "Build request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "63c7c5eb-5f50-508b-835c-1d2cffd3e682",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ba6c561d-c174-54b5-b069-617194592f56",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE newsletter_subscribers\n                   SET consent = false, consent_at = now(), unsubscribed_at = now()\n                 WHERE email = $1",
+        "options": {
+          "queryReplacement": "={{ $json.email }}"
+        }
+      },
+      "id": "ac7099c8-4563-5ece-880a-ed5b665bb23b",
+      "name": "Withdraw consent (optional)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        460,
+        0
+      ],
+      "notes": "Disabled until the table exists. Consent is withdrawn rather than deleted so an operator can prove the request was honoured.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_POSTGRES_CREDENTIAL",
+          "name": "EngineVerse Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, message: 'You have been unsubscribed.' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "2eddfcf1-9cd8-5ad6-91a5-e2af43593048",
+      "name": "Unsubscribed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: 'A valid email address is required.' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "826b8d12-9585-5210-8d96-698db8b979ec",
+      "name": "Invalid",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Unsubscribe webhook": {
+      "main": [
+        [
+          {
+            "node": "Build request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build request": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Withdraw consent (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Withdraw consent (optional)": {
+      "main": [
+        [
+          {
+            "node": "Unsubscribed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "EngineVerse · Unsubscribe"
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

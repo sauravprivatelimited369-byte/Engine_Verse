@@ -407,7 +407,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         elif path.startswith("/api/voice/"):
             count, window = ratelimit.LIMITS["voice"]
             limit = ("voice", count, window)
-        elif path.startswith("/api/tutor/") or path == "/api/swarm/simulate":
+        elif path.startswith(("/api/tutor/", "/api/assistant/")) or path == "/api/swarm/simulate":
             # Reads the configured ceiling rather than a literal, so the "ai"
             # entry in LIMITS - defined but previously unused - is what applies.
             count, window = ratelimit.LIMITS["ai"]
@@ -480,7 +480,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="Forge",
+        title="Meridian",
         description="Structured engineering education: notes, practice, coding, projects and revision.",
         version="1.0.0",
         lifespan=lifespan,
@@ -644,7 +644,7 @@ def create_app() -> FastAPI:
         payload = {
             "ok": True,
             "uptime_s": round(time.time() - app.state.started_at, 1),
-            "brand": brand.get("site_name", "Forge"),
+            "brand": brand.get("site_name", "Meridian"),
         }
         # Row counts are useful on a laptop and noisy on a public health check.
         if not get_settings().is_production:

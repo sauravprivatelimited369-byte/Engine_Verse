@@ -82,7 +82,7 @@
     "offline_limited": "El acceso sin conexión se limita a las páginas públicas almacenadas en caché previamente; los envíos y el inicio de sesión necesitan conexión.",
     "android_apk": "Android: APK firmado",
     "alternative_apk": "Un envoltorio alternativo de Android para este mismo sitio HTTPS está disponible como una versión firmada de GitHub.",
-    "download_apk": "Descargar Forge.apk",
+    "download_apk": "Descargar Meridian.apk",
     "apk_checksum": "Revisa la versión, su suma de verificación SHA-256 y el certificado de firma antes de instalar.",
     "apk_unofficial": "Android puede pedirte que permitas instalaciones de esta fuente. Solo instala el APK de la versión oficial; nunca de una copia reenviada. Las actualizaciones requieren una nueva versión firmada.",
     "no_apk": "No se ha publicado ni configurado ningún APK firmado para este sitio todavía. No instales un APK de una fuente no oficial. Usa la aplicación web mientras tanto.",

@@ -1,11 +1,11 @@
-# Forge
+# Meridian
 
 [![CI](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml)
 [![Android app](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Forge is a free, open-source study platform for engineering students. It
+Meridian is a free, open-source study workspace for engineering students. It
 offers structured notes for 93 subjects, judged coding practice, daily problem
 sets, flashcards, a study planner, a multi-language code playground, and
 links to internships and scholarships. You can use it in three ways:
@@ -22,19 +22,21 @@ Source: GitHub Actions). The Pages workflow builds and tests the site on every
 push either way.
 
 > The seeded catalogue is broad starter material, not a complete degree
-> syllabus. Topics not yet expert-reviewed are labelled as drafts. Forge
+> syllabus. Topics not yet expert-reviewed are labelled as drafts. Meridian
 > is not an accredited institution, and its certificates are not qualifications.
 
 <p>
-  <img src="docs/images/screenshot-dashboard.png" alt="The My progress page of the GitHub Pages copy: XP, streak, completed topics and problems, all saved on this device" width="49%">
-  <img src="docs/images/screenshot-planner.png" alt="The study planner: a task form with subject, due date and priority, and a 25-minute focus timer" width="49%">
+  <img src="docs/images/home-1440.png" alt="The Meridian homepage: a serif headline, the primary call to action, and today's plan in a frosted glass panel" width="49%">
+  <img src="docs/images/home-390.png" alt="The same homepage on a 390 px phone: the headline, both calls to action, and the plan below" width="24%">
 </p>
 
-<sub>Screenshots of the static build, taken in headless Chromium at 1366×900 and 1280×800. They predate the FORGE "Obsidian Forge" glass theme — see [docs/BRAND.md](docs/BRAND.md) for the current identity; refreshed captures are welcome.</sub>
+<sub>Live captures of the running application (headless Chromium, 1440×900 and 390×844). They show the current
+"Meridian Glass" identity — warm paper, navy ink, one signal blue; see [docs/BRAND.md](docs/BRAND.md).</sub>
 
 ## Contents
 
 - [What you can do](#what-you-can-do)
+- [The study assistant (n8n)](#the-study-assistant-n8n)
 - [Architecture](#architecture)
 - [Run it locally](#run-it-locally)
 - [Tests and checks](#tests-and-checks)
@@ -57,6 +59,7 @@ push either way.
 | **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |
 | **Help**: support and feedback, privacy and terms, a 404 page | ✓ (feedback through GitHub issues) | ✓ |
 | **Listen** (optional, operator-configured): ElevenLabs speech on notes, formulas, roadmaps, tutor answers and practice explanations, plus a spoken tutor | ✓ if `ENGINEVERSE_VOICE_API_URL` is set | ✓ (needs an ElevenLabs key) |
+| **Assistant**: an n8n-backed AI study assistant, with a floating launcher and a full page | ✓ when `ENGINEVERSE_ASSISTANT_PUBLIC_URL` is configured | ✓ when `ENGINEVERSE_ASSISTANT_URL` is configured |
 | Accounts, two-factor sign-in, community posts, leaderboard, certificates | n/a | ✓ |
 
 ### Code playground
@@ -85,6 +88,39 @@ Setup, the agent instruction, cost controls and failure modes are in
 [docs/ELEVENLABS_INTEGRATION.md](docs/ELEVENLABS_INTEGRATION.md).
 
 More detail on every feature is in [docs/FEATURES.md](docs/FEATURES.md).
+
+## The study assistant (n8n)
+
+`/assistant` is an AI assistant backed by an n8n **Chat Trigger**, plus a
+floating launcher on every page. It is off by default and says so: with no
+webhook configured the page explains that it is not connected and points at the
+notes tutor, instead of showing a chat box that cannot answer.
+
+- **Self-hosted:** the browser posts to this server's `/api/assistant/chat`,
+  which calls n8n. The webhook URL never reaches the browser, so the CSP stays
+  `connect-src 'self'` and n8n can live on a private network.
+- **GitHub Pages:** there is no server, so the browser calls the Chat Trigger
+  directly — only when the repository variable
+  `ENGINEVERSE_ASSISTANT_PUBLIC_URL` is set. CORS on the workflow must allow the
+  Pages origin.
+- **Honest by construction:** answers are labelled AI-generated, the page lists
+  what the assistant cannot do, no transcript is stored by Meridian, and the
+  audit log keeps character counts rather than questions. See
+  [docs/ASSISTANT.md](docs/ASSISTANT.md).
+- **Bounded:** 2–800 characters per question, a per-IP `ai` limit, a per-session
+  limit and a per-session budget inside the workflow. Timeouts, 429s and outages
+  become a sentence a student can act on, with a retry.
+
+Eight importable n8n workflows live in [`n8n/workflows/`](n8n/workflows):
+student assistance, feedback intake, content drafting with human review,
+onboarding, unsubscribe, analytics rollup and operations monitoring. They import
+inactive with placeholder credential slots, and the manual setup steps are in
+[docs/N8N_AUTOMATION.md](docs/N8N_AUTOMATION.md).
+
+> **Not verified in this repository:** a message sent to the owner's n8n Cloud
+> workspace. The transport is tested against a local server that speaks the Chat
+> Trigger contract (`scripts/mock_n8n.py`), and `scripts/verify_assistant.py`
+> sends one real message once a URL is configured.
 
 ## Architecture
 
@@ -171,6 +207,8 @@ python -m pytest backend/tests -q -m "not slow"   # skip real compile/run tests
 
 npm install --prefix .toolchain/jsdom jsdom@26    # once, for the static-site checks
 node scripts/check_static_site.js site            # 64 checks on the exported pages
+node scripts/check_assistant.js site              # 29 checks on the assistant widget
+python scripts/check_n8n_workflows.py             # structure + embedded JS of n8n workflows
 node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
 node scripts/check_voice.js                       # voice reader/tutor behaviour, stubbed
 node scripts/check_browser_runtimes.js site       # needs the runtimes fetched above
@@ -264,6 +302,10 @@ Don't use a public issue.
 - **The server's local code runner is not a container boundary.** Production
   refuses local execution; an isolated Judge0 instance is the operator's
   responsibility.
+- **The assistant needs its own configuration and budget.** It answers only
+  when an n8n Chat Trigger is configured, and every message costs one n8n
+  execution plus one model call. The static copy can only reach it directly,
+  which needs the workflow's Allowed Origins to include the Pages site.
 - **Opportunity deadlines change.** The page links to official sites and does
   not copy dates. A weekly CI job checks the links.
 
@@ -272,7 +314,10 @@ Don't use a public issue.
 | Topic | Document |
 |---|---|
 | Every feature in depth | [docs/FEATURES.md](docs/FEATURES.md) |
-| Name, logo and the Obsidian Forge design system | [docs/BRAND.md](docs/BRAND.md) |
+| The study assistant, configuration and limits | [docs/ASSISTANT.md](docs/ASSISTANT.md) |
+| n8n workflows, credentials, costs, manual steps | [docs/N8N_AUTOMATION.md](docs/N8N_AUTOMATION.md) |
+| Growth, SEO and a 30-day student acquisition plan | [docs/GROWTH.md](docs/GROWTH.md) |
+| Name, logo and the Meridian Glass design system | [docs/BRAND.md](docs/BRAND.md) |
 | Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |
 | Hosting, Compose, production settings | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |

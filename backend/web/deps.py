@@ -12,7 +12,7 @@ from fastapi import HTTPException, Request
 from fastapi.templating import Jinja2Templates
 
 from engineverse.code_format import color_code
-from engineverse import auth, brand, db, markdown, navigation, progress
+from engineverse import assistant, auth, brand, db, markdown, navigation, progress
 from engineverse.config import get_settings
 from engineverse.security import csrf, phone_rules, validators
 from engineverse.security.rbac import is_staff
@@ -276,6 +276,21 @@ def _canonical_url(path: str) -> str:
     return get_settings().site_url.rstrip("/") + clean
 
 
+def _public_url(path: str) -> str:
+    """Absolute URL of a public asset, for Open Graph and Twitter cards.
+
+    Unlike ``_canonical_url`` this keeps a file path intact: no trailing slash
+    is appended, because an og:image that ends in ``/icon-512.png/`` is a 404
+    in every social preview.
+    """
+    clean = path if path.startswith("/") else "/" + path
+    if _static_export():
+        from engineverse import project
+
+        return project.pages_url().rstrip("/") + clean
+    return get_settings().site_url.rstrip("/") + clean
+
+
 def base_context(request: Request, **extra: Any) -> dict[str, Any]:
     viewer = current_user(request)
     context: dict[str, Any] = {
@@ -303,7 +318,13 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         # and the voice controls then do not appear at all on Pages.
         "voice_api_base": _voice_api_base(),
         "canonical_url": _canonical_url(request.url.path),
+        "og_image": _public_url("/static/icons/icon-512.png"),
         "issues_url": _issues_url(),
+        # The study assistant's browser-side description. In proxy mode this
+        # names only the same-origin endpoint; the n8n webhook URL never enters
+        # the context, and so never enters the HTML. export_pages.py swaps this
+        # for the direct (Pages) variant at build time.
+        "assistant": assistant.client_config(request.url.path),
         # A signed-out visitor on an instance where sign-in is compulsory can
         # only reach the account pages, so the layout drops the navigation,
         # search and footer links that would each bounce back to /login.

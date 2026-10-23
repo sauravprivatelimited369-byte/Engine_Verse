@@ -13,12 +13,12 @@ from engineverse import project
 
 
 def _release_pattern() -> re.Pattern[str]:
-    # Forge.apk is the release asset name since the FORGE rebrand; the legacy
+    # Meridian.apk is the release asset name since the MERIDIAN rebrand; the legacy Forge and EngineVerse
     # EngineVerse.apk name stays acceptable so already-published releases and
     # already-configured ENGINEVERSE_APK_URL values keep working.
     return re.compile(
         re.escape(project.release_download_prefix())
-        + r"android-v[0-9][A-Za-z0-9._-]{0,63}/(?:Forge|EngineVerse)[A-Za-z0-9._-]{0,64}\.apk\Z"
+        + r"android-v[0-9][A-Za-z0-9._-]{0,63}/(?:Meridian|Forge|EngineVerse)[A-Za-z0-9._-]{0,64}\.apk\Z"
     )
 
 
@@ -29,7 +29,7 @@ def normalise_apk_url(value: str | None) -> str:
         return ""
     if not _release_pattern().fullmatch(url) or ".." in url:
         raise ValueError(
-            "ENGINEVERSE_APK_URL must point to a versioned Forge*.apk (or legacy EngineVerse*.apk) "
+            "ENGINEVERSE_APK_URL must point to a versioned Meridian*.apk (or legacy EngineVerse*.apk) "
             "asset in this repository's Android GitHub Releases"
         )
     return url

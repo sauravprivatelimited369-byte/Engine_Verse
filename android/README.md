@@ -1,9 +1,9 @@
-# Forge for Android
+# Meridian for Android
 
 A native Android app written in Kotlin with Jetpack Compose. The parts a
 student uses every day work without a connection: the subject catalogue,
 progress and streaks, and the planner. Full notes and the code playground open
-the Forge website inside a restricted viewer.
+the Meridian website inside a restricted viewer.
 
 | | |
 |---|---|
@@ -121,7 +121,7 @@ To publish from CI, a maintainer:
 
 The release job decodes the keystore into the runner's temporary directory,
 builds a minified release, checks it with `apksigner verify`, and attaches
-`Forge.apk` and its `.sha256` to a GitHub Release named `android-<version>`.
+`Meridian.apk` and its `.sha256` to a GitHub Release named `android-<version>`.
 Without the secrets it stops with an error and publishes nothing. Raise
 `versionCode` in `app/build.gradle.kts` for every published release.
 

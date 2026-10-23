@@ -78,6 +78,13 @@ jobs:
       - name: Verify trusted academy examples (report missing compilers explicitly)
         run: python scripts/verify_academy.py
 
+      - name: n8n workflows are structurally valid
+        # Parses the committed JSON, checks connections and trigger settings,
+        # refuses committed credentials, and parses each Code node with Node
+        # when it is available. It does not import them into n8n - that needs a
+        # running instance and the owner's credentials.
+        run: python scripts/check_n8n_workflows.py
+
       - name: Every resource URL is well-formed
         # Offline: no network needed, so it runs on every push. Catches
         # malformed URLs, non-https links, private hosts and placeholders.
@@ -341,6 +348,7 @@ jobs:
         run: |
           node scripts/check_static_site.js site
           node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
+          node scripts/check_assistant.js site
 
       - name: The voice reader and spoken tutor controls behave
         # No network and no credentials: the backend and ElevenLabs are stubbed.

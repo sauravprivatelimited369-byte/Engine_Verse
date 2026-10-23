@@ -17,8 +17,8 @@ import io.github.sauravprivatelimited369byte.engineverse.core.Catalog
 import io.github.sauravprivatelimited369byte.engineverse.core.UrlPolicy
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
 import io.github.sauravprivatelimited369byte.engineverse.data.CatalogRepository
-import io.github.sauravprivatelimited369byte.engineverse.ui.ForgeApp
-import io.github.sauravprivatelimited369byte.engineverse.ui.theme.ForgeTheme
+import io.github.sauravprivatelimited369byte.engineverse.ui.MeridianApp
+import io.github.sauravprivatelimited369byte.engineverse.ui.theme.MeridianTheme
 import io.github.sauravprivatelimited369byte.engineverse.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,8 +59,8 @@ class MainActivity : ComponentActivity() {
                 )
                 onDispose {}
             }
-            ForgeTheme(dark) {
-                ForgeApp(store, catalog ?: Catalog.EMPTY, policy)
+            MeridianTheme(dark) {
+                MeridianApp(store, catalog ?: Catalog.EMPTY, policy)
             }
         }
     }

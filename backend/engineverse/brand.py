@@ -1,9 +1,9 @@
 """Configurable branding (spec §1).
 
-The product is FORGE ("Where engineers are made."). The Python package keeps
-its original ``engineverse`` codename: a rebrand changes what learners see,
-not import paths, environment variables or stored-data formats that existing
-deployments depend on. See docs/BRAND.md for the naming rationale.
+The product is MERIDIAN ("Engineering, studied properly."). The Python package
+keeps its original ``engineverse`` codename: a rebrand changes what learners
+see, not import paths, environment variables or stored-data formats that
+existing deployments depend on. See docs/BRAND.md for the naming rationale.
 
 The product name, tagline and accent colours live in the ``site_config`` table,
 so a white-label deployment is a data change rather than a code change.
@@ -21,22 +21,23 @@ from . import db
 from .security.ids import now_ms
 
 DEFAULTS = {
-    "site_name": "Forge",
-    "tagline": "Where engineers are made.",
+    "site_name": "Meridian",
+    "tagline": "Engineering, studied properly.",
     "description": (
-        "Forge is a structured learning platform for engineering students and working professionals."
+        "Meridian is a free, open-source study workspace for engineering students: "
+        "structured notes, daily practice, judged coding, revision and a record of your progress."
     ),
-    "support_email": "support@forge.local",
+    "support_email": "support@meridian.local",
     "free_tier_note": (
         "All core learning content on this instance is free to read and practise. "
-        "Forge is a self-hosted project with no paid plan to buy here; "
+        "Meridian is a self-hosted, open-source project with no paid plan to buy here; "
         "its certificates are records of completion, not accredited qualifications."
     ),
     "announcement": "",
-    "accent_color": "#f97316",
-    "accent_color_2": "#fbbf24",
-    "accent_color_3": "#f43f5e",
-    "theme": "dark",
+    "accent_color": "#1d5bd6",
+    "accent_color_2": "#2f7cf6",
+    "accent_color_3": "#0c3c8f",
+    "theme": "light",
     "maintenance_mode": "0",
     "registration_open": "1",
 }
@@ -70,9 +71,9 @@ def get(key: str, default: str | None = None) -> str:
 # on the way in, so a value written before the check existed - or by any other
 # path - still cannot reach a page as anything but a hex colour.
 _COLOR_KEYS = {
-    "accent_color": "#f97316",
-    "accent_color_2": "#fbbf24",
-    "accent_color_3": "#f43f5e",
+    "accent_color": "#1d5bd6",
+    "accent_color_2": "#2f7cf6",
+    "accent_color_3": "#0c3c8f",
 }
 
 

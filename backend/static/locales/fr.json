@@ -82,7 +82,7 @@
     "offline_limited": "L'accès hors ligne est limité aux pages publiques précédemment mises en cache ; les envois et la connexion nécessitent une connexion.",
     "android_apk": "Android : APK signé",
     "alternative_apk": "Un wrapper Android alternatif pour ce même site HTTPS est disponible en tant que version GitHub signée.",
-    "download_apk": "Télécharger Forge.apk",
+    "download_apk": "Télécharger Meridian.apk",
     "apk_checksum": "Vérifiez la version, sa somme de contrôle SHA-256 et le certificat de signature avant d'installer.",
     "apk_unofficial": "Android peut vous demander d'autoriser l'installation depuis cette source. Installez uniquement l'APK depuis la version officielle ; jamais depuis une copie transférée. Les mises à jour nécessitent une nouvelle version signée.",
     "no_apk": "Aucun APK signé n'a été publié et configuré pour ce site pour l'instant. N'installez pas d'APK depuis une source non officielle. Utilisez l'application web en attendant.",

@@ -1,4 +1,4 @@
-/* Forge front-end.
+/* Meridian front-end.
  * Vanilla JS, no dependencies, no CDN. Everything here is progressive
  * enhancement: every feature has a working no-JS path via plain HTML forms.
  */
@@ -518,7 +518,7 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
           (result && result.via) || (cplLang && cplLang.dataset.judge) || "disabled";
         const lines = [`Run refused — nothing was executed (${judgeName}).`];
         if (status === "unsupported_language") {
-          lines.push("", `${row.name || "This language"} has no runtime in this copy of Forge.`);
+          lines.push("", `${row.name || "This language"} has no runtime in this copy of Meridian.`);
         }
         if (result && result.stderr) lines.push("", String(result.stderr).slice(0, 4000));
         cplOutput.innerHTML = `<div class="verdict ${status}">Not run</div>` +
@@ -844,6 +844,48 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
     $$("[data-tutor-prompt]").forEach((chip) => {
       chip.addEventListener("click", () => ask(chip.textContent.trim()));
     });
+  }
+
+  // ------------------------------------------------------------- share
+  // A "copy link" that degrades honestly. navigator.share exists on phones and
+  // is offered only there; clipboard access is not available on every desktop
+  // browser (or over plain HTTP), so the fallback selects the visible URL and
+  // says what happened instead of pretending the copy succeeded.
+  const share = $("[data-ev-share]");
+  if (share) {
+    const native = share.querySelector("[data-ev-share-native]");
+    const copy = share.querySelector("[data-ev-share-copy]");
+    const status = share.querySelector("[data-ev-share-status]");
+    const canonical = $('link[rel="canonical"]');
+    const url = (canonical && canonical.href) || location.href;
+    const say = (message) => {
+      if (!status) return;
+      status.textContent = message;
+      clearTimeout(status._t);
+      status._t = setTimeout(() => { status.textContent = ""; }, 4000);
+    };
+
+    if (native && typeof navigator.share === "function") native.hidden = false;
+    if (native) {
+      native.addEventListener("click", async () => {
+        try {
+          await navigator.share({ title: document.title, url });
+          say("Shared.");
+        } catch (err) {
+          if (err && err.name !== "AbortError") say("Sharing is not available. Use Copy link.");
+        }
+      });
+    }
+    if (copy) {
+      copy.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          say("Link copied.");
+        } catch (_) {
+          say("Could not copy automatically — the address bar has the link.");
+        }
+      });
+    }
   }
 
   // --------------------------------------------------------- theme toggle

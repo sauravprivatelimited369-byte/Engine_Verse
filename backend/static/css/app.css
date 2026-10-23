@@ -49,7 +49,7 @@
 }
 
 /* ===========================================================================
-   Design tokens — "Obsidian Forge" (FORGE rebrand, see docs/BRAND.md)
+   Design tokens — "Meridian Glass" (MERIDIAN rebrand, see docs/BRAND.md)
    Tempered smoked glass over warm charcoal, lit by one ember accent family
    (ember -> spark gold -> heat rose). Glass is forged in fire, so the frosted
    surfaces are the brand, not decoration: dark mode is the forge at night,
@@ -3811,6 +3811,23 @@ body:has(.topbar.open)::after {
    .empty, flex rows), or script-toggled elements stay visible. */
 [hidden] { display: none !important; }
 
+
+
+/* --------------------------------------------------------------- share row
+   A small, quiet control above the content. The status line is always part of
+   the layout (role="status" only announces when it changes) so the page does
+   not jump when "Link copied." appears. */
+.share {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 4px;
+}
+.share .btn { box-shadow: none; }
+.share .tiny { min-height: 1.2em; }
+
+
 /* ===========================================================================
    GLASSMORPHISM DESIGN SYSTEM (site-wide, 2026 redesign)
    Frosted glass over a calm, tinted canvas: translucent surfaces, a 1px
@@ -3980,7 +3997,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 /* ===========================================================================
-   FORGE — tempered-glass layer (final word on surfaces; docs/BRAND.md)
+   MERIDIAN — tempered-glass layer (final word on surfaces; docs/BRAND.md)
 
    Every shared surface becomes smoked/frosted glass: a diagonal light sheen
    over a translucent tint of the surface colour, a bright machined edge
@@ -4222,7 +4239,7 @@ select {
   color: var(--accent-ink);
 }
 
-/* ----------------------------------------------------- why FORGE (home) */
+/* ----------------------------------------------------- why MERIDIAN (home) */
 .manifesto {
   position: relative; overflow: hidden;
   display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);

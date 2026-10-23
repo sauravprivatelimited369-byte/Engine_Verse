@@ -1,4 +1,4 @@
-/* Forge static-copy runtime: local progress, quizzes and the browser code judge.
+/* Meridian static-copy runtime: local progress, quizzes and the browser code judge.
  *
  * Runs only on pages exported by scripts/export_pages.py (they carry the
  * #ev-live boot block). The static GitHub Pages copy has no accounts and no
@@ -66,7 +66,7 @@
         );
 
   const reportRuntimeProblem = (label, error) => {
-    if (window.console?.warn) window.console.warn(`[Forge] ${label} failed`, error);
+    if (window.console?.warn) window.console.warn(`[Meridian] ${label} failed`, error);
   };
 
   // Runs one boot step in isolation: a failure on a single page must not take
@@ -171,10 +171,10 @@
   function sanitizeProfile(raw) {
     const p = defaultProfile();
     if (!raw || typeof raw !== "object") return p;
-    p.display_name = cleanText(raw.display_name === "EngineVerse Learner" || raw.display_name === "Forge Learner" ? "" : raw.display_name, 60);
+    p.display_name = cleanText(raw.display_name === "EngineVerse Learner" || raw.display_name === "Meridian Learner" ? "" : raw.display_name, 60);
     p.branch = cleanText(raw.branch, 60);
     p.year_of_study = Math.min(cleanInt(raw.year_of_study, 5), 5);
-    p.bio = cleanText(raw.bio === "Learning core engineering and programming on EngineVerse." || raw.bio === "Learning core engineering and programming on Forge." ? "" : raw.bio, 240);
+    p.bio = cleanText(raw.bio === "Learning core engineering and programming on EngineVerse." || raw.bio === "Learning core engineering and programming on Meridian." ? "" : raw.bio, 240);
     p.xp = cleanInt(raw.xp, 10000000);
     p.quiz_attempts = cleanInt(raw.quiz_attempts, 1000000);
     p.quiz_correct = cleanInt(raw.quiz_correct, 1000000);
@@ -306,12 +306,12 @@
     } catch (_) {
       throw new Error("That file is not valid JSON.");
     }
-    if (!raw || typeof raw !== "object") throw new Error("That file is not a Forge progress export.");
+    if (!raw || typeof raw !== "object") throw new Error("That file is not a Meridian progress export.");
     // Accept this format and the progress-only snapshot older versions exported.
     const body = raw.format === PROFILE_FORMAT ? raw.profile
       : raw.format === "engineverse-progress-export" ? raw
       : raw.schema === "engineverse.learner.v1" || raw.completed_topics ? raw : null;
-    if (!body || typeof body !== "object") throw new Error("That file is not a Forge progress export.");
+    if (!body || typeof body !== "object") throw new Error("That file is not a Meridian progress export.");
     const profile = sanitizeProfile(body);
     const days = Array.isArray(raw.streak_days) ? raw.streak_days : profile.activity_days;
     return { profile, days };
@@ -521,7 +521,7 @@
     if (requested && location.pathname.includes("/dpp/")) {
       const heading = document.querySelector("main h1");
       if (heading) heading.textContent = `Daily Practice - ${longDate(requested)}`;
-      document.title = `Daily Practice - ${longDate(requested)} - Forge`;
+      document.title = `Daily Practice - ${longDate(requested)} - Meridian`;
     }
   }
 
@@ -1151,7 +1151,7 @@
         status: "sandbox_unavailable", executed: false, stdout: "", runtimeMs: 0,
         via: "static copy",
         stderr: "Not run: the Python runtime (CPython via Pyodide/WebAssembly) is not available in this "
-          + `copy. ${ready.error || ""} Your code was not executed - use the hosted Forge Python `
+          + `copy. ${ready.error || ""} Your code was not executed - use the hosted Meridian Python `
           + "compiler, or a deployment that bundles the pyodide/ runtime files.",
       };
     }
@@ -1758,9 +1758,9 @@
     if (runtime) return runtime;
     return {
       status: "unsupported_language", executed: false, stdout: "", runtimeMs: 0, via: "static copy",
-      stderr: `Not run: this copy of Forge carries no browser runtime for ${String(lang).toUpperCase()}, `
+      stderr: `Not run: this copy of Meridian carries no browser runtime for ${String(lang).toUpperCase()}, `
         + "so it cannot compile or execute it here and will not pretend to. Your code was not executed. "
-        + "JavaScript (worker) and Python (CPython via WebAssembly) run above; the hosted Forge "
+        + "JavaScript (worker) and Python (CPython via WebAssembly) run above; the hosted Meridian "
         + "compiler runs every language on its judge.",
     };
   };
@@ -2255,7 +2255,7 @@
           `Not run: this static copy cannot compile or execute ${String(lang).toUpperCase()}. ` +
           "Your code was not executed, so this is not a pass or a fail. " +
           "JavaScript runs in an isolated worker here and Python runs on real CPython (Pyodide); " +
-          "for other languages use the hosted Forge compiler, whose judge has every toolchain, " +
+          "for other languages use the hosted Meridian compiler, whose judge has every toolchain, " +
           "or run the code locally.",
         runtimeMs: 0,
       };
@@ -2784,7 +2784,7 @@
       // The Android app's viewer cannot save blob downloads; say so instead of
       // reporting an export that did not happen.
       if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
-        settingsStatus("Saving files is not available inside the Forge Android app. Use \u201cOpen in browser\u201d (top right) to save this file.", "warn");
+        settingsStatus("Saving files is not available inside the Meridian Android app. Use \u201cOpen in browser\u201d (top right) to save this file.", "warn");
         return;
       }
       const blob = new Blob([JSON.stringify(exportProfilePayload(), null, 2)], { type: "application/json" });
@@ -2850,7 +2850,7 @@
     }
 
     if (kind === "profile") {
-      setTextById("ev-profile-name", name || "Forge learner");
+      setTextById("ev-profile-name", name || "Meridian learner");
       const branchBits = [profile.branch, yearLabel(profile.year_of_study)].filter(Boolean);
       setTextById("ev-profile-branch", branchBits.length ? branchBits.join(" · ") : "Branch not set");
       setTextById("ev-profile-xp", `${profile.xp || 0} XP · level ${profile.level || 1}`);

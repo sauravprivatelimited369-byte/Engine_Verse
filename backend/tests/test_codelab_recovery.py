@@ -73,6 +73,12 @@ class TestCsrfRecovery:
         assert body["csrfTokenUrl"] == "/api/csrf"
 
     def test_page_token_still_authorises_a_run(self, client):
+        # A host without an installed toolchain has no judge, and /api/execute
+        # correctly answers 503 "Code execution is off". That is a different
+        # guarantee (covered by TestToolchainDiagnostics), so skip rather than
+        # report a CSRF regression that did not happen.
+        if not coding.runnable_languages():
+            pytest.skip("no runnable toolchain on this host; the judge is disabled")
         page = client.get("/codelab")
         token = _csrf_token(page.text)
         fresh = client.get("/api/csrf").json()["csrfToken"]
@@ -107,7 +113,12 @@ class TestCompilerPageWithoutCatalogue:
         page = client.get("/compiler")
         assert page.status_code == 200
         assert page.text.count("<option") >= len(rows)
-        assert "Code execution is off" not in page.text
+        # The banner is decided by the judge, not by the catalogue: a host with
+        # no installed toolchain must say so, and only such a host may say it.
+        if runnable:
+            assert "Code execution is off" not in page.text
+        else:
+            assert "Code execution is off" in page.text
 
 
 class TestToolchainDiagnostics:
