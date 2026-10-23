@@ -1,0 +1,351 @@
+{
+  "name": "EngineVerse · Student onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "engineverse/subscribe",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "d1",
+      "name": "Subscription",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Onboarding is opt-in and idempotent. The insert below relies on a unique\n// index, so a repeated subscription returns no row and sends no second email.\nconst incoming = $input.first().json || {};\nconst payload = incoming.body && typeof incoming.body === \"object\" ? incoming.body : incoming;\nconst email = String(payload.email || \"\").trim().toLowerCase().slice(0, 254);\nconst consent = payload.consent === true;\nconst topics = Array.isArray(payload.topics) ? payload.topics.slice(0, 6).map(String) : [];\nconst emailOk = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email);\n\nreturn [{\n  json: {\n    valid: emailOk && consent,\n    email,\n    topics,\n    // The unsubscribe link carries this token, never the address.\n    // 128 bits from the platform CSPRNG, hex. a seeded PRNG is not a credential.\n    token: Array.from(crypto.getRandomValues(new Uint8Array(16)),\n      (byte) => byte.toString(16).padStart(2, \"0\")).join(\"\"),\n    receivedAt: new Date().toISOString(),\n  },\n}];"
+      },
+      "id": "d2",
+      "name": "Validate consent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "consent",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d3",
+      "name": "Opted in?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO engineverse_subscribers (email, topics, token, created_at) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING RETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$json.email, $json.topics, $json.token, $json.receivedAt] }}"
+        }
+      },
+      "id": "d4",
+      "name": "Add subscriber once",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        660,
+        0
+      ],
+      "notes": "Run automation/n8n/feedback.sql first. An empty result means the address was already subscribed.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "new",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d5",
+      "name": "New subscriber?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "YOUR-SENDER@example.org",
+        "toEmail": "={{ $('Validate consent').item.json.email }}",
+        "subject": "Welcome to EngineVerse — three things to start with",
+        "text": "Hi,\n\nThanks for choosing to hear from EngineVerse.\n\nStart here:\n1. Find your branch: {{ $vars.engineverse_url }}/streams\n2. Practise one set today: {{ $vars.engineverse_url }}/dpp\n3. Ask the study assistant: {{ $vars.engineverse_url }}/assistant\n\nYou are receiving this because you asked to. Unsubscribe at any time:\n{{ $vars.engineverse_unsubscribe_url }}?token={{ $('Validate consent').item.json.token }}\n\n— EngineVerse",
+        "options": {}
+      },
+      "id": "d6",
+      "name": "Welcome email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1100,
+        -80
+      ],
+      "notes": "Set FROM and attach an SMTP credential. Replace $vars.engineverse_url with your public origin.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, message: 'This address is already subscribed.' } }}",
+        "options": {}
+      },
+      "id": "d7",
+      "name": "Already subscribed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: 'A valid address and explicit consent are required.' } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "d8",
+      "name": "Refuse",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, message: 'Check your inbox for a welcome message.' } }}",
+        "options": {}
+      },
+      "id": "d9",
+      "name": "Subscribed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "engineverse/unsubscribe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d9x",
+      "name": "Unsubscribe",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE engineverse_subscribers SET revoked_at = now() WHERE token = $1 AND revoked_at IS NULL RETURNING email",
+        "options": {
+          "queryReplacement": "={{ [$json.query ? $json.query.token : ''] }}"
+        }
+      },
+      "id": "d10",
+      "name": "Revoke once",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        240,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=You have been unsubscribed from EngineVerse messages. If this was not you, reply to any earlier message.",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "d11",
+      "name": "Unsubscribed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        360
+      ]
+    }
+  ],
+  "connections": {
+    "Subscription": {
+      "main": [
+        [
+          {
+            "node": "Validate consent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate consent": {
+      "main": [
+        [
+          {
+            "node": "Opted in?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opted in?": {
+      "main": [
+        [
+          {
+            "node": "Add subscriber once",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refuse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add subscriber once": {
+      "main": [
+        [
+          {
+            "node": "New subscriber?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New subscriber?": {
+      "main": [
+        [
+          {
+            "node": "Welcome email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Already subscribed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Welcome email": {
+      "main": [
+        [
+          {
+            "node": "Subscribed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unsubscribe": {
+      "main": [
+        [
+          {
+            "node": "Revoke once",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revoke once": {
+      "main": [
+        [
+          {
+            "node": "Unsubscribed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

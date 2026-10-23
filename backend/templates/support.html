@@ -48,6 +48,17 @@
     {% endif %}
   </section>
 
+  <section class="panel" id="assistant-help" aria-labelledby="h-assistant-help">
+    <span class="about-mark" aria-hidden="true">{{ icon("chat", 18) }}</span>
+    <h2 id="h-assistant-help">The AI assistant gave a wrong or unsafe answer</h2>
+    <p>The assistant is a separate AI workflow and can be wrong. If an answer was incorrect, unclear or
+      unsafe, use the <strong>Was this useful?</strong> buttons under the answer: they record one aggregate
+      vote and a reason, and they do not send the answer text. For a problem that needs a person, open an issue
+      and describe what you asked and what the assistant said, with any personal details removed.</p>
+    <p class="muted">If no workflow is connected on this instance, the
+      <a href="/tutor">study tutor</a> and the rest of {{ brand.site_name }} still work.</p>
+  </section>
+
   <section class="panel" id="suggest" aria-labelledby="h-suggest">
     <span class="about-mark" aria-hidden="true">{{ icon("spark", 18) }}</span>
     <h2 id="h-suggest">Suggest content</h2>

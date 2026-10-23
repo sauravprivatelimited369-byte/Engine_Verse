@@ -15,8 +15,9 @@ on:
   push:
     branches:
       - main
-      # Working branch: deploys now; main takes over once it is merged.
-      - arena/38eff4a6-engine-verse
+      # Working branch: builds and verifies; deploy is restricted to main by the
+      # github-pages environment rule (see the deploy job's `if`).
+      - arena/6f775e41-engine-verse
   workflow_dispatch:
 
 permissions:
@@ -129,6 +130,11 @@ jobs:
 
   deploy:
     needs: build
+    # Branch pushes build and verify the site, but only main deploys it. The
+    # github-pages environment also has a protection rule naming main, so a
+    # branch deploy would fail after doing the work; this keeps a working-branch
+    # run green with its artifact instead of red for a rule it cannot satisfy.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

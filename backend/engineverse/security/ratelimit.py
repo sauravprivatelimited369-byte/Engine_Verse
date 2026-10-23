@@ -201,5 +201,9 @@ LIMITS = {
     "search": (120, 60),
     "write": (120, 60),
     "ai": (30, 3600),
+    # The copilot is a paid upstream (the operator's n8n workflow and its model
+    # credential). One question a minute on average per address, with room for
+    # a burst of follow-ups.
+    "assistant": (60, 3600),
     "upload": (20, 3600),
 }

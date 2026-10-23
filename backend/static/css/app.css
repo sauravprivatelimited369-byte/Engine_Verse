@@ -3787,3 +3787,18 @@ body:has(.topbar.open)::after {
 /* The hidden attribute must win over component display rules (.btn, .chip,
    .empty, flex rows), or script-toggled elements stay visible. */
 [hidden] { display: none !important; }
+
+/* ------------------------------------------------------------------ share row
+   A small, quiet row under a piece of content. Native share where available;
+   ordinary links otherwise. No floating bars and no third-party script. */
+.share-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.share-row .btn { font-size: .78rem; }
+.share-row [data-ev-share-native][hidden] { display: none; }

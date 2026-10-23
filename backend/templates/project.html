@@ -12,6 +12,7 @@
         {% if project.branch_slug %}<a class="chip" href="/branches/{{ project.branch_slug }}">{{ project.branch_name }}</a>{% endif %}
         {% if project.language_slug %}<a class="chip ok" href="/programming/{{ project.language_slug }}">Capstone for the {{ project.language_name }} path</a>{% endif %}
         {% for tech in (project.tech | fromjson([])) %}<span class="chip">{{ tech }}</span>{% endfor %}</div>
+      {% with share_title = project.title %}{% include "_share.html" %}{% endwith %}
       {% if user %}
       <div class="row mt" style="gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" data-bookmark="project" data-type="project"

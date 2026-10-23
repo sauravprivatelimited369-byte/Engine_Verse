@@ -49,6 +49,7 @@
   <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/sora-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/assistant.css">
   {# The configured accent colours, applied over the stylesheet's defaults.
      These come from site_config and are interpolated into CSS, so they are run
      through safe_css_color in the admin handler; | safe is used because Jinja
@@ -56,9 +57,15 @@
   <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--grad:linear-gradient(135deg,var(--accent),var(--accent-3))}</style>
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta property="og:title" content="{% block og_title %}{{ brand.site_name }}{% endblock %}">
-  <meta property="og:description" content="{{ brand.tagline }}">
+  <meta property="og:description" content="{{ self.description() }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ brand.site_name }}">
+  <meta property="og:image" content="{{ og_image }}">
+  <meta property="og:image:alt" content="{{ brand.site_name }} — {{ brand.tagline }}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{% block twitter_title %}{{ brand.site_name }}{% endblock %}">
+  <meta name="twitter:description" content="{{ self.description() }}">
+  <meta name="twitter:image" content="{{ og_image }}">
   {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">
   <meta property="og:url" content="{{ canonical_url }}">{% endif %}
   {% block head %}{% endblock %}
@@ -179,6 +186,12 @@
 </main>
 
 {% include "_footer.html" %}
+{# The floating launcher only exists where it can do something. With no workflow
+   configured the panel could only apologise, and the /assistant page already
+   explains the state; on the static export there is no server at all. #}
+{% if assistant_configured and not gated and not static_export and path != '/assistant' %}
+  {% include "_assistant_widget.html" %}
+{% endif %}
 
 {% if not gated %}
 {# The bottom bar. Five slots is the whole budget on a phone, so these are the
@@ -220,6 +233,7 @@
 <script src="/static/js/app.js" defer></script>
 <script src="/static/js/pages-live.js" defer></script>
 <script src="/static/js/scroll.js" defer></script>
+<script src="/static/js/assistant.js" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

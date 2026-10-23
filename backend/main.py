@@ -349,6 +349,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             limit = ("judge", count, window)
         elif request.method == "POST" and path in ("/api/studio/query", "/api/workflows/run"):
             limit = ("catalogue-lab", 60, 60)
+        elif request.method == "POST" and path == "/api/assistant/chat":
+            # The copilot forwards to a paid workflow. The GET status check is
+            # free and is not counted, so a page can verify availability
+            # without spending the student's budget.
+            count, window = ratelimit.LIMITS["assistant"]
+            limit = ("assistant", count, window)
         elif path.startswith("/api/tutor/") or path == "/api/swarm/simulate":
             # Reads the configured ceiling rather than a literal, so the "ai"
             # entry in LIMITS - defined but previously unused - is what applies.
@@ -366,8 +372,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         )
         result = local if not local.allowed else shared
         if not result.allowed:
+            body = {"ok": False, "error": "Too many requests. Please slow down."}
+            if key == "assistant":
+                # The copilot's UI shows a specific recovery message for a
+                # spent question budget, so it gets a stable code.
+                body["code"] = "assistant_rate_limited"
             return JSONResponse(
-                {"ok": False, "error": "Too many requests. Please slow down."},
+                body,
                 status_code=429,
                 headers={
                     "Retry-After": str(max(1, result.retry_after)),

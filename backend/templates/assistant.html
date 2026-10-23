@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}AI study assistant — {{ brand.site_name }}{% endblock %}
+{% block description %}Ask about programming, maths, study plans or a concept from your syllabus. The assistant is an AI workflow, it is labelled as AI, and its answers can be wrong.{% endblock %}
+{% block og_title %}AI study assistant — {{ brand.site_name }}{% endblock %}
+
+{% block content %}
+<div class="assistant-page">
+  <header class="assistant-head">
+    <span class="chip accent">{{ icon("spark", 14) }} AI assistant</span>
+    <h1>{{ assistant_name }}</h1>
+    <p class="muted assistant-lead">
+      Ask about a concept, a compiler error, a study plan or which EngineVerse tool fits what you are
+      doing. Ask in English or Hindi.
+    </p>
+    <p class="tiny muted">
+      This is a software service, not a person and not a tutor you can book. It runs on an operator-managed
+      AI workflow, so it can be unavailable, and its answers can be wrong. Check anything important
+      against <a href="/explore">the notes</a> or a textbook.
+      Looking for answers built only from this site's own material? Use the
+      <a href="/tutor">study tutor</a> instead.
+    </p>
+  </header>
+
+  {% if static_export %}
+    <div class="panel assistant-static" role="note">
+      <h2 class="h-sub">Not available in this copy</h2>
+      <p class="muted">
+        You are reading the static GitHub Pages copy of {{ brand.site_name }}. It has no server, so it
+        cannot forward a question to the AI workflow. Everything else here still works offline in your
+        browser: notes, practice, the planner and your saved progress.
+      </p>
+      <p class="muted">
+        The assistant is available when you run the full EngineVerse app yourself, or on an instance
+        whose operator has connected a workflow. The <a href="/support">help page</a> explains how to
+        report a problem.
+      </p>
+    </div>
+  {% elif not assistant_configured %}
+    <div class="panel assistant-unavailable" role="status">
+      <h2 class="h-sub">No AI workflow is connected to this instance</h2>
+      <p class="muted">
+        The page is ready, but the operator has not configured <code>ENGINEVERSE_ASSISTANT_URL</code>,
+        so there is nothing to send your question to. Rather than show a composer that can only fail,
+        this page says so.
+      </p>
+      <p class="muted">
+        You can still use the <a href="/tutor">study tutor</a>, which answers from this site's own notes
+        and cites its sources, or read <code>docs/ASSISTANT.md</code> for the workflow setup.
+      </p>
+    </div>
+  {% else %}
+    <section class="panel assistant-shell"
+             data-ev-assistant
+             data-ev-assistant-variant="page"
+             data-configured="true"
+             data-endpoint="/api/assistant/chat"
+             data-status-endpoint="/api/assistant/status"
+             data-feedback-endpoint="/api/assistant/feedback"
+             data-page="{{ path }}"
+             data-max="{{ assistant_max_chars }}"
+             aria-labelledby="assistant-log-title">
+      <div class="assistant-toolbar">
+        <h2 class="h-sub" id="assistant-log-title">Conversation</h2>
+        <div class="assistant-toolbar-actions">
+          <span class="assistant-state" data-ev-assistant-state>Not checked yet</span>
+          <button type="button" class="btn btn-ghost btn-sm" data-ev-assistant-clear hidden>
+            New conversation
+          </button>
+        </div>
+      </div>
+
+      <div class="assistant-log" data-ev-assistant-log role="log" aria-live="polite"
+           aria-relevant="additions text" tabindex="0" aria-label="Conversation with the AI assistant">
+        <div class="assistant-empty" data-ev-assistant-empty>
+          <span class="assistant-empty-mark" aria-hidden="true">{{ icon("spark", 24) }}</span>
+          <p class="muted">Start with one of these, or type your own question.</p>
+        </div>
+        <div class="assistant-suggest" data-ev-assistant-suggest>
+          {% for prompt in assistant_suggestions %}
+            <button type="button" class="chip" data-ev-assistant-prompt="{{ prompt }}">{{ prompt }}</button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <form class="assistant-composer" data-ev-assistant-form autocomplete="off">
+        <label class="sr-only" for="assistant-input">Your question</label>
+        <textarea id="assistant-input" data-ev-assistant-input rows="2"
+                  maxlength="{{ assistant_max_chars }}"
+                  placeholder="Ask a question — for example, why does my Python loop skip the last item?"></textarea>
+        <div class="assistant-composer-actions">
+          <span class="tiny muted" data-ev-assistant-counter aria-live="off">0 / {{ assistant_max_chars }}</span>
+          <button type="submit" class="btn btn-primary" data-ev-assistant-send>
+            <span data-ev-assistant-send-label>Send</span>
+            <span aria-hidden="true">{{ icon("chevron", 14) }}</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="assistant-recover" data-ev-assistant-recover hidden>
+        <p class="assistant-error" data-ev-assistant-error role="alert"></p>
+        <button type="button" class="btn btn-soft btn-sm" data-ev-assistant-retry>Try again</button>
+      </div>
+
+      <p class="tiny muted assistant-foot">
+        Your conversation is kept in this browser tab and is not saved to your account. Questions are
+        forwarded to the operator's AI workflow through this server. Do not paste passwords, tokens or
+        anyone else's personal details. Limit: {{ assistant_limit_per_hour }} questions per hour per
+        connection.
+      </p>
+    </section>
+
+    <noscript>
+      <div class="panel">
+        <p class="muted">The assistant needs JavaScript, because it sends your question without
+          reloading the page. The rest of {{ brand.site_name }} works without it.</p>
+      </div>
+    </noscript>
+  {% endif %}
+</div>
+{% endblock %}

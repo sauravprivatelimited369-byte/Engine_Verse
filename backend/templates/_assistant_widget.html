@@ -1,0 +1,89 @@
+{# ==========================================================================
+   The floating AI assistant launcher and panel.
+
+   Rendered on every server page except the full /assistant page, which
+   already contains the same conversation surface. The panel is a native
+   <dialog>: focus trapping, Escape-to-close and the backdrop come from the
+   browser rather than from hand-written key handling.
+
+   Nothing here is shown on the static GitHub Pages export: that copy has no
+   server to forward a question to, and a launcher that can only apologise is
+   worse than no launcher.
+   ========================================================================== #}
+{% from "_icons.html" import icon %}
+<div class="assistant-widget"
+     data-ev-assistant
+     data-ev-assistant-variant="widget"
+     data-configured="{{ 'true' if assistant_configured else 'false' }}"
+     data-endpoint="/api/assistant/chat"
+     data-status-endpoint="/api/assistant/status"
+     data-feedback-endpoint="/api/assistant/feedback"
+     data-page="{{ path }}"
+     data-max="{{ assistant_max_chars }}">
+  <button type="button" class="assistant-launcher" data-ev-assistant-launcher
+          aria-haspopup="dialog" aria-controls="ev-assistant-dialog" aria-expanded="false">
+    <span class="assistant-launcher-icon" aria-hidden="true">{{ icon("chat", 20) }}</span>
+    <span class="assistant-launcher-label">Ask AI</span>
+  </button>
+
+  <dialog id="ev-assistant-dialog" class="assistant-dialog" data-ev-assistant-dialog
+          aria-labelledby="ev-assistant-title">
+    <div class="assistant-dialog-head">
+      <div>
+        <h2 id="ev-assistant-title">{{ assistant_name }}</h2>
+        <p class="tiny muted">AI workflow · not a human · answers can be wrong</p>
+      </div>
+      <button type="button" class="iconbtn" data-ev-assistant-close aria-label="Close the assistant">
+        {{ icon("close", 18) }}
+      </button>
+    </div>
+
+    {% if assistant_configured %}
+      <div class="assistant-log" data-ev-assistant-log role="log" aria-live="polite"
+           aria-relevant="additions text" tabindex="0" aria-label="Conversation with the AI assistant">
+        <div class="assistant-empty" data-ev-assistant-empty>
+          <p class="muted">Ask about a concept, an error, or a study plan. English or Hindi.</p>
+        </div>
+        <div class="assistant-suggest" data-ev-assistant-suggest>
+          {% for prompt in assistant_suggestions %}
+            <button type="button" class="chip" data-ev-assistant-prompt="{{ prompt }}">{{ prompt }}</button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <form class="assistant-composer" data-ev-assistant-form autocomplete="off">
+        <label class="sr-only" for="ev-assistant-input">Your question</label>
+        <textarea id="ev-assistant-input" data-ev-assistant-input rows="2"
+                  maxlength="{{ assistant_max_chars }}"
+                  placeholder="Ask a question…"></textarea>
+        <div class="assistant-composer-actions">
+          <span class="tiny muted" data-ev-assistant-counter aria-live="off">0 / {{ assistant_max_chars }}</span>
+          <button type="submit" class="btn btn-primary btn-sm" data-ev-assistant-send>
+            <span data-ev-assistant-send-label>Send</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="assistant-recover" data-ev-assistant-recover hidden>
+        <p class="assistant-error" data-ev-assistant-error role="alert"></p>
+        <button type="button" class="btn btn-soft btn-sm" data-ev-assistant-retry>Try again</button>
+      </div>
+
+      <div class="assistant-dialog-foot">
+        <span class="assistant-state" data-ev-assistant-state>Not checked yet</span>
+        <a href="/assistant" class="tiny">Open the full page</a>
+      </div>
+    {% else %}
+      <div class="assistant-offline">
+        <p class="muted">
+          No AI workflow is connected to this instance, so there is nothing to send a question to.
+          The <a href="/tutor">study tutor</a> answers from this site's own notes and cites them.
+        </p>
+      </div>
+      <div class="assistant-dialog-foot">
+        <span class="assistant-state">Not connected</span>
+        <a href="/assistant" class="tiny">About the assistant</a>
+      </div>
+    {% endif %}
+  </dialog>
+</div>

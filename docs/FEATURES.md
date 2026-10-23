@@ -25,6 +25,7 @@ what is seeded today, not a completeness guarantee.
 | **Projects** | 17 project briefs with ordered steps, skills and resources, spanning hardware, engineering software, full-stack apps and a model-free study planner with an optional allowlisted, confirmation-gated agent — including a substantial capstone brief linked to each of the ten language paths. |
 | **Revision and roadmaps** | 281 public flashcards are browsable at `/flashcards` and searchable without indexing their answers; personal SM-2 schedules are at `/revision`. The seed also includes 5 roadmaps and 57 roadmap nodes. |
 | **Study helper** | A retrieval-grounded tutor that composes answers from EngineVerse's own indexed material and cites its sources. It does not make an external model call by default and should say when the catalogue has no relevant coverage. |
+| **AI assistant** | `/assistant` and a floating launcher connect to the operator's n8n AI workflow through a server-side bridge. General questions, debugging help and study plans; labelled as AI; hidden with an explanation when no workflow is configured. It cannot run code, browse the web or read an account, and its transcript is kept only in the browser tab. See [ASSISTANT.md](ASSISTANT.md). |
 
 Studying does not require leaving the site. Notes, worked examples, diagrams and
 3D models, formula sheets, flashcards, the practice bank, the coding judge and
@@ -73,7 +74,7 @@ most useful page in every group even for a reader who never opens a menu:
 | Group | Landing page | Also in the menu |
 |---|---|---|
 | **My stream** | `/stream` | the full index |
-| **Learn** | `/explore` | formulas, videos, books, roadmaps, the study tutor, engineering swarm lab |
+| **Learn** | `/explore` | formulas, videos, books, roadmaps, the study tutor, the AI assistant, engineering swarm lab |
 | **Practice** | `/practice` | the daily set and its archive, the question bank, the mistake notebook |
 | **Code** | `/programming` | coding problems, practice sheets, projects, public APIs, data & BaaS studio |
 | **CodeLab** | `/codelab` | online compiler for Python, Java, C, C++, JavaScript, TypeScript, Go, SQL and shell |

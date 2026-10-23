@@ -840,6 +840,45 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
     });
   }
 
+  // ------------------------------------------------------------- share row
+  // Native share sheet when the browser has one; copy-link always. The row is
+  // server-rendered, so with scripting off the WhatsApp and Telegram links
+  // still work - they are ordinary links, not SDK buttons.
+  $$("[data-ev-share]").forEach((row) => {
+    const nativeBtn = row.querySelector("[data-ev-share-native]");
+    const copyBtn = row.querySelector("[data-ev-share-copy]");
+    if (nativeBtn && typeof navigator.share === "function") nativeBtn.hidden = false;
+    if (nativeBtn) {
+      nativeBtn.addEventListener("click", async () => {
+        try {
+          await navigator.share({ title: document.title, url: location.href });
+        } catch (e) { /* the user dismissed the sheet */ }
+      });
+    }
+    if (copyBtn) {
+      copyBtn.addEventListener("click", async () => {
+        const url = copyBtn.getAttribute("data-share-url") || location.href;
+        try {
+          await navigator.clipboard.writeText(url);
+          toast("Link copied");
+        } catch (e) {
+          // Clipboard access needs a secure context and permission. Showing the
+          // URL in the page is more useful than a button that silently fails.
+          const box = document.createElement("input");
+          box.value = url;
+          box.setAttribute("readonly", "readonly");
+          box.style.cssText = "position:absolute;left:-9999px;top:0";
+          document.body.appendChild(box);
+          box.select();
+          let copied = false;
+          try { copied = document.execCommand("copy"); } catch (_) { copied = false; }
+          box.remove();
+          toast(copied ? "Link copied" : url, copied ? "ok" : "bad");
+        }
+      });
+    }
+  });
+
   // --------------------------------------------------------- theme toggle
   // The [data-theme="light"] variable set in app.css was unreachable: base.html
   // hard-coded dark, so neither the admin setting nor any user preference could

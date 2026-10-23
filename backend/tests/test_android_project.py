@@ -83,7 +83,11 @@ class TestBuildConfiguration:
         assert "gradle-9.4.1-bin.zip" in wrapper
         assert (ANDROID / "gradle" / "wrapper" / "gradle-wrapper.jar").stat().st_size > 40_000
         versions = _read(ANDROID / "gradle" / "libs.versions.toml")
-        assert 'agp = "9.1.1"' in versions
+        # The exact patch is dependabot's business; what this test has to protect
+        # is the AGP 9 behaviour asserted below. Pinning the patch here turned a
+        # dependency bump into a red main that had nothing to do with the update.
+        agp = re.search(r'^agp = "(\d+)\.(\d+)\.(\d+)"$', versions, re.MULTILINE)
+        assert agp and agp.group(1) == "9", f"AGP must stay on major 9, found {agp.group(0) if agp else 'none'}"
         gradle = _read(APP / "build.gradle.kts")
         assert "targetSdk = 36" in gradle and "minSdk = 24" in gradle
         # AGP 9 compiles Kotlin itself; applying kotlin-android as well breaks the build.

@@ -1,0 +1,182 @@
+{
+  "name": "EngineVerse \u00b7 Feedback intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "engineverse/feedback",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "b1",
+      "name": "Feedback received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Feedback is optional and minimal. Only a rating, a fixed category, and an\n// optional contact address are accepted; the answer text is never sent here.\nconst incoming = $input.first().json || {};\nconst payload = incoming.body && typeof incoming.body === \"object\" ? incoming.body : incoming;\nconst codes = [\"wrong\", \"unclear\", \"unsafe\", \"off_topic\", \"other\"];\nconst helpful = payload.helpful === true || payload.helpful === false;\nconst contact = String(payload.contact || \"\").trim().slice(0, 254);\nconst consent = payload.contactConsent === true;\nconst message = String(payload.message || \"\").trim().slice(0, 2000);\nconst emailOk = contact === \"\" || /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(contact);\n\nreturn [{\n  json: {\n    valid: helpful && emailOk,\n    helpful,\n    code: codes.includes(String(payload.code || \"\")) ? String(payload.code) : \"other\",\n    // A contact address is stored only with explicit consent.\n    contact: (consent && contact) ? contact : null,\n    message,\n    receivedAt: new Date().toISOString(),\n  },\n}];"
+      },
+      "id": "b2",
+      "name": "Validate and minimise",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b3",
+      "name": "Acceptable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO engineverse_feedback (helpful, code, contact, message, received_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$json.helpful, $json.code, $json.contact, $json.message, $json.receivedAt] }}"
+        }
+      },
+      "id": "b4",
+      "name": "Store aggregate",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        660,
+        0
+      ],
+      "notes": "Run automation/n8n/feedback.sql first. Use a dedicated database/role, not the EngineVerse app role.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, recorded: true } }}",
+        "options": {}
+      },
+      "id": "b5",
+      "name": "Recorded",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: 'A yes/no rating is required, and a contact address must be valid.' } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "b6",
+      "name": "Refuse",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Feedback received": {
+      "main": [
+        [
+          {
+            "node": "Validate and minimise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and minimise": {
+      "main": [
+        [
+          {
+            "node": "Acceptable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acceptable?": {
+      "main": [
+        [
+          {
+            "node": "Store aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refuse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store aggregate": {
+      "main": [
+        [
+          {
+            "node": "Recorded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

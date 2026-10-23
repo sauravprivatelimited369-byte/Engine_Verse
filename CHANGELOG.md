@@ -9,6 +9,27 @@ release.
 
 ### Added
 
+- **AI student copilot** (`/assistant` plus a floating launcher): questions go to
+  the operator's n8n workflow through a server-side bridge
+  (`backend/engineverse/assistant.py`), so the webhook URL and its credential are
+  never in the browser and the page keeps `connect-src 'self'`. The UI labels the
+  assistant as AI, shows an honest "not connected" state instead of a dead
+  composer, offers page-aware suggestions, retry and rate-limit recovery, and
+  keeps the transcript in `sessionStorage` only. `scripts/check_assistant.py`
+  verifies a real answer. See [docs/ASSISTANT.md](docs/ASSISTANT.md).
+- **n8n automation templates** (`automation/n8n/`): student copilot, feedback
+  intake, idempotent onboarding with consent and unsubscribe, error alerting and
+  an uptime poll. Inactive on import, no credentials embedded, and validated for
+  structure by `backend/tests/test_n8n_automation.py`. Design, costs and the
+  remote steps are in [docs/N8N_AUTOMATION.md](docs/N8N_AUTOMATION.md).
+- **Share controls** on topic and project pages: native share where available,
+  copy-link with a fallback, and plain WhatsApp/Telegram links (no SDK).
+- **Social metadata**: `og:image`, `twitter:card`, page-level descriptions, and
+  JSON-LD (`WebSite` + `SearchAction` on the home page, `LearningResource` on
+  topic pages) using only fields the page can evidence.
+- **Growth plan** with the measurement limits stated plainly:
+  [docs/GROWTH.md](docs/GROWTH.md).
+
 - **Native Android app** (`android/`): Kotlin and Jetpack Compose with a native
   home screen, an offline subject catalogue (93 subjects and 406 topics, bundled
   from the seed data by `scripts/export_android_catalog.py`), a study planner,
@@ -28,6 +49,15 @@ release.
 - `robots.txt` and a sitemap for the GitHub Pages copy.
 
 ### Changed
+
+- `/privacy` and `/terms` now describe the assistant: what is sent, what is not
+  stored, that it is not a person, and that its answers are not advice.
+- `/support` explains how to report a wrong or unsafe assistant answer, and
+  `/tutor` points at the copilot for questions outside the catalogue.
+- Rate-limit responses for the assistant carry a stable
+  `assistant_rate_limited` code so the UI can show a recovery message.
+- The home page gains one honest assistant entry point next to the grounded
+  tutor.
 
 - **GitHub Pages copy**: progress lives in one device-local profile with
   export and import. Pages that only work with a server (sign-in, codes,
@@ -57,3 +87,16 @@ release.
   progress files are validated field by field.
 - The Android viewer loads only this site's HTTPS pages, exposes no JavaScript
   bridge, blocks mixed content and file access, and enables Safe Browsing.
+
+### Fixed
+
+- Open Graph and Twitter descriptions now use each page's own description
+  instead of the site tagline.
+- The social-preview image URL no longer contains a double slash in the static
+  export.
+- The Pages workflow no longer fails after a successful build on a branch the
+  `github-pages` environment does not allow: only `main` deploys, every other
+  push still builds and verifies the site.
+- The Android tool-chain test now asserts the AGP **major** version instead of a
+  single patch, so a dependabot bump no longer turns `main` red for a reason the
+  bump did not cause.

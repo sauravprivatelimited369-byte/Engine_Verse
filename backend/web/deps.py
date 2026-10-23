@@ -12,9 +12,9 @@ from fastapi import HTTPException, Request
 from fastapi.templating import Jinja2Templates
 
 from engineverse.code_format import color_code
-from engineverse import auth, brand, db, markdown, navigation, progress
+from engineverse import assistant, auth, brand, db, markdown, navigation, progress
 from engineverse.config import get_settings
-from engineverse.security import csrf, phone_rules, validators
+from engineverse.security import csrf, phone_rules, ratelimit, validators
 from engineverse.security.rbac import is_staff
 from engineverse.security.sessions import SESSION_COOKIE, session_from_request
 
@@ -231,6 +231,20 @@ def _issues_url() -> str:
     return project.issues_url()
 
 
+def _og_image() -> str:
+    """Absolute URL of the social-preview image.
+
+    The icon is a real asset that ships in this repository; no generated or
+    stock image is implied. Absolute because Open Graph consumers do not
+    resolve relative URLs.
+    """
+    if _static_export():
+        from engineverse import project
+
+        return project.pages_url().rstrip("/") + "/static/icons/icon-512.png"
+    return get_settings().site_url.rstrip("/") + "/static/icons/icon-512.png"
+
+
 def _canonical_url(path: str) -> str:
     """Absolute public URL of a page, for <link rel="canonical"> and og:url."""
     clean = "/" + path.lstrip("/")
@@ -262,6 +276,18 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         "login_otp_required": get_settings().login_otp_required,
         "signin_required": get_settings().signin_required,
         "apk_url": get_settings().approved_apk_url,
+        # --- Student copilot ------------------------------------------------
+        # The widget and the /assistant page read these. ``configured`` is a
+        # statement about this process's environment only; the page says so
+        # and never shows "connected" until a request has actually succeeded.
+        "assistant_configured": assistant.configured(),
+        "assistant_name": get_settings().assistant_display_name or "EngineVerse copilot",
+        "assistant_suggestions": assistant.suggestions_for(request.url.path),
+        "assistant_max_chars": assistant.MAX_MESSAGE_CHARS,
+        "assistant_limit_per_hour": ratelimit.LIMITS["assistant"][0],
+        # Social previews need an absolute image URL, and the static export is
+        # served from a different origin than the app.
+        "og_image": _og_image(),
         # The GitHub Pages export renders these same templates as a signed-out
         # visitor; this flag swaps account controls for device-local progress.
         "static_export": _static_export(),

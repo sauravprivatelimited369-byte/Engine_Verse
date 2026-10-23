@@ -1,0 +1,145 @@
+{
+  "name": "EngineVerse \u00b7 Uptime check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "u1",
+      "name": "Every 15 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.engineverse_url + '/health' }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "u2",
+      "name": "Health endpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "Set the n8n variable engineverse_url to the public origin. No credential is needed for /health.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bad",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "u3",
+      "name": "Unhealthy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "YOUR-SENDER@example.org",
+        "toEmail": "YOUR-ADMIN@example.org",
+        "subject": "={{ 'EngineVerse health check failed: HTTP ' + $json.statusCode }}",
+        "text": "={{ 'The EngineVerse health endpoint did not return 200 at ' + $now.toISO() + '.\\nStatus: ' + $json.statusCode + '\\nCheck the web process, its database connection and the reverse proxy.' }}",
+        "options": {}
+      },
+      "id": "u4",
+      "name": "Notify administrator",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        700,
+        120
+      ],
+      "notes": "Attach an SMTP credential. This is a 15-minute poll, not a replacement for real monitoring.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Every 15 minutes": {
+      "main": [
+        [
+          {
+            "node": "Health endpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health endpoint": {
+      "main": [
+        [
+          {
+            "node": "Unhealthy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unhealthy?": {
+      "main": [
+        [
+          {
+            "node": "Notify administrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

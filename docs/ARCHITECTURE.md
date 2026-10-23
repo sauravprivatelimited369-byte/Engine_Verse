@@ -9,9 +9,9 @@ runs on hardware you control.
                         ┌────────────────────────────────────────────┐
    browser / PWA ──────►│  Python (FastAPI + Jinja2 SSR)             │
    (no build step)      │                                            │
-                        │  web/pages.py       52 server-rendered     │
+                        │  web/pages.py       66 server-rendered     │
                         │  web/auth_pages.py  auth + settings + CMS  │
-                        │  web/api.py         38 JSON endpoints      │
+                        │  web/api.py         54 JSON endpoints      │
                         │  engineverse/*      services & domain      │
                         └───────┬───────────────────────┬────────────┘
                                 │                       │
@@ -251,6 +251,32 @@ explanations is worse than one that admits a gap, so it does not.
 Two invariants the tests hold: every source is a relative platform URL, and note
 bodies are stripped of markup server-side before they enter an answer, so a
 stored `<script>` cannot reach a client even one that trusted the response.
+
+## The AI assistant is one outbound call, and it is optional
+
+`engineverse/assistant.py` is the only module in the application that contacts a
+third party at request time. It exists so the browser does not have to:
+
+```
+browser ──POST /api/assistant/chat──► web/api.py ──► assistant.ask()
+                                                       │
+                                                       ▼
+                                      ENGINEVERSE_ASSISTANT_URL (operator's n8n)
+```
+
+- The URL and its credential are read from the environment at request time and
+  are never rendered, logged or returned.
+- `web/api.py` owns the HTTP concerns (CSRF through the existing middleware,
+  rate limiting in `RateLimitMiddleware`, JSON errors). `assistant.py` owns the
+  workflow contract: bounding the message, shaping the body, timeouts, parsing
+  `output`/`text`/`reply`/`answer`, truncation and error mapping.
+- The static export cannot call it, so `/assistant` is exported as an
+  explanation and the floating launcher is not rendered.
+- With `ENGINEVERSE_ASSISTANT_URL` empty the module is inert. The application
+  behaves exactly as it did before, which is why this is not a required service.
+
+Everything else in this document holds: no broker, no CDN, no analytics, no
+client build step. The assistant adds one outbound POST and no storage.
 
 ## The search index is derived data
 

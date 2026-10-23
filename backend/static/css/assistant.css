@@ -1,0 +1,284 @@
+/* ===========================================================================
+   The student copilot: floating panel, launcher and /assistant page.
+
+   Shares the tokens in app.css. Deliberately small: one dialog, one log, one
+   composer. No gradient shimmer, no typing sound, no fabricated "agent is
+   browsing" steps - the only motion is a three-dot thinking indicator, and the
+   global reduced-motion rule in app.css stops that too.
+   =========================================================================== */
+
+/* ----------------------------------------------------------------- launcher */
+.assistant-launcher {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 95;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px 11px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  font-size: .88rem;
+  box-shadow: var(--neu-lg);
+  cursor: pointer;
+}
+.assistant-launcher:hover { text-decoration: none; border-color: var(--line-2); }
+.assistant-launcher-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+/* ------------------------------------------------------------------- dialog */
+.assistant-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto max(16px, env(safe-area-inset-right)) calc(86px + env(safe-area-inset-bottom)) auto;
+  width: min(430px, calc(100vw - 32px));
+  max-height: min(74vh, 640px);
+  padding: 0;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--neu-lg);
+  overflow: hidden;
+}
+.assistant-dialog[open] { display: flex; flex-direction: column; }
+.assistant-dialog::backdrop { background: rgba(4, 8, 16, .52); backdrop-filter: blur(2px); }
+
+.assistant-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.assistant-dialog-head h2 { margin: 0; font-size: 1rem; }
+.assistant-dialog-head p { margin: 2px 0 0; }
+
+.assistant-dialog-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--line);
+  font-size: .74rem;
+  color: var(--muted);
+}
+
+.assistant-offline { padding: 16px; }
+
+/* ---------------------------------------------------------------- transcript */
+.assistant-log {
+  flex: 1 1 auto;
+  min-height: 132px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+}
+
+.assistant-empty { text-align: center; color: var(--muted); padding: 10px 4px 2px; }
+.assistant-empty p { margin: 6px 0 0; font-size: .88rem; }
+.assistant-empty-mark {
+  display: inline-flex;
+  padding: 10px;
+  border-radius: 50%;
+  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.assistant-suggest { display: flex; flex-wrap: wrap; gap: 6px; }
+.assistant-suggest .chip { text-align: left; cursor: pointer; font-size: .78rem; }
+.assistant-suggest[hidden] { display: none; }
+
+.assistant-msg { display: flex; flex-direction: column; gap: 3px; max-width: 100%; }
+.assistant-who {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.assistant-text {
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--well);
+  font-size: .9rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-msg-user { align-items: flex-end; }
+.assistant-msg-user .assistant-text {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+}
+.assistant-msg-user .assistant-who { align-self: flex-end; }
+
+.assistant-dots { display: inline-block; color: var(--muted); }
+.assistant-dots::after {
+  content: "…";
+  display: inline-block;
+  width: 1.1em;
+  text-align: left;
+  animation: assistant-dots 1.2s steps(4, end) infinite;
+}
+@keyframes assistant-dots {
+  0% { content: "."; }
+  33% { content: ".."; }
+  66% { content: "..."; }
+}
+
+.assistant-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+}
+.assistant-feedback .chip { cursor: pointer; font-size: .74rem; padding: 4px 10px; }
+.assistant-feedback-reasons { display: flex; flex-wrap: wrap; gap: 4px; }
+.assistant-feedback-reasons[hidden] { display: none; }
+
+/* ----------------------------------------------------------------- composer */
+.assistant-composer { padding: 10px 16px 6px; border-top: 1px solid var(--line); }
+.assistant-composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 46px;
+  max-height: 168px;
+  font: inherit;
+  font-size: .9rem;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--edge);
+  background: var(--well);
+  color: var(--text);
+}
+.assistant-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.assistant-recover { padding: 0 16px 10px; }
+.assistant-recover[hidden] { display: none; }
+.assistant-error {
+  margin: 0 0 8px;
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--line));
+  background: color-mix(in srgb, var(--bad) 12%, var(--surface));
+  color: var(--text);
+  font-size: .84rem;
+  line-height: 1.45;
+}
+
+.assistant-state {
+  font-size: .72rem;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.assistant-state::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: none;
+}
+.assistant-state[data-tone="ok"]::before { background: var(--ok); }
+.assistant-state[data-tone="bad"]::before { background: var(--warn); }
+
+/* --------------------------------------------------------------- full page */
+.assistant-page { max-width: 880px; margin: 0 auto; }
+.assistant-head { margin: 8px 0 18px; }
+.assistant-head h1 { margin: 10px 0 6px; }
+.assistant-lead { max-width: 62ch; }
+
+.assistant-shell {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: min(66vh, 620px);
+}
+.assistant-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.assistant-toolbar h2 { margin: 0; }
+.assistant-toolbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.assistant-shell .assistant-log { min-height: 220px; }
+.assistant-shell .assistant-composer { border-top: 1px solid var(--line); }
+.assistant-foot { padding: 0 16px 14px; margin: 0; }
+.assistant-static, .assistant-unavailable { padding: 20px; }
+.assistant-static h2, .assistant-unavailable h2 { margin-top: 0; }
+
+@media (max-width: 760px) {
+  /* Keep the launcher clear of the five-slot bottom bar (app.css gives the
+     page 86px of bottom padding there). */
+  .assistant-launcher {
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    padding: 10px 14px 10px 11px;
+  }
+  .assistant-launcher-label { display: none; }
+  .assistant-launcher { border-radius: 50%; padding: 12px; }
+  .assistant-dialog {
+    margin: auto 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+    width: auto;
+    max-height: 82vh;
+    border-radius: var(--r-lg);
+  }
+  .assistant-shell { min-height: 70vh; }
+  .assistant-shell .assistant-log { min-height: 180px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-dots::after { animation: none; content: "…"; }
+}
+
+@media print {
+  .assistant-widget, .assistant-shell .assistant-composer, .assistant-feedback { display: none !important; }
+}
+
+/* --------------------------------------------------------- home page callout */
+.assistant-cta-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 22px;
+}
+.assistant-cta-inner h2 { margin: 10px 0 6px; }
+.assistant-cta-inner p { margin: 0; max-width: 62ch; }
+.assistant-cta-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.mt-sm { margin-top: 10px; }
