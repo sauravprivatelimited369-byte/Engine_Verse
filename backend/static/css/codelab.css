@@ -480,10 +480,21 @@
   resize: none;
   -webkit-text-fill-color: transparent;
 }
+/* While editing, use the textarea's own text instead of relying on the
+   mirrored syntax layer. This keeps typed characters visible in browsers and
+   Android WebViews that composite transparent textarea text inconsistently. */
+.cl-editor-shell.is-editing .cl-highlight {
+  visibility: hidden;
+}
+.cl-textarea:focus {
+  color: var(--cl-editor-text);
+  background: var(--cl-editor-bg);
+  -webkit-text-fill-color: var(--cl-editor-text);
+}
 .cl-textarea::selection {
   background: rgba(79, 124, 255, .34);
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  color: var(--cl-editor-text);
+  -webkit-text-fill-color: var(--cl-editor-text);
 }
 .cl-textarea:focus-visible {
   outline: none;
