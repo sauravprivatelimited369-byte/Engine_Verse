@@ -31,7 +31,8 @@ for _path in (_ROOT, os.path.dirname(_ROOT)):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
-from engineverse import auth, brand, db  # noqa: E402
+from engineverse import auth, brand, db, navigation  # noqa: E402
+from engineverse import redirects  # noqa: E402
 from engineverse.config import get_settings  # noqa: E402
 from engineverse.security import csrf, ratelimit  # noqa: E402
 from engineverse.security.clientip import client_ip  # noqa: E402
@@ -118,6 +119,49 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if settings.is_https:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         return response
+
+
+class PermanentRedirectMiddleware:
+    """Answers retired and non-canonical GET/HEAD addresses with a 301.
+
+    Pure ASGI, not BaseHTTPMiddleware: a redirect needs no body and no session, so
+    it should cost nothing and run before the sign-in gate, which would otherwise
+    bounce a signed-out visitor from a retired URL to /login first. The rules live
+    in ``engineverse.redirects``. Only the path is rewritten; the query string is
+    carried over unchanged.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http" or scope.get("method") not in ("GET", "HEAD"):
+            await self.app(scope, receive, send)
+            return
+        path = scope.get("path", "")
+        if path.startswith(("/api/", "/static/")):
+            await self.app(scope, receive, send)
+            return
+        target = redirects.target_for(path)
+        if target is None:
+            await self.app(scope, receive, send)
+            return
+        query = scope.get("query_string", b"").decode("latin-1")
+        location = target
+        if query:
+            location += ("&" if "?" in target else "?") + query
+        await send({
+            "type": "http.response.start",
+            "status": 301,
+            "headers": [
+                (b"location", location.encode("latin-1", "replace")),
+                (b"content-length", b"0"),
+                (b"cache-control", b"public, max-age=3600"),
+                (b"x-content-type-options", b"nosniff"),
+                (b"referrer-policy", b"strict-origin-when-cross-origin"),
+            ],
+        })
+        await send({"type": "http.response.body", "body": b""})
 
 
 class _RequestTooLarge(Exception):
@@ -504,6 +548,9 @@ def create_app() -> FastAPI:
     # before the sign-in gate and CSRF middleware see it. Only the exact
     # deployment origins are allowed, and credentials are off because these
     # endpoints never read a cookie.
+    # Between the bounds check and CORS: a retired URL is redirected before the
+    # rate limiter, the sign-in gate and CSRF see it.
+    app.add_middleware(PermanentRedirectMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_voice_origins,
@@ -701,13 +748,20 @@ def create_app() -> FastAPI:
             # Every page is behind sign-in, so there is nothing for a crawler
             # to index except the sign-in form itself.
             body = "User-agent: *\nAllow: /login\nAllow: /register\nDisallow: /\n"
-            return Response(body, media_type="text/plain")
+            return Response(body, media_type="text/plain; charset=utf-8")
         sitemap_url = get_settings().site_url.rstrip("/") + "/sitemap.xml"
-        body = (
-            "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /settings\n"
-            f"Sitemap: {sitemap_url}\n"
-        )
-        return Response(body, media_type="text/plain")
+        # Private and per-account pages are not crawled at all. The list is the
+        # navigation table's own NON_INDEXABLE set, so robots.txt and the sitemap
+        # cannot disagree about which pages are private.
+        private = sorted(navigation.NON_INDEXABLE)
+        lines = [
+            "User-agent: *",
+            "Allow: /",
+            "Disallow: /api/",
+        ]
+        lines += [f"Disallow: {path}" for path in private]
+        lines.append(f"Sitemap: {sitemap_url}")
+        return Response("\n".join(lines) + "\n", media_type="text/plain; charset=utf-8")
 
     return app
 

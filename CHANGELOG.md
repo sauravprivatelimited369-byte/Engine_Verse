@@ -9,6 +9,22 @@ release.
 
 ### Added
 
+- **Search-engine and social metadata for the public site.** Every public page
+  now has one canonical URL (filter parameters dropped, `page` and `card` kept),
+  a meta description taken from its navigation blurb, and a `robots` meta tag
+  that keeps signed-in and error pages out of the index. `robots.txt` disallows
+  the private pages listed in the navigation table. Open Graph and Twitter
+  previews use a 1200x630 card (`/static/img/og-image.png`). The home page has
+  Organization structured data and every trail has BreadcrumbList data that
+  mirrors the visible breadcrumb. Retired and non-canonical addresses answer
+  301 (`engineverse/redirects.py`); the static copy writes refresh pages for
+  them. Images are served as WebP with a PNG fallback through a `<picture>`
+  macro that requires alt text and lazy-loads by default. Tests are in
+  `backend/tests/test_seo.py`. Regenerate the images with
+  `scripts/gen_social_images.py`.
+
+### Added
+
 - **Optional ElevenLabs voice reader and spoken tutor.** Educational text
   (note sections, the formula centre, roadmaps, programming lessons, Study
   Tutor answers and checked practice explanations) can be read aloud, with

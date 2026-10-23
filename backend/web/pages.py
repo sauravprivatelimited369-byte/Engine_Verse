@@ -117,7 +117,9 @@ async def dashboard(request: Request):
     land somewhere instead of on a 404. It was the one internal URL in the
     templates with no route behind it.
     """
-    return RedirectResponse("/", status_code=303)
+    # Permanent: the signed-in home page is the dashboard, so this address now
+    # means "/" everywhere and search engines should move it there.
+    return RedirectResponse("/", status_code=301)
 
 
 @router.get("/explore")
@@ -1607,7 +1609,7 @@ async def sitemap():
     today = datetime.now(timezone.utc).date().isoformat()
     body = ['<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    for url in urls:
+    for url in dict.fromkeys(urls):
         body.append(f"<url><loc>{escape(base + url)}</loc><lastmod>{today}</lastmod></url>")
     body.append("</urlset>")
     return Response("\n".join(body), media_type="application/xml")

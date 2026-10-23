@@ -1,0 +1,16 @@
+{# ==========================================================================
+   Responsive raster images.
+
+   ``picture`` writes a <picture> with a WebP source and a PNG fallback, so a
+   browser that cannot read WebP still gets the image. Every image needs a
+   non-empty ``alt``; the test suite renders every page and fails on an <img> without one. ``lazy`` is the default so below-the-fold
+   images do not compete with the page for bandwidth; set ``eager`` for an image
+   that is part of the first screen, which must not wait.
+   ========================================================================== #}
+{% macro picture(webp, fallback, alt, width, height, eager=False, cls="", style="") -%}
+<picture>
+  <source type="image/webp" srcset="{{ webp }}">
+  <img src="{{ fallback }}" alt="{{ alt }}" width="{{ width }}" height="{{ height }}"
+       loading="{{ 'eager' if eager else 'lazy' }}" decoding="{{ 'sync' if eager else 'async' }}"{% if eager %} fetchpriority="high"{% endif %}{% if cls %} class="{{ cls }}"{% endif %}{% if style %} style="{{ style }}"{% endif %}>
+</picture>
+{%- endmacro %}

@@ -83,7 +83,7 @@ FILE_SUFFIXES = (
     ".map",
 )
 ATTR_URL = re.compile(
-    r"""(?P<attr>\b(?:href|src|action)\s*=\s*)(?P<q>["'])(?P<url>/[^"']*)(?P=q)"""
+    r"""(?P<attr>\b(?:href|src|srcset|action)\s*=\s*)(?P<q>["'])(?P<url>/[^"']*)(?P=q)"""
 )
 REPO = project.repo_url()
 
@@ -407,6 +407,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
     return f"""
 <section class="page-hero">
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <picture><source type="image/webp" srcset="/static/img/app-icon-192.webp"><img src="/static/icons/icon-192.png" alt="Meridian app icon: the M mark inside a meridian ring" width="96" height="96" loading="eager" decoding="sync" fetchpriority="high" style="width:96px;height:96px;border-radius:22px;margin-bottom:14px"></picture>
   <p class="ev-eyebrow">Install · Android · iPhone</p>
   <h1>Use Meridian on your phone</h1>
   <p class="lead">This website works in any modern mobile browser. You can also add it to your home screen so it
@@ -1490,6 +1491,43 @@ def fill_shell(home_html: str, title: str, main: str, *, private: bool = True) -
     return text
 
 
+def write_redirect_stubs(site: Path, base: str) -> int:
+    """Pages that send retired addresses on to their replacement.
+
+    GitHub Pages cannot answer 301, so each exact redirect from
+    ``engineverse.redirects`` becomes a noindex page that refreshes to its target,
+    with a plain link for a visitor whose browser does not follow refreshes.
+    A path the export already renders is never overwritten, and the pages are
+    written after the sitemap so they are not listed in it.
+    """
+    from engineverse import redirects
+
+    written = 0
+    for old, new in redirects.EXACT.items():
+        if old.endswith(".html") or old == "/":
+            continue
+        target = output_path(site, old)
+        if target.exists():
+            continue
+        href = rewrite_url(new, base)
+        tail = new.split("?", 1)[0].strip("/")
+        canonical = project.pages_url() + (tail + "/" if tail else "")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+            "<meta name=\"robots\" content=\"noindex, follow\">\n"
+            f"<title>Moved · Meridian</title>\n"
+            f"<link rel=\"canonical\" href=\"{html.escape(canonical, quote=True)}\">\n"
+            f"<meta http-equiv=\"refresh\" content=\"0; url={html.escape(href, quote=True)}\">\n"
+            "</head>\n<body>\n"
+            f"<p>This page has moved to <a href=\"{html.escape(href, quote=True)}\">{html.escape(href)}</a>.</p>\n"
+            "</body>\n</html>\n",
+            encoding="utf-8",
+        )
+        written += 1
+    return written
+
+
 def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
            voice_api_url: str = "", assistant_url: str = "") -> int:
     if site.exists():
@@ -1595,6 +1633,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
         f"Sitemap: {origin}/sitemap.xml\n",
         encoding="utf-8",
     )
+    written += write_redirect_stubs(site, base)
     if failed:
         raise SystemExit("Refusing to publish. These pages did not render:\n" + "\n".join(failed))
     assert_clean(site)
