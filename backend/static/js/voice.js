@@ -625,6 +625,7 @@
           throw new Error("This tab has reached its ElevenLabs allowance. Listen with your device voice instead.");
         }
         const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 35000);
         player.controllers.add(controller);
         try {
           const response = await fetch(`${API_BASE}/api/voice/speech`, {
@@ -643,6 +644,7 @@
           player.urls.push(url);
           return url;
         } finally {
+          clearTimeout(timer);
           player.controllers.delete(controller);
         }
       })().catch((error) => {
@@ -666,8 +668,8 @@
       try {
         url = await ensureChunk(index);
       } catch (error) {
-        if (token !== player.token || error?.name === "AbortError") return;
-        if (switchToBrowser(index)) return;
+        if (token !== player.token) return; // Stop/another reader aborted it
+        if (switchToBrowser(index)) return; // includes a timed-out request
         releaseUrls();
         setState("error", error.message || "The voice service is unavailable. Try again.");
         return;
