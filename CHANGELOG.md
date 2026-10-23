@@ -7,6 +7,39 @@ release.
 
 ## Unreleased
 
+### Fixed
+
+- **CodeLab and the compiler page no longer look dead.** Four separate faults
+  were behind "the compiler is not working at all, and CodeLab only runs one
+  language":
+  - `app.js` replaced the whole `window.EV` namespace, deleting `EV.i18n`
+    (published by `i18n.js`, which loads first). Its init threw
+    "Cannot set properties of undefined (setting 'picker')" on every page and
+    the language picker was never built.
+  - A rejected run (stale CSRF token, expired session, a proxy's HTML error
+    page) carried no `status`, so the console showed "Idle" with three empty
+    tabs and Run looked like a dead button. The client normalises any payload
+    into a renderable result and, on a 403, fetches a fresh token from the new
+    `GET /api/csrf` and retries once. The CSRF middleware's 403 body now
+    carries `status`, `stderr` and `csrfTokenUrl` too.
+  - `/compiler` took its language list only from the seeded catalogue, so an
+    unseeded database gave an empty drop-down and a permanently disabled Run.
+    It now falls back to CodeLab's static language registry.
+  - Sandbox limits were sized as if nothing else ran on the host: a fixed
+    `ulimit -u 32` (a JVM starts ~24 threads) and a javac JVM whose default
+    1 GB compressed-class-space reservation did not fit under the
+    address-space cap. Valid Java was reported as a compilation error. The
+    task budget is measured in threads and shared by both limits, and javac
+    runs with pinned `-J` flags.
+- A program killed by a signal is reported as a crash, not as a timeout, and
+  the Node/WASM host runners (C#, Ruby) are retried when the interpreter
+  itself dies before producing output.
+- Ruby is now a CodeLab language: the judge could run it, but `/api/execute`
+  answered 400 "Unsupported language".
+- Disabled languages now say which binary is missing and the exact
+  `scripts/setup_toolchains.py` command, on `/codelab` and `/compiler`,
+  instead of only "limited runtimes on this server".
+
 ### Added
 
 - **Native Android app** (`android/`): Kotlin and Jetpack Compose with a native

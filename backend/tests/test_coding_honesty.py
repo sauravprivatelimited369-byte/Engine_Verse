@@ -129,11 +129,23 @@ class TestProblemPageHonesty:
         assert "disabled" in submit, "Submit stays enabled while execution is off"
 
     def test_page_names_what_can_run_here(self, client):
+        from engineverse import judge
+
         html = client.get("/practice/problems/two-sum").text
         assert "Supported here:" in html
         # Every listed language is either runnable or explicitly marked as
-        # having no runtime on this server.
-        assert "(no runtime here)" in html or "Code execution is off" in html or "Runnable" in html
+        # having no runtime on this server. On a host with the whole toolchain
+        # installed there is nothing to mark, so the marker is only required
+        # when the judge really cannot run every language.
+        runnable = set(judge.runnable_languages())
+        from engineverse import coding
+
+        offered = {row["judge_slug"] for row in coding.terminal_languages() if row["judge_slug"]}
+        if offered - runnable:
+            assert "(no runtime here)" in html
+        else:
+            assert "(no runtime here)" not in html
+            assert "none — execution disabled" not in html
 
     def test_languages_api_reports_runnable_separately(self, client):
         body = client.get("/api/coding/languages").json()
