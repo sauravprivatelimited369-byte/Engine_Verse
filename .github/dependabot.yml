@@ -1,0 +1,60 @@
+# Automatic dependency-update pull requests.
+#
+# Why this file exists: PHP2Shell (CVE-2026-109618 / CVE-2026-109619,
+# October 2026) was unauthenticated remote code execution in a *runtime*,
+# not in application code. The defence that would have mattered was not a
+# cleverer framework or another programming language - it was patching the
+# runtime within hours. Every runtime and library this repository ships
+# (Python packages, GitHub Actions, the Postgres/Caddy/Python container
+# images, the Java sandbox's Maven plugins, the Android npm toolchain)
+# gets a weekly update PR here so the next emergency release becomes a
+# one-click merge instead of a manual audit.
+#
+# Deliberately NOT covered, because Dependabot cannot see them: the
+# host-level judge toolchains pinned in scripts/setup_toolchains.py (Go,
+# Rust, JDK, Ruby/CRuby-WASM, TypeScript). Review those pins on the same
+# weekly cadence; judge/local.py refuses end-of-life runtimes it can
+# detect, but only a human bumps a pin.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-runtime:
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # postgres / caddy images referenced by the compose topology.
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy"
+    schedule:
+      interval: "weekly"
+
+  # AGP, Kotlin, Compose and AndroidX for the native app (gradle/libs.versions.toml).
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    schedule:
+      interval: "weekly"
+
+  # JUnit + Maven plugins for the Java sandbox. (Base images in
+  # deploy/Dockerfile.web and Dockerfile.sandbox use suffixed file names
+  # Dependabot's docker ecosystem does not scan; rebuild them weekly -
+  # the floating tags pick up distribution security fixes on rebuild.)
+  - package-ecosystem: "maven"
+    directory: "/sandbox-java"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/android"
+    schedule:
+      interval: "weekly"

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Question bank — {{ brand.site_name }}{% endblock %}
+{% from "_quiz.html" import quiz_card with context %}
+{% block content %}
+<h1>Question bank</h1>
+{% if filtered %}
+<p class="muted">{{ pager.total }} matching {{ 'question' if pager.total == 1 else 'questions' }}.</p>
+{#- A reader who arrives from a link rather than from the filter form has no way
+    to tell the page was narrowed, so the three selects above all read "All"
+    while only one question is listed. Name the filter and offer a way out. -#}
+<div class="panel between mb">
+  <span class="small muted">Filtered to
+    {%- if active_slug %} one question{%- endif %}
+    {%- if active_topic %} <a href="/topics/{{ active_topic.slug }}">{{ active_topic.title }}</a>{%- endif %}
+    {%- if active_q %} questions matching &ldquo;{{ active_q }}&rdquo;{%- endif %}
+    {%- if active_difficulty %} at {{ active_difficulty }} difficulty{%- endif %}
+    {%- if active_kind %} of kind {{ active_kind }}{%- endif %}.</span>
+  <a class="btn btn-ghost btn-sm" href="/practice/questions">Show the whole bank</a>
+</div>
+{% else %}
+<p class="muted">{{ pager.total }} questions across the complete subject catalogue.</p>
+{% endif %}
+<form class="panel mb" method="get">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end">
+    <div><label for="subject">Subject</label><select id="subject" name="subject"><option value="">All</option>
+      {% for s in subjects %}<option value="{{ s.id }}" {{ 'selected' if active_subject == s.id }}>{{ s.name }}</option>{% endfor %}</select></div>
+    <div><label for="difficulty">Difficulty</label><select id="difficulty" name="difficulty"><option value="">Any</option>
+      {% for d in ('easy','medium','hard','expert') %}<option value="{{ d }}" {{ 'selected' if active_difficulty == d }}>{{ d | titlecase }}</option>{% endfor %}</select></div>
+    <div><label for="kind">Kind</label><select id="kind" name="kind"><option value="">Any</option>
+      {% for k in kinds %}<option value="{{ k.kind }}" {{ 'selected' if active_kind == k.kind }}>{{ k.kind }} ({{ k.count }})</option>{% endfor %}</select></div>
+    <div><button class="btn btn-primary btn-block">Filter</button></div>
+  </div>
+</form>
+<div class="stack">
+  {% for question in questions %}
+    {% call quiz_card(question, attempt=attempts.get(question.id) if attempts else None) %}
+      <span class="chip diff-{{ question.difficulty }}">{{ question.difficulty }}</span>
+      <span class="chip">{{ question.kind }}</span>
+      {% if question.subject_name %}<span class="chip">{{ question.subject_name }}</span>{% endif %}
+    {% endcall %}
+  {% else %}<div class="empty"><span class="em" aria-hidden="true">{{ icon("search", 26) }}</span>No questions match that filter.</div>{% endfor %}
+</div>
+{% include "_pager.html" %}
+{% endblock %}

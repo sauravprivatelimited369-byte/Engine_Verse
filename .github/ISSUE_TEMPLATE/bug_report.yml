@@ -1,0 +1,45 @@
+name: Bug report
+description: Something on the website, the Pages copy or the Android app does not work.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Issues are public, so **do not include passwords, tokens,
+        emails, phone numbers or exported progress files**.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - GitHub Pages reading copy
+        - A self-hosted full website
+        - Android app
+        - Local development
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Page URL or app screen
+      placeholder: https://sauravprivatelimited369-byte.github.io/Engine_Verse/planner/
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected and what happened instead
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Browser / device and version
+      placeholder: Chrome 141 on Android 15, or EngineVerse app 1.0.0

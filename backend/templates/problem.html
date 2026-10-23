@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ problem.title }} — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<div class="editor-shell">
+  <section>
+    <div class="between mb">
+      <div><h1 style="font-size:1.6rem;margin-bottom:4px">{{ problem.title }}</h1>
+        <div class="tags"><span class="chip diff-{{ problem.difficulty }}">{{ problem.difficulty }}</span>
+          <span id="solved-chip" class="chip ok {{ '' if submissions and submissions[0].is_accepted else 'hide' }}">Solved ✓</span>
+          {% for t in (problem.topics | fromjson([])) %}<span class="chip">{{ t }}</span>{% endfor %}</div></div>
+    </div>
+    {% if sheets %}
+    <p class="small muted">Part of
+      {% for s in sheets %}<a href="/sheets/{{ s.slug }}">{{ s.title }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+    </p>
+    {% endif %}
+    <div class="panel prose">{{ problem.statement | md | safe }}</div>
+
+    <div class="callout mt"><span class="label">How this runs</span>
+      In <strong>Python</strong> and <strong>JavaScript</strong>, write the function named in the stub: the judge
+      appends a harness that reads the input, calls your function and prints the result, so your code needs no
+      I/O of its own. In every other language, submit a complete program that reads stdin and prints the answer
+      (the <a href="/compiler">compiler page</a> shows that shape per language). The samples below show exactly
+      what goes in and what should come out either way.</div>
+
+    <details class="panel mt"><summary><strong>Hints</strong> ({{ (problem.hints | fromjson([])) | length }})</summary>
+      <ol>{% for hint in (problem.hints | fromjson([])) %}<li>{{ hint }}</li>{% endfor %}</ol></details>
+    <details class="panel mt"><summary><strong>Editorial</strong> — full explanation and complexity</summary>
+      <div class="prose mt">{{ problem.editorial | md | safe }}</div>
+      {% if problem.solution_md %}<h2 class="h-sub">Reference solution</h2>
+        <pre class="console">{{ problem.solution_md }}</pre>{% endif %}
+      <p class="small muted">Expected time {{ problem.expected_time }} · space {{ problem.expected_space }}</p></details>
+
+    {% if submissions %}
+    <section class="panel mt"><h2 class="h-sub">Your submissions</h2>
+      <div class="tablewrap"><table><thead><tr><th>Status</th><th>Language</th><th>Tests</th><th>Time</th><th>When</th></tr></thead>
+      <tbody>{% for s in submissions %}
+        <tr><td><span class="chip {{ 'ok' if s.is_accepted else 'bad' }}">{{ s.status | replace('_',' ') }}</span></td>
+        <td>{{ s.language }}</td><td>{{ s.passed }}/{{ s.total }}</td>
+        <td>{{ s.runtime_ms or '—' }} ms</td><td>{{ s.created_at | ago }}</td></tr>
+      {% endfor %}</tbody></table></div></section>
+    {% endif %}
+  </section>
+
+  <section>
+    {% if not runnable_now %}
+    <div class="callout warning mb"><span class="label">Code execution is off</span>
+      This server is not running submitted code (judge: {{ judge_info.name | default('disabled') }}).
+      You can still read the problem, the samples and the editorial. Run and Submit are disabled:
+      nothing you type here will be executed until the operator enables a judge.</div>
+    {% elif runnable_now | length != languages | length %}
+    <div class="callout mb"><span class="label">Limited runtimes on this server</span>
+      Only {{ runnable_now | sort | join(', ') }} can run here (judge: {{ judge_info.name }}).
+      Other languages show their starter but cannot execute.</div>
+    {% endif %}
+    <div class="editor-bar">
+      <label for="lang-select" style="margin:0">Language</label>
+      <select id="lang-select" data-judge="{{ judge_info.name | default('disabled') }}">
+        {% for lang in languages %}
+          {% set can_run = lang.judge_slug and lang.judge_slug in runnable_now %}
+          <option value="{{ lang.slug }}" {{ 'selected' if lang.slug == default_language }}
+            {{ '' if can_run else 'disabled' }}>{{ lang.name }}
+            {{ '' if can_run else '(no runtime here)' }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-soft btn-sm" id="btn-reset" type="button">Reset</button>
+      <span class="tiny muted" id="stub-signature"></span>
+    </div>
+    <p class="tiny muted">Supported here: {{ runnable_now | sort | join(', ') if runnable_now else 'none — execution disabled' }}.</p>
+    <textarea id="code-editor" spellcheck="false" data-problem="{{ problem.slug }}"
+      data-stubs='{{ stub_map | tojson }}'
+      aria-label="Code editor">{{ saved or (stubs[0].stub if stubs else '') }}</textarea>
+
+    <div class="row mt">
+      <button class="btn btn-ghost" id="btn-run" type="button"
+        {{ '' if runnable_now else 'disabled title="Code execution is disabled on this server"' }}>Run</button>
+      {% if user %}<button class="btn btn-primary" id="btn-submit" type="button"
+        {{ '' if runnable_now else 'disabled title="Code execution is disabled on this server"' }}>Submit</button>
+      {% elif static_export %}<button class="btn btn-primary" id="btn-submit" type="button">Submit</button>
+      {% else %}<a class="btn btn-primary" href="/login">Sign in to submit</a>{% endif %}
+      <span class="tiny muted">Ctrl+Enter to run · Ctrl+Shift+B to submit</span>
+    </div>
+
+    <div class="mt"><label for="custom-input">Custom input (stdin)</label>
+      <textarea id="custom-input" rows="3" placeholder="Optional"></textarea></div>
+
+    <div id="run-output" class="mt" aria-live="polite"></div>
+
+    {% if samples %}
+    <h2 class="h-sub mt">Sample tests</h2>
+    {% for tc in samples %}
+      <div class="testcase"><div class="lbl">Example {{ loop.index }}</div>
+        <pre>input:    {{ tc.input or '(none)' }}
+expected: {{ tc.expected }}</pre></div>
+    {% endfor %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ page_title }}</h1>
+  <p class="muted">{{ page_intro }} Want gutter line numbers, syntax highlighting, example programs, saved snippets, separated compiler diagnostics, and Android mobile coding keys? <a href="/codelab">Open CodeLab — Online Compiler →</a></p>
+</div>
+
+{% if not runnable_now %}
+<div class="callout warning mb" id="cpl-host-note"><span class="label">Code execution is off</span>
+  This server is not running submitted code (judge: {{ judge_info.name | default('disabled') }}), so Run is
+  disabled: nothing you type here will be executed until the operator enables a judge. The editors and
+  starters below still work for reading and writing code.</div>
+{% elif runnable_now | length != languages | length %}
+<div class="callout mb" id="cpl-host-note"><span class="label">Limited runtimes on this server</span>
+  Runnable here (judge: {{ judge_info.name }}): {{ runnable_now | sort | join(', ') }}. Other languages show
+  their starter but cannot execute on this host — the editor says which, instead of pretending a run happened.</div>
+{% endif %}
+
+<section class="panel">
+  <div class="editor-bar">
+    <label for="cpl-lang" style="margin:0">Language</label>
+    <select id="cpl-lang" data-judge="{{ judge_info.name | default('disabled') }}">
+      {% for lang in languages %}
+        {% set can_run = lang.slug in runnable_now %}
+        <option value="{{ lang.slug }}" {{ 'selected' if lang.slug == default_language }}
+          {{ '' if can_run else 'disabled' }}>{{ lang.name }}{{ '' if can_run else ' (no runtime here)' }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-soft btn-sm" id="cpl-reset" type="button">Reset starter</button>
+    <span class="tiny muted" id="cpl-runtime"></span>
+  </div>
+  <p class="tiny muted" id="cpl-note"></p>
+
+  {% set default_row = languages | selectattr('slug', 'eq', default_language) | first %}
+  <label for="cpl-editor">Program</label>
+  <textarea id="cpl-editor" spellcheck="false" rows="14" aria-label="Program editor">{{ default_row.code if default_row else '' }}</textarea>
+
+  <div class="mt"><label for="cpl-input">Input (stdin) — for SQL this is the setup script</label>
+    <textarea id="cpl-input" rows="3" aria-label="Standard input">{{ default_row.sample_input if default_row else '' }}</textarea></div>
+
+  <div class="row mt">
+    <button class="btn btn-primary" id="cpl-run" type="button"
+      {{ '' if runnable_now else 'disabled title="Code execution is disabled on this server"' }}>Run</button>
+    <span class="tiny muted">Ctrl+Enter to run. Compiled languages are really compiled by the judge;
+      output below is the program's actual stdout/stderr.</span>
+  </div>
+
+  <div id="cpl-output" class="mt" aria-live="polite"></div>
+</section>
+
+<section class="panel mt">
+  <h2 class="h-sub">How the terminal works</h2>
+  <p class="small muted">Run sends your program to this site's judge, which compiles it with the language's own
+    toolchain (gcc, g++, javac, go, rustc, dotnet, tsc/Node, CPython, SQLite, Bash) inside the same isolation used
+    for judged problems, feeds it your input, and returns stdout, stderr and the exit status. Nothing is
+    simulated: if a language has no runtime on the host you are using, it is labelled “no runtime here” and
+    Run stays disabled for it. On the static &amp; mobile deployment there is no server judge, so real WebAssembly
+    compilers and interpreters (Clang 22, OpenJDK + TeaVM, rustc, Roslyn, TypeScript 5.9, Go 1.24, Bash, SQLite,
+    CPython 3.12, and isolated JavaScript) execute directly in Web Workers instead, and any unbundled runtime
+    honestly reports “not run”. Want tests and a verdict instead of a bare terminal? Use the
+    <a href="/practice/problems">coding problems</a>.</p>
+</section>
+
+<script type="application/json" id="cpl-data">{{ languages | tojson }}</script>
+{% endblock %}

@@ -1,0 +1,22 @@
+name: Content correction
+description: A wrong formula, a broken example, a dead link or an outdated opportunity.
+labels: [content]
+body:
+  - type: input
+    id: url
+    attributes:
+      label: Page URL
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: Quote the incorrect text if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested correction and source
+      description: A textbook, standard or official page that backs the correction.

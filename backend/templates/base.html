@@ -1,0 +1,225 @@
+{# ==========================================================================
+   The page shell. Every page extends this.
+
+   Navigation, breadcrumbs and the footer are generated from
+   engineverse/navigation.py by way of _topnav.html, _crumbs.html and
+   _footer.html. They used to be written out here by hand, three times over, and
+   the copies had drifted apart - see the note at the top of navigation.py for
+   what disagreed and why one table replaced them.
+   ========================================================================== #}
+{% from "_icons.html" import icon %}
+<!doctype html>
+<html lang="en" data-theme="{{ brand.theme or 'dark' }}" data-i18n-root>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}{{ brand.site_name }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
+  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f3f5fa{% else %}#070b14{% endif %}">
+  <script nonce="{{ request.state.csp_nonce }}">
+    // Runs before first paint: a stored theme preference wins over the site
+    // default. Sign-in state is never guessed from browser storage: on the
+    // server it comes from the session, and the static copy has no accounts.
+    (function () {
+      // Reveal-on-scroll may only hide sections when this script (and so
+      // scroll.js) can run; the CSS gates the hidden state on html.js.
+      document.documentElement.classList.add("js");
+      try {
+        var saved = localStorage.getItem("ev-theme");
+        var theme = document.documentElement.getAttribute("data-theme") || "light";
+        // An explicit choice from the theme button wins; otherwise follow the
+        // operating system, and only then the site default.
+        if (saved !== "light" && saved !== "dark" && window.matchMedia) {
+          if (window.matchMedia("(prefers-color-scheme: dark)").matches) saved = "dark";
+          else if (window.matchMedia("(prefers-color-scheme: light)").matches) saved = "light";
+        }
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.setAttribute("data-theme", saved);
+          theme = saved;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", theme === "light" ? "#f3f5fa" : "#070b14");
+      } catch (e) { /* storage blocked - fall back to the server default */ }
+    })();
+  </script>
+  <meta name="color-scheme" content="dark light">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/sora-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/app.css">
+  {# The configured accent colours, applied over the stylesheet's defaults.
+     These come from site_config and are interpolated into CSS, so they are run
+     through safe_css_color in the admin handler; | safe is used because Jinja
+     would otherwise escape the '#' and break the declarations. #}
+  <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--grad:linear-gradient(135deg,var(--accent),var(--accent-3))}</style>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta property="og:title" content="{% block og_title %}{{ brand.site_name }}{% endblock %}">
+  <meta property="og:description" content="{{ brand.tagline }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ brand.site_name }}">
+  {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">
+  <meta property="og:url" content="{{ canonical_url }}">{% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}"{% if gated %} data-signin-gate{% endif %}>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="logo" href="{{ '/login' if gated else '/' }}" aria-label="{{ brand.site_name }} home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linejoin="round" stroke-linecap="round">
+          <path d="M16 3.5 5.5 9.5v13L16 28.5l10.5-6v-13z"/>
+          <path d="M11.5 20.2V12.2l4.5 4.1 4.5-4.1v8"/>
+        </svg>
+      </span>
+      <span class="logo-text">{{ brand.site_name }}</span>
+    </a>
+
+    {% if not gated %}
+      {% include "_topnav.html" %}
+
+    <form class="searchbox" action="/search" method="get" role="search">
+      <input type="search" name="q" value="{{ query.get('q', '') }}"
+             placeholder="Search everything…"
+             autocomplete="off" aria-label="Search {{ brand.site_name }}" id="global-search">
+      <button type="submit" aria-label="Search">{{ icon("search", 16) }}</button>
+      <div class="suggest" id="suggest" hidden></div>
+    </form>
+    {% endif %}
+
+    <div class="topbar-right">
+      <button class="iconbtn theme-toggle" id="theme-toggle" type="button" aria-label="Switch colour theme"
+              title="Switch colour theme">
+        <svg class="ico-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a7.1 7.1 0 1 0 11.1 11.1z"/></svg>
+      </button>
+      {% if user %}
+        {# Progress lives here, in the bar, and nowhere that floats over the
+           page while a learner reads. The bar itself slides away on downward
+           scroll (scroll.js) and returns the moment you scroll up or focus it. #}
+        <a class="streak" href="/streaks" title="{{ learner.currentStreak }} day streak — see your heatmap"
+           aria-label="{{ learner.currentStreak }} day study streak">
+          <span aria-hidden="true">{{ icon("flame", 15, true) }}</span><span>{{ learner.currentStreak }}</span>
+        </a>
+        <a class="xpchip" href="/profile" title="Level {{ learner.level }} — {{ learner.rank }}"
+           aria-label="Level {{ learner.level }}, {{ learner.xp }} XP">
+          <span class="lvl">{{ learner.level }}</span><span class="xpv">{{ learner.xp }} XP</span>
+        </a>
+        <a class="iconbtn" href="/notifications" aria-label="Notifications{{ ' (unread)' if unread }}">
+          {{ icon("bell", 18) }}
+          {% if unread %}<span class="dot"></span>{% endif %}
+        </a>
+        {% if is_staff %}<a class="iconbtn" href="/admin" aria-label="Admin console">{{ icon("cog", 18) }}</a>{% endif %}
+        <div class="menu" data-menu>
+          <button class="avatar" aria-haspopup="true" aria-expanded="false" aria-label="Account menu for {{ user.username }}" title="Account menu for @{{ user.username }}">{{ icon("user", 14) }}<span>{{ user.initial }}</span></button>
+          <div class="menu-pop" role="menu">
+            <div class="menu-head">
+              <strong>{{ user.full_name }}</strong>
+              <span>@{{ user.username }}</span>
+            </div>
+            <a role="menuitem" href="/dashboard">Dashboard</a>
+            <a role="menuitem" href="/profile">My profile</a>
+            <a role="menuitem" href="/portfolio/{{ user.username }}">Public portfolio</a>
+            <a role="menuitem" href="/today">Today's plan</a>
+            <a role="menuitem" href="/mistakes">Mistake notebook</a>
+            <a role="menuitem" href="/leaderboard">Leaderboard</a>
+            <a role="menuitem" href="/settings">Settings</a>
+            <form method="post" action="/logout">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button role="menuitem" type="submit" class="linklike">Sign out</button>
+            </form>
+          </div>
+        </div>
+        {# The plain-text answer to "am I signed in?". A learner who has just
+           signed in should not have to discover that the answer is hidden
+           behind an avatar they have to click. Sign out lives in the account
+           menu (and again in Settings) rather than taking a bar slot of its
+           own next to the avatar that opens that same menu. #}
+        <a class="whoami" href="/profile" title="Signed in as @{{ user.username }}">
+          <span class="whoami-name">{{ user.username }}</span>
+          <span class="whoami-label">Profile</span>
+        </a>
+      {% elif static_export %}
+        {# The static GitHub Pages copy has no accounts. Progress is kept on
+           this device only; pages-live.js fills in the streak and XP. #}
+        <a class="btn btn-ghost" href="/dashboard" data-ev-local-progress title="Progress saved on this device">
+          <span aria-hidden="true">{{ icon("flame", 15, true) }}</span><span data-ev-local-streak>0</span>
+          <span class="sr-only">day streak ·</span> <span class="topbar-label">My progress</span></a>
+        <a class="btn btn-primary btn-cta" href="/explore">Start learning <span aria-hidden="true">{{ icon("chevron", 14) }}</span></a>
+      {% else %}
+        <a class="btn btn-ghost{{ ' on' if path == '/login' }}" href="/login" data-ev-anon-auth>Sign in</a>
+        <a class="btn btn-primary btn-cta" href="/register" data-ev-anon-auth>{{ 'Create account' if gated else 'Start free' }} <span aria-hidden="true">{{ icon("chevron", 14) }}</span></a>
+      {% endif %}
+      {% if not gated %}
+      <button class="iconbtn only-mobile" id="navtoggle" type="button" aria-label="Menu"
+              aria-expanded="false" aria-controls="mobilenav">
+        {{ icon("menu", 20) }}
+      </button>
+      {% endif %}
+    </div>
+  </div>
+  {% if brand.announcement %}<div class="announce">{{ brand.announcement }}</div>{% endif %}
+  <span class="topbar-progress" data-scroll-progress aria-hidden="true"></span>
+</header>
+
+{% if flash %}<div class="flash" role="status">{{ flash }}</div>{% endif %}
+{% if user and not user.email_verified and mail_configured %}
+<div class="announce"><a href="/settings#email">Confirm {{ user.email }}</a>. The link is emailed when you ask for it. It is not shown on this page.</div>
+{% endif %}
+
+<main id="main" class="wrap">
+  {% if not gated %}{% include "_crumbs.html" %}{% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+{% include "_footer.html" %}
+
+{% if not gated %}
+{# The bottom bar. Five slots is the whole budget on a phone, so these are the
+   five things a learner returns to every day; everything else is in the menu
+   button above, which shows the same groups as the desktop bar.
+
+   The active item is chosen by navigation.active_mobile(), which returns at most
+   one. This bar used to light up several items at once - "My stream" while the
+   reader was on /explore, and "Sheets" while they were on /projects - because
+   each link tested its own overlapping prefixes independently. #}
+<nav class="bottomnav" aria-label="Mobile">
+  {% for item in nav_mobile %}
+    {% set here = item.label == nav_active_mobile %}
+    <a href="{{ item.href }}" class="{{ 'on' if here }}" {% if here %}aria-current="page"{% endif %}>
+      {{ icon(item.icon, 20) }}
+      {{ item.label }}
+    </a>
+  {% endfor %}
+</nav>
+{% endif %}
+
+<script nonce="{{ request.state.csp_nonce }}">
+  window.EngineVerse = {
+    csrf: "{{ csrf_token }}",
+    user: {{ 'true' if user else 'false' }},
+    staticCopy: {{ 'true' if static_export else 'false' }}
+  };
+  // Wire up the footer language picker once i18n is ready.
+  (function () {
+    var picker = document.getElementById("ev-lang-picker");
+    if (!picker || !window.EV || !window.EV.i18n) return;
+    window.EV.i18n.onReady(function () {
+      window.EV.i18n.picker(picker, "common.self_hosted");
+    });
+  })();
+</script>
+<script src="/static/js/i18n.js" defer></script>
+<script src="/static/js/engine3d.js" defer></script>
+<script src="/static/js/app.js" defer></script>
+<script src="/static/js/pages-live.js" defer></script>
+<script src="/static/js/scroll.js" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

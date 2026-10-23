@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Study planner — {{ brand.site_name }}{% endblock %}
+{% block description %}Plan study tasks, count down to exams and run focus sessions. Everything is saved in your browser only, with JSON export and import.{% endblock %}
+{% block content %}
+
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Progress · productivity</p>
+  <h1>Study planner</h1>
+  <p class="lead">Tasks, exam countdowns and a focus timer in one place.</p>
+  <p class="chips-row"><span class="chip ok">{{ icon("check", 14) }} Saved on this device only</span>
+    <span class="chip">No account needed</span></p>
+</section>
+
+<noscript>
+  <div class="panel"><p><strong>The study planner needs JavaScript.</strong> Your plan is stored in this browser,
+    so the page has to run a script to read and save it. Everything else on {{ brand.site_name }} works without
+    JavaScript.</p></div>
+</noscript>
+
+<div class="planner" data-planner hidden>
+  <p class="planner-storage-warning panel" data-planner-storage-warning hidden role="alert">
+    This browser is blocking local storage, for example in some private-browsing modes. The planner still works,
+    but your changes will be lost when you close this tab. Use <strong>Export</strong> to keep a copy.</p>
+
+  <div class="planner-grid">
+    <section class="panel planner-tasks" aria-labelledby="planner-tasks-h">
+      <h2 id="planner-tasks-h">{{ icon("list", 18) }} Tasks</h2>
+
+      <form class="planner-form" data-task-form novalidate>
+        <input type="hidden" name="id" value="">
+        <div class="field planner-title">
+          <label for="task-title">Task</label>
+          <input id="task-title" name="title" type="text" maxlength="120" required
+                 placeholder="e.g. Revise Thevenin's theorem" aria-describedby="task-title-err">
+          <p class="err" id="task-title-err" data-err="title" hidden></p>
+        </div>
+        <div class="planner-form-row">
+          <div class="field">
+            <label for="task-subject">Subject <span class="muted">(optional)</span></label>
+            <input id="task-subject" name="subject" type="text" maxlength="60" list="planner-subjects"
+                   placeholder="e.g. Circuits">
+            <datalist id="planner-subjects"></datalist>
+          </div>
+          <div class="field">
+            <label for="task-due">Due date <span class="muted">(optional)</span></label>
+            <input id="task-due" name="due" type="date" aria-describedby="task-due-err">
+            <p class="err" id="task-due-err" data-err="due" hidden></p>
+          </div>
+          <div class="field">
+            <label for="task-priority">Priority</label>
+            <select id="task-priority" name="priority">
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="planner-actions">
+          <button class="btn btn-primary btn-sm" type="submit" data-task-submit>Add task</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-task-cancel hidden>Cancel editing</button>
+        </div>
+      </form>
+
+      <div class="planner-toolbar">
+        <div class="chips-row" role="group" aria-label="Show tasks">
+          <button type="button" class="chip accent" data-filter="all" aria-pressed="true">All <span data-count="all"></span></button>
+          <button type="button" class="chip" data-filter="today" aria-pressed="false">Today <span data-count="today"></span></button>
+          <button type="button" class="chip" data-filter="upcoming" aria-pressed="false">Upcoming <span data-count="upcoming"></span></button>
+          <button type="button" class="chip" data-filter="overdue" aria-pressed="false">Overdue <span data-count="overdue"></span></button>
+          <button type="button" class="chip" data-filter="done" aria-pressed="false">Done <span data-count="done"></span></button>
+        </div>
+        <div class="field planner-search">
+          <label class="sr-only" for="task-search">Search tasks</label>
+          <input id="task-search" type="search" placeholder="Search tasks or subjects" autocomplete="off">
+        </div>
+      </div>
+
+      <p class="sr-only" aria-live="polite" data-task-status></p>
+      <ul class="planner-list" data-task-list aria-label="Tasks"></ul>
+      <div class="empty" data-task-empty hidden>
+        <span class="em" aria-hidden="true">{{ icon("calendar", 22) }}</span>
+        <p data-task-empty-text>No tasks yet. Add your first one above.</p>
+      </div>
+      <p class="planner-foot" data-task-foot hidden>
+        <button class="btn btn-ghost btn-sm" type="button" data-clear-done>Remove completed tasks</button>
+      </p>
+    </section>
+
+    <div class="planner-side">
+      <section class="panel planner-focus" aria-labelledby="planner-focus-h">
+        <h2 id="planner-focus-h">{{ icon("sun", 18) }} Focus timer</h2>
+        <p class="planner-phase" data-focus-phase>Focus</p>
+        <p class="planner-clock" data-focus-clock role="timer" aria-label="Time remaining">25:00</p>
+        <p class="sr-only" aria-live="assertive" data-focus-announce></p>
+        <div class="planner-actions planner-focus-actions">
+          <button class="btn btn-primary btn-sm" type="button" data-focus-start>Start</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-focus-reset>Reset</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-focus-skip>Skip to break</button>
+        </div>
+        <p class="muted planner-focus-count" data-focus-count>0 focus sessions today</p>
+        <details class="planner-focus-settings">
+          <summary>Timer settings</summary>
+          <form data-focus-form novalidate>
+            <div class="planner-form-row">
+              <div class="field">
+                <label for="focus-work">Focus (minutes)</label>
+                <input id="focus-work" name="work" type="number" min="1" max="180" step="1" inputmode="numeric" value="25">
+              </div>
+              <div class="field">
+                <label for="focus-break">Break (minutes)</label>
+                <input id="focus-break" name="brk" type="number" min="1" max="60" step="1" inputmode="numeric" value="5">
+              </div>
+            </div>
+            <p class="err" data-focus-err hidden></p>
+            <button class="btn btn-soft btn-sm" type="submit">Save timer settings</button>
+          </form>
+        </details>
+      </section>
+
+      <section class="panel planner-exams" aria-labelledby="planner-exams-h">
+        <h2 id="planner-exams-h">{{ icon("target", 18) }} Exam countdowns</h2>
+        <form class="planner-form" data-exam-form novalidate>
+          <div class="planner-form-row">
+            <div class="field">
+              <label for="exam-name">Exam</label>
+              <input id="exam-name" name="name" type="text" maxlength="80" required placeholder="e.g. Semester 4 finals">
+            </div>
+            <div class="field">
+              <label for="exam-date">Date</label>
+              <input id="exam-date" name="date" type="date" required>
+            </div>
+          </div>
+          <p class="err" data-exam-err hidden></p>
+          <button class="btn btn-soft btn-sm" type="submit">Add countdown</button>
+        </form>
+        <ul class="planner-exam-list" data-exam-list aria-label="Exam countdowns"></ul>
+        <p class="muted" data-exam-empty>No exams added yet.</p>
+      </section>
+
+      <section class="panel planner-data" aria-labelledby="planner-data-h">
+        <h2 id="planner-data-h">{{ icon("database", 18) }} Your planner data</h2>
+        <p class="muted">Your plan is stored only in this browser and is never uploaded. Clearing site data removes
+          it. Export a JSON file to back it up or move it to another device.</p>
+        <div class="planner-actions">
+          <button class="btn btn-soft btn-sm" type="button" data-planner-export>{{ icon("download", 14) }} Export</button>
+          <label class="btn btn-ghost btn-sm planner-import">Import
+            <input type="file" accept="application/json,.json" data-planner-import class="sr-only"></label>
+          <button class="btn btn-ghost btn-sm" type="button" data-planner-clear>Delete all planner data</button>
+        </div>
+        <p class="muted" aria-live="polite" data-planner-data-status></p>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/planner.js" defer></script>{% endblock %}

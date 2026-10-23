@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}Settings — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<div class="layout-2">
+  <div class="stack">
+    <section class="panel"><h2>Profile</h2>
+      <form method="post" action="/settings/profile">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="grid g2">
+          <div class="field"><label for="fn">Full name</label><input id="fn" name="full_name" maxlength="80"
+            value="{{ user.full_name }}"></div>
+          <div class="field"><label for="hl">Headline</label><input id="hl" name="headline" maxlength="120"
+            placeholder="Third year CSE, backend focus"></div>
+        </div>
+        <div class="field"><label for="bio">Bio</label><textarea id="bio" name="bio" maxlength="1200"
+          placeholder="What are you working on?"></textarea></div>
+        <div class="grid g2">
+          <div class="field"><label for="gh">GitHub URL</label><input id="gh" name="github_url" type="url"></div>
+          <div class="field"><label for="li">LinkedIn URL</label><input id="li" name="linkedin_url" type="url"></div>
+          <div class="field"><label for="pf">Portfolio URL</label><input id="pf" name="portfolio_url" type="url"></div>
+          <div class="field"><label for="ctry">Country</label><input id="ctry" name="country" maxlength="60"></div>
+          <div class="field"><label for="hrs">Study hours per week</label>
+            <input id="hrs" name="weekly_study_hours" type="number" min="1" max="60" value="8"></div>
+        </div>
+        <button class="btn btn-primary">Save profile</button>
+      </form></section>
+
+    <section class="panel"><h2>Your path</h2>
+      <form method="post" action="/settings/onboarding">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="grid g2">
+          <div class="field"><label for="br">Branch</label><select id="br" name="branch"><option value="">—</option>
+            {% for b in branches %}<option value="{{ b.id }}" {{ 'selected' if user.branch_id == b.id }}>{{ b.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="sem">Semester</label><select id="sem" name="semester">
+            {% for s in semesters %}<option value="{{ s.id }}" {{ 'selected' if user.semester_id == s.id }}>{{ s.label }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="uni">University</label><select id="uni" name="university"><option value="">—</option>
+            {% for u in universities %}<option value="{{ u.id }}">{{ u.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="col">College</label><select id="col" name="college"><option value="">—</option>
+            {% for c in colleges %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="nq">Default reading depth</label><select id="nq" name="note_quality">
+            {% for d in ('beginner','standard','advanced','industry') %}
+            <option value="{{ d }}" {{ 'selected' if user.note_quality == d }}>{{ d | titlecase }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="lan">Language</label><select id="lan" name="language">
+            <option value="en">English</option><option value="hi">हिन्दी</option></select></div>
+        </div>
+        <button class="btn btn-primary">Save path</button>
+      </form></section>
+
+    <section class="panel"><h2>Privacy and notifications</h2>
+      <form method="post" action="/settings/preferences">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <h3>Public profile</h3>
+        <label class="checkbox"><input type="checkbox" name="show_activity" {{ 'checked' if privacy_prefs.showActivity }}> Show my activity on my portfolio</label>
+        <label class="checkbox"><input type="checkbox" name="show_progress" {{ 'checked' if privacy_prefs.showProgress }}> Show my progress and badges (also controls the leaderboard)</label>
+        <label class="checkbox"><input type="checkbox" name="show_email" {{ 'checked' if privacy_prefs.showEmail }}> Show my email address</label>
+        <label class="checkbox"><input type="checkbox" name="searchable" {{ 'checked' if privacy_prefs.searchable }}> Let other members find me in search</label>
+        <h3 class="mt">Notifications</h3>
+        <label class="checkbox"><input type="checkbox" name="new_dpp" {{ 'checked' if notification_prefs.newDpp }}> New daily practice set</label>
+        <label class="checkbox"><input type="checkbox" name="streak_reminder" {{ 'checked' if notification_prefs.streakReminder }}> Streak reminders</label>
+        <label class="checkbox"><input type="checkbox" name="milestone" {{ 'checked' if notification_prefs.milestone }}> Milestones and badges</label>
+        <label class="checkbox"><input type="checkbox" name="community_reply" {{ 'checked' if notification_prefs.communityReply }}> Replies to my posts</label>
+        <button class="btn btn-primary mt">Save preferences</button>
+      </form></section>
+
+    <section class="panel" id="error-password"><h2>Password</h2>
+      {% if password_otp_token %}
+        <div class="callout info mb">
+          <span class="label">6-digit OTP verification</span>
+          We sent a 6-digit password-change code to <strong>{{ password_otp_masked }}</strong>
+          ({{ 'Mobile SMS' if password_otp_channel == 'phone' else 'Gmail / Email' }}).
+          {% if password_otp_revealed %}
+            <div class="small mt">Development preview code: <code class="mono">{{ password_otp_revealed }}</code></div>
+          {% endif %}
+        </div>
+        <form method="post" action="/settings/password">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="otp_token" value="{{ password_otp_token }}">
+          <div class="field"><label for="pwd-otp-code">6-digit OTP code</label>
+            <input id="pwd-otp-code" name="otp_code" inputmode="numeric" required maxlength="12" autocomplete="one-time-code" placeholder="123456"></div>
+          <div class="grid g2">
+            <div class="field"><label for="np-otp">New password</label>
+              <input id="np-otp" name="new_password" type="password" required minlength="10" autocomplete="new-password"></div>
+            <div class="field"><label for="np2-otp">Confirm new password</label>
+              <input id="np2-otp" name="confirm_password" type="password" required minlength="10" autocomplete="new-password"></div>
+          </div>
+          <button class="btn btn-primary" type="submit">Verify OTP &amp; change password</button>
+        </form>
+      {% else %}
+        <form method="post" action="/settings/password">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="field"><label for="cp">Current password</label>
+            <input id="cp" name="current_password" type="password" required autocomplete="current-password"></div>
+          <div class="grid g2">
+            <div class="field"><label for="np">New password</label>
+              <input id="np" name="new_password" type="password" required minlength="10" autocomplete="new-password"></div>
+            <div class="field"><label for="np2">Confirm new password</label>
+              <input id="np2" name="confirm_password" type="password" required minlength="10" autocomplete="new-password"></div>
+          </div>
+          <p class="small muted">Changing your password signs out every other session immediately.</p>
+          <button class="btn btn-primary">Change password</button>
+        </form>
+        <div class="mt pt" style="border-top:1px solid var(--edge)">
+          <h3>Or change password via 6-digit OTP (Gmail or Mobile number)</h3>
+          <form method="post" action="/settings/password/otp" class="mt">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="grid g2">
+              <div class="field"><label for="pwd-otp-channel">Send 6-digit OTP to</label>
+                <select id="pwd-otp-channel" name="channel">
+                  <option value="email">Gmail / Email ({{ user.email }})</option>
+                  <option value="phone">Mobile Number (SMS with country code)</option>
+                </select></div>
+              <div class="field"><label for="pwd-otp-phone">Mobile number (if using SMS)</label>
+                <div class="phone-cc-row">
+                  <select id="pwd-otp-cc" name="country_code" aria-label="Country code">
+                    {% set selected_country_code = phone_country_code %}
+                    {% include "_country_codes.html" %}
+                  </select>
+                  <input id="pwd-otp-phone" name="phone" type="tel" maxlength="20"
+                    placeholder="{{ phone_country_code | phone_example }}" value="{{ phone_national or '' }}">
+                </div></div>
+            </div>
+            <button class="btn btn-soft" type="submit">Send 6-digit OTP to change password</button>
+          </form>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="panel" id="email"><h2>Email</h2>
+      <p>{{ user.email }}</p>
+      {% if user.email_verified %}
+      <p class="chip ok">Confirmed</p>
+      {% else %}
+      <p class="muted">Not confirmed. A confirmation link proves this address is yours. It does not change your password, and learning stays available either way.</p>
+      {% if not mail_configured %}<p class="small muted">This instance has no mail transport, so a link cannot be sent. The address stays unconfirmed.</p>{% endif %}
+      {% if verify_link %}<p class="small muted">Development only. This link is not shown when mail is configured, and never in production.</p>
+        <p><a href="{{ verify_link }}">Confirm this address</a></p>{% endif %}
+      <form method="post" action="/settings/email/verify">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-soft">Send confirmation link</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="panel" id="phone"><h2>Phone number</h2>
+      {% if phone %}
+      <p><span class="mono">{{ phone | replace(phone[0:-4], '••••••••') if phone|length > 4 else '••••••••' }}</span>
+        {% if phone_verified %}<span class="chip ok">Confirmed</span>{% else %}<span class="chip">Not confirmed</span>{% endif %}</p>
+      {% else %}<p class="muted">Add a phone number to receive a sign-in code by text. It is optional.</p>{% endif %}
+      <form method="post" action="/settings/phone">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="field"><label for="phone-number">Mobile number with country code</label>
+          <div class="phone-cc-row">
+            <select id="phone-country-code" name="country_code" aria-label="Country code">
+              {% set selected_country_code = phone_country_code %}
+              {% include "_country_codes.html" %}
+            </select>
+            <input id="phone-number" name="phone" type="tel" inputmode="tel" maxlength="32"
+              placeholder="{{ phone_country_code | phone_example }} or {{ phone_country_code }}{{ phone_country_code | phone_example }}"
+              value="{{ phone_national or '' }}" autocomplete="tel-national">
+          </div>
+          <div class="hint">The dialling code on the left and the digits on the right are stored as one
+            number, so a code can reach you abroad. How long the digits have to be is that country's
+            numbering plan, not ours - a number that does not match it is refused instead of saved and
+            silently left unreachable. Saving does not confirm it: we send a 6-digit code first, and
+            until that is entered the number is marked "Not confirmed" and is never used to sign you in.
+            {% if not sms_available %}This instance has no SMS gateway, so the code is shown to you
+            rather than sent - which proves you can read this screen, nothing more.{% endif %}</div>
+        </div>
+        <div class="field"><label for="phone-password">Current password</label>
+          <input id="phone-password" name="current_password" type="password" required autocomplete="current-password"></div>
+        <button class="btn btn-primary">Save phone number</button>
+      </form>
+      {% if phone %}
+      <form method="post" action="/settings/phone" class="mt">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="remove" value="1">
+        <input type="hidden" name="phone" value="">
+        <div class="field"><label for="phone-remove-password">Current password to remove it</label>
+          <input id="phone-remove-password" name="current_password" type="password" required autocomplete="current-password"></div>
+        <button class="btn btn-ghost">Remove phone number</button>
+      </form>
+      {% if not phone_verified %}
+        {% if sms_available %}
+        <form method="post" action="/settings/phone/send" class="mt">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn-soft">Send verification code by text</button>
+        </form>
+        {% else %}<p class="small muted">This instance has no SMS gateway, so the number cannot be confirmed here.</p>{% endif %}
+      {% endif %}
+      {% endif %}
+      {% if phone_verification_token %}
+      <div class="callout warning mt"><span class="label">Verify your phone</span>
+        We sent a 6-digit code to {{ phone_verification_masked }}.</div>
+      <form method="post" action="/settings/phone/verify">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="token" value="{{ phone_verification_token }}">
+        <div class="field"><label for="phone-code">Verification code</label>
+          <input id="phone-code" name="code" inputmode="numeric" autocomplete="one-time-code" required maxlength="32" autofocus></div>
+        <button class="btn btn-primary">Confirm phone number</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="panel" id="mfa"><h2>Authenticator</h2>
+      <p class="muted">Optional because the delivered sign-in code already verifies every login. In production, staff must enrol one before admin tools will accept a change. Codes are checked on this server. Nothing is sent to a third party.</p>
+      {% if recovery_codes %}
+      <div class="callout warning"><span class="label">Save these recovery codes</span>
+        Each code works once. They are not shown again.
+        <ul>{% for code in recovery_codes %}<li><code class="recovery-code">{{ code }}</code></li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      {% if mfa_pending %}
+      <p>Add this secret to your authenticator app, then enter a code to confirm.</p>
+      <p><code id="mfa-secret">{{ mfa_pending.secret }}</code></p>
+      <p class="small mono">{{ mfa_pending.uri }}</p>
+      <p class="small muted">Recovery codes, shown again only if you confirm:</p>
+      <ul>{% for code in mfa_pending.codes %}<li><code>{{ code }}</code></li>{% endfor %}</ul>
+      <form method="post" action="/settings/mfa/confirm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="token" value="{{ mfa_pending.token }}">
+        <div class="field"><label for="mfa-otp">Code from the app</label>
+          <input id="mfa-otp" name="otp" inputmode="numeric" autocomplete="one-time-code" required maxlength="8"></div>
+        <button class="btn btn-primary">Enable authenticator</button>
+      </form>
+      {% elif mfa_enabled %}
+      <p class="chip ok">Enrolled</p>
+      <form method="post" action="/settings/mfa/disable">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="grid g2">
+          <div class="field"><label for="mfa-pw">Current password</label>
+            <input id="mfa-pw" name="current_password" type="password" required autocomplete="current-password"></div>
+          <div class="field"><label for="mfa-off">Authenticator or recovery code</label>
+            <input id="mfa-off" name="otp" required maxlength="32" autocomplete="one-time-code"></div>
+        </div>
+        <button class="btn btn-ghost">Disable authenticator</button>
+      </form>
+      {% else %}
+      <form method="post" action="/settings/mfa/start">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="field"><label for="mfa-start-pw">Current password</label>
+          <input id="mfa-start-pw" name="current_password" type="password" required autocomplete="current-password"></div>
+        <button class="btn btn-soft">Set up authenticator</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="panel"><h2>Active sessions</h2>
+      <div class="tablewrap"><table><thead><tr><th>Signed in</th><th>Last seen</th><th>IP</th><th></th></tr></thead>
+      <tbody>{% for s in sessions %}<tr><td>{{ s.created_at | ago }}</td><td>{{ s.last_seen_at | ago }}</td>
+        <td class="mono small">{{ s.ip or '—' }}</td>
+        <td>{% if s.id != user.session_id %}<form method="post" action="/settings/sessions/revoke">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="session_id" value="{{ s.id }}">
+          <button class="btn btn-ghost btn-sm">Sign out</button></form>{% else %}<span class="chip ok">This device</span>{% endif %}</td>
+      </tr>{% else %}<tr><td colspan="4" class="muted">No other sessions.</td></tr>{% endfor %}</tbody></table></div></section>
+
+    <section class="panel"><h2>Plan</h2>
+      {% if subscription %}<p>Your plan: <strong>{{ subscription.plan_name }}</strong>
+        ({{ subscription.status }})</p>{% else %}<p class="muted">You are on the free plan — every note, problem,
+        project and flashcard is included.</p>{% endif %}
+      <div class="grid g3 mt">{% for plan in plans %}
+        <div class="card"><span class="title">{{ plan.name }}</span>
+          <span class="desc">{{ plan.features | fromjson([]) | join(' · ') | excerpt(140) }}</span>
+          <span class="chip accent">{{ 'Free' if not plan.price_cents else (plan.price_cents / 100) | int ~ ' INR/mo' }}</span></div>
+      {% endfor %}</div></section>
+
+    <section class="panel"><h2>Install as an app</h2>
+      <p class="muted">{{ brand.site_name }} can live on your home screen. Previously cached public pages may
+        work offline; sign-in, synced progress and submissions need a connection.</p>
+      <button class="btn btn-soft hide" id="install-btn">Install</button>
+      <a class="btn btn-ghost" href="/install">Instructions</a></section>
+
+    <section class="panel" id="export"><h2>Download your data</h2>
+      <p class="muted">Download your profile, completed topics, solved problems, bookmarks and daily activity as a JSON file. The file is
+        generated when you click and is not stored anywhere else.</p>
+      <a class="btn btn-soft btn-sm" href="/api/me/export" download>Download my data (JSON)</a>
+    </section>
+
+    <section class="panel"><h2 style="color:var(--bad)">Delete account</h2>
+      <p class="muted">This removes your live account, progress, notes and submissions. It cannot be undone
+        here. Older encrypted backups may still contain your data until the operator's retention period ends;
+        see <a href="/privacy">Privacy</a>.</p>
+      <form method="post" action="/settings/account/delete">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="field"><label for="cf">Type DELETE to confirm</label>
+          <input id="cf" name="confirm" required placeholder="DELETE"></div>
+        <button class="btn btn-danger" type="submit">Delete my account</button>
+      </form></section>
+  </div>
+
+  <aside class="sidebar">
+    <div class="panel tight"><h3>Your data</h3>
+      <p class="small muted">We store your email, a scrypt hash of your password, your profile and your learning
+        history. Nothing is sold or shared. Sessions store only a hash of the cookie token.</p></div>
+    <div class="panel tight"><h3>Security</h3>
+      <ul class="small muted" style="padding-left:1.1em;margin:0">
+        <li>Passwords hashed with scrypt (N=16384)</li>
+        <li>HttpOnly, SameSite cookies</li>
+        <li>CSRF token on every state change</li>
+        <li>Rate-limited login with lockout</li>
+        <li>Optional authenticator (TOTP) and one-time recovery codes</li>
+        <li>Email confirmation when a mail transport is configured</li>
+        <li>No third-party scripts or trackers</li></ul></div>
+  </aside>
+</div>
+{% endblock %}

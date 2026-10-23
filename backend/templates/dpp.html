@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Daily Practice {{ dpp.set.date }} — {{ brand.site_name }}{% endblock %}
+{% from "_quiz.html" import quiz_card with context %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <div class="between" style="align-items:flex-end">
+    <div>
+      <p class="ev-eyebrow">Daily practice · any order</p>
+      <h1 data-practice-title>{{ dpp.set.title }}</h1>
+      <p class="lead">{{ dpp.questions | length }} {{ dpp.questions | length | plural('question') }} ·
+        {{ dpp.set.duration_minutes }} minutes ·
+        answer in any order</p>
+      <p class="tiny muted" style="margin:8px 0 0">The heading follows the calendar day you opened. If that exact day was not published, the questions are the set in rotation for it.</p>
+    </div>
+    <div class="row">{% if active_date %}<a class="btn btn-ghost" href="/dpp">Today</a>{% endif %}
+      <a class="btn btn-soft" href="/practice">{{ icon("grid", 15) }} All sets</a></div>
+  </div>
+</section>
+
+<div class="layout-2">
+  <div class="stack">
+    {% for question in dpp.questions %}
+      {% set position = loop.index %}
+      {% call quiz_card(question, set_id=dpp.set.id, attempt=attempts.get(question.id) if attempts else None) %}
+        <span class="chip">{{ position }} / {{ dpp.questions | length }}</span>
+        <span class="chip diff-{{ question.difficulty }}">{{ question.difficulty }}</span>
+      {% endcall %}
+    {% else %}
+      <div class="empty"><span class="em" aria-hidden="true">{{ icon("calendar", 26) }}</span>No set published for that date.</div>
+    {% endfor %}
+  </div>
+  <aside class="sidebar">
+    <div class="panel tight"><h2 class="h-sub">Other days</h2><div class="day-list" data-recent-sets>
+      {% for s in sets %}<a class="day-list-item {{ 'on' if s.date == active_date }}" href="/dpp/{{ s.date }}">{{ s.title or s.date }}</a>{% endfor %}
+      <a class="small day-list-more" href="/dpp/archive">Browse the full archive {{ icon("chevron", 12) }}</a>
+    </div></div>
+    {% if static_export %}<div class="panel tight"><h2 class="h-sub">Track your progress</h2>
+      <p class="small muted">Answers are checked in your browser. Your streak and mistake notebook are saved on this device only.</p>
+      <a class="btn btn-soft btn-block btn-sm" href="/dashboard">My progress</a></div>
+    {% elif not user %}<div class="panel tight"><h2 class="h-sub">Track your progress</h2>
+      <p class="small muted">Sign in to record answers, build a streak and get a mistake notebook.</p>
+      <a class="btn btn-primary btn-block btn-sm" href="/register">Create a free account</a></div>{% endif %}
+  </aside>
+</div>
+{% endblock %}

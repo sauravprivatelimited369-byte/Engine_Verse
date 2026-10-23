@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Today — {{ brand.site_name }}{% endblock %}
+{% block content %}
+
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Your day</p>
+  <h1>Today's plan</h1>
+  <p class="lead">Three things, in order. Do them and your streak survives. The order matters more than
+    the clock — practise first while the concepts are warm.</p>
+  <div class="row" style="margin-top:16px">
+    <a class="btn btn-primary" href="{% if dpp %}/dpp/{{ dpp.set.date }}{% else %}/dpp{% endif %}">
+      Start with the DPP {{ icon("chevron", 14) }}</a>
+    <a class="btn btn-ghost" href="/streaks">{{ icon("flame", 15) }} My streak</a>
+  </div>
+</section>
+
+<div class="grid g3 plan-today">
+  <div class="panel step-panel">
+    <div class="step-head">
+      <span class="step-num" aria-hidden="true">1</span>
+      <span class="step-ico" aria-hidden="true">{{ icon("target", 18) }}</span>
+      <h2>Practise</h2>
+    </div>
+    {% if dpp %}<p class="muted">{{ dpp.questions | length }} {{ dpp.questions | length | plural('question') }} in today's set.
+      {% if dpp.set.duration_minutes %}About {{ dpp.set.duration_minutes }} minutes.{% endif %}</p>
+      <a class="btn btn-primary btn-block" href="/dpp/{{ dpp.set.date }}">Open today's DPP</a>
+    {% else %}<p class="muted">No set published today. Any recent set still counts as practice.</p>
+      <a class="btn btn-soft btn-block" href="/dpp/archive">Browse past sets</a>{% endif %}
+  </div>
+  <div class="panel step-panel">
+    <div class="step-head">
+      <span class="step-num" aria-hidden="true">2</span>
+      <span class="step-ico" aria-hidden="true">{{ icon("cards", 18) }}</span>
+      <h2>Revise</h2>
+    </div>
+    <p class="muted">{{ cards | length }} flashcard{{ '' if (cards | length) == 1 else 's' }} due now.
+      Spaced repetition keeps the older topics from slipping.</p>
+    <a class="btn btn-primary btn-block" href="/revision">Start reviewing</a>
+  </div>
+  <div class="panel step-panel">
+    <div class="step-head">
+      <span class="step-num" aria-hidden="true">3</span>
+      <span class="step-ico" aria-hidden="true">{{ icon("book", 18) }}</span>
+      <h2>Learn</h2>
+    </div>
+    {% if next_topics %}<p class="muted">Next up: <strong>{{ next_topics[0].title }}</strong></p>
+      <a class="btn btn-primary btn-block" href="/topics/{{ next_topics[0].slug }}">Open topic</a>
+    {% else %}<p class="muted">Pick a subject from the catalogue and read one topic end to end.</p>
+      <a class="btn btn-primary btn-block" href="/explore">Browse subjects</a>{% endif %}
+  </div>
+</div>
+
+{% if next_topics | length > 1 %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <p class="ev-eyebrow">Queue</p>
+      <h2>Up next</h2>
+    </div>
+  </div>
+  <div class="stack">
+    {% for t in next_topics[1:] %}
+      <a class="continue-card" href="/topics/{{ t.slug }}">
+        <span class="continue-mark" aria-hidden="true">{{ icon("book", 16) }}</span>
+        <span class="continue-body"><span class="title">{{ t.title }}</span><span class="desc">{{ t.reason }}</span></span>
+        <span class="card-arrow" aria-hidden="true">{{ icon("chevron", 14) }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if retry %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <p class="ev-eyebrow">Fix these first</p>
+      <h2>Worth another attempt</h2>
+      <p class="section-sub">Your weakest topics, with the shortest route back: re-read, then solve the easy set.</p>
+    </div>
+  </div>
+  <div class="grid g3">
+    {% for plan in retry %}
+      <div class="card">
+        <span class="title">{{ plan.topic.title }}</span>
+        <span class="desc">{{ plan.message }}</span>
+        <div class="stack" style="gap:6px">
+          {% for step in plan.steps %}
+            <a class="btn btn-soft btn-sm btn-block" href="{{ step.url }}">{{ step.label }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

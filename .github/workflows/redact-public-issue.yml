@@ -1,0 +1,64 @@
+name: Redact Public Issue
+
+# Owner-operated companion to docs/INCIDENT_ISSUE_39_REDACTION.md.
+#
+# Why this exists: the agent environment's GitHub App token is scoped
+# `issues: read`, so it cannot edit or close issue #39. The repository's own
+# Actions token can, when a maintainer dispatches this workflow. Nothing runs
+# on a schedule or a push: this is a deliberate, one-off action.
+#
+# Safety:
+#   * `issues: write` is granted to this single job, nothing else.
+#   * scripts/redact_public_issue.py refuses to write unless the issue actually
+#     contains a digest-shaped credential value, so re-running it after the
+#     redaction is a no-op and it cannot overwrite a clean issue.
+#   * It refuses pull requests and a replacement body that carries a digest.
+#   * `confirm` must be typed as `redact-and-close`; input reaches the script
+#     through env vars, never through shell interpolation.
+#   * The script prints the issue number and field names, never the value.
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Issue number to redact and close"
+        required: true
+        default: "39"
+      confirm:
+        description: 'Type "redact-and-close" to confirm'
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: redact-public-issue
+  cancel-in-progress: false
+
+jobs:
+  redact:
+    name: Redact and close the issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Verify the detector, then redact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ inputs.issue }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          python3 scripts/redact_public_issue.py --self-test
+          python3 scripts/redact_public_issue.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --issue "$ISSUE" \
+            --body-file docs/INCIDENT_ISSUE_39_REPLACEMENT_BODY.md \
+            --confirm "$CONFIRM"

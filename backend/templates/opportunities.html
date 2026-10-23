@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Opportunities: hackathons, contests and scholarships — {{ brand.site_name }}{% endblock %}
+{% block description %}A reviewed list of recurring hackathons, programming contests, open-source programmes, scholarships and internships for engineering students, each linked to its official website.{% endblock %}
+{% block content %}
+
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Community · beyond the syllabus</p>
+  <h1>Opportunities</h1>
+  <p class="lead">Recurring hackathons, contests, open-source programmes, scholarships and internships that
+    engineering students can apply to. Every card links straight to the organiser's official website.</p>
+</section>
+
+<aside class="panel opp-notice" role="note">
+  <span class="about-mark" aria-hidden="true">{{ icon("calendar", 18) }}</span>
+  <div>
+    <h2 class="opp-notice-title">Check dates and eligibility on the official site</h2>
+    <p>We do not publish deadlines, prize amounts or stipends because they change every cycle. Each programme sets
+      its own rules, so read the official page before you apply. {{ brand.site_name }} is not affiliated with or
+      endorsed by any organiser listed here. Links last checked by hand on
+      <time datetime="{{ last_reviewed }}">{{ last_reviewed }}</time>.</p>
+  </div>
+</aside>
+
+<form class="opp-filters" data-opp-filters role="search" aria-label="Filter opportunities" hidden>
+  <div class="field opp-search">
+    <label for="opp-q">Search</label>
+    <input id="opp-q" type="search" name="q" placeholder="Try: open source, India, olympiad" autocomplete="off">
+  </div>
+  <div class="field">
+    <label for="opp-region">Region</label>
+    <select id="opp-region" name="region">
+      <option value="">All regions</option>
+      {% for key, label in regions.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <fieldset class="opp-cats">
+    <legend>Category</legend>
+    <div class="chips-row">
+      <button type="button" class="chip accent" data-opp-cat="" aria-pressed="true">All <span class="opp-count">{{ items|length }}</span></button>
+      {% for c in categories %}
+      <button type="button" class="chip" data-opp-cat="{{ c.key }}" aria-pressed="false">{{ c.label }} <span class="opp-count">{{ c.count }}</span></button>
+      {% endfor %}
+    </div>
+  </fieldset>
+</form>
+<p class="opp-status" data-opp-status aria-live="polite"></p>
+
+{% for c in categories %}
+<section class="opp-group" data-opp-group="{{ c.key }}" aria-labelledby="opp-h-{{ c.key }}">
+  <h2 id="opp-h-{{ c.key }}">{{ c.label }}</h2>
+  <div class="grid opp-grid">
+    {% for o in items if o.category == c.key %}
+    <article class="panel opp-card" id="{{ o.slug }}" data-opp-card data-cat="{{ o.category }}" data-region="{{ o.region }}"
+      data-text="{{ (o.title ~ ' ' ~ o.organiser ~ ' ' ~ o.summary ~ ' ' ~ o.tags|join(' ') ~ ' ' ~ o.region_label ~ ' ' ~ o.audience_label)|lower }}">
+      <h3><a href="{{ o.url }}" rel="noopener noreferrer" target="_blank">{{ o.title }}<span class="sr-only"> (official site, opens in a new tab)</span></a></h3>
+      <p class="opp-org">{{ o.organiser }}</p>
+      <p>{{ o.summary }}</p>
+      <ul class="chips-row opp-meta" aria-label="Details">
+        <li class="chip">{{ o.region_label }}</li>
+        <li class="chip">{{ o.audience_label }}</li>
+        {% for t in o.tags %}<li class="chip">{{ t }}</li>{% endfor %}
+      </ul>
+      <p class="opp-cadence"><strong>How often:</strong> {{ o.cadence }}</p>
+      <p><a class="btn btn-soft btn-sm" href="{{ o.url }}" rel="noopener noreferrer" target="_blank">Official website
+        <span class="sr-only">for {{ o.title }}, opens in a new tab</span></a></p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<div class="empty" data-opp-empty hidden>
+  <span class="em" aria-hidden="true">{{ icon("search", 22) }}</span>
+  <p>No opportunities match those filters.</p>
+  <button type="button" class="btn btn-ghost btn-sm" data-opp-reset>Clear filters</button>
+</div>
+
+<section class="panel opp-suggest">
+  <h2>Know a programme we should list?</h2>
+  <p>We only list long-running programmes with an official website. Suggest one through the
+    <a href="/support#suggest">help and contact page</a>. While you prepare, the
+    <a href="/practice">practice hub</a> and <a href="/planner">study planner</a> can help.</p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/opportunities.js" defer></script>{% endblock %}

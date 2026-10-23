@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_quiz.html" import quiz_card with context %}
+{% block title %}{{ language.name }} — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<h1 style="color:{{ language.color }}">{{ language.name }}</h1>
+<p class="muted">{{ language.blurb }}</p>
+<div class="callout"><span class="label">Academy coverage — work in progress</span>
+  {{ academy_coverage.structured }} of {{ academy_coverage.total }} modules have structured learn–practice–prove units.
+  The remaining modules use the legacy lesson format. A syllabus goal is not a completed lesson;
+  reading or self-review is not graded mastery. Existing stage quizzes and coding submissions are separate assessments.</div>
+<details class="panel mt"><summary><strong>Seven-level syllabus and expansion goals</strong></summary>
+  <p class="muted">This is the target learning sequence, not a completeness claim. The three existing course stages below remain unchanged.
+  Module counts do not measure objective, exercise or compiler verification coverage.</p>
+  <ol>{% for level in syllabus %}<li><strong>Level {{ level.level }} · {{ level.title }}</strong><p>{{ level.goals }}</p></li>{% endfor %}</ol>
+</details>
+<p class="mt"><label for="module-filter">Find a module in this course</label>
+  <input id="module-filter" type="search" placeholder="Title or summary" aria-controls="course-modules">
+  <span id="module-filter-status" role="status" class="small muted"></span></p>
+{% if not language.runnable %}
+  <div class="callout warning"><span class="label">No active runtime for this language</span>
+    You can still read every module, take every checkpoint and build the capstone on your own machine. Run
+    support in the browser editor depends on the configured judge provider and its available toolchains —
+    see <code>docs/ARCHITECTURE.md</code>.</div>
+{% endif %}
+
+<div class="stack section" id="course-modules">
+  {% for stage in stages %}
+  <section class="panel" id="stage-{{ stage.stage }}">
+    <div class="between">
+      <h2>Stage {{ stage.order_index + 1 }}: {{ stage.title }}</h2>
+      <div class="tags"><span class="chip">{{ stage.modules | length }} module{{ 's' if stage.modules | length != 1 }}</span>
+        <span class="chip">{{ stage.checkpoints | length }} checkpoint question{{ 's' if stage.checkpoints | length != 1 }}</span></div>
+    </div>
+    <p class="muted">{{ stage.summary }}</p>
+
+    <div class="stack">
+      {% for module in stage.modules %}
+      <section class="panel tight" id="{{ module.slug }}" data-module-card>
+        <h3>{{ module.order_index + 1 }}. {{ module.title }}</h3>
+        <p class="muted">{{ module.summary }}</p>
+        <p><span class="chip">{{ 'Structured learning unit' if module.has_structured_lesson else 'Legacy module · expansion pending' }}</span></p>
+        <p><a class="btn btn-primary" href="/programming/{{ language.slug }}/lessons/{{ module.slug }}">Read lesson and practice →</a></p>
+        {% if module.practice %}
+        <p class="mt"><a class="btn btn-primary" href="/practice/problems/{{ module.practice.slug }}">Related problem: {{ module.practice.title }} →</a>
+          <span class="chip diff-{{ module.practice.difficulty }}">{{ module.practice.difficulty }}</span></p>
+        {% endif %}
+      </section>
+      {% endfor %}
+    </div>
+
+    {% if stage.checkpoints %}
+    <div class="mt">
+      <h3>{{ stage.title }} checkpoint</h3>
+      <p class="small muted">Answer all three through your practice account: results, explanations and XP
+        appear after you submit — never before. XP is knowledge-based: the first time you answer a question
+        correctly it pays its difficulty value; a wrong answer still records the attempt and keeps the
+        question in your mistake notebook, but earns no XP — exactly like the daily practice sets.</p>
+      {% for question in stage.checkpoints %}
+      {% set position = loop.index %}
+      {% call quiz_card(question, attempt=attempts.get(question.id) if attempts else None, card_class="mb") %}
+        <span class="chip">Question {{ position }} of {{ stage.checkpoints | length }}</span>
+        <span class="chip diff-{{ question.difficulty }}">{{ question.difficulty }}</span>
+      {% endcall %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% else %}<div class="empty"><span class="em" aria-hidden="true">{{ icon("book", 26) }}</span>Modules are being written.</div>{% endfor %}
+</div>
+
+{% if capstone %}
+<section class="section panel">
+  <div class="between"><h2>Capstone project</h2>
+    <div class="tags"><span class="chip accent">{{ capstone.difficulty }}</span>
+      <span class="chip">{{ capstone.est_hours }} hours</span></div></div>
+  <p class="muted">{{ capstone.summary }}</p>
+  <p class="small muted">The brief carries the problem statement, prerequisites, ordered build milestones,
+    testing expectations, resources and the shippable result — the checkpoints above are the gates on the
+    way to it.</p>
+  <a class="btn btn-primary" href="/projects/{{ capstone.slug }}">Open the {{ capstone.title }} brief →</a>
+</section>
+{% endif %}
+
+<section class="section"><h2>Practise {{ language.name }}</h2>
+  {% if problems %}
+  <p class="small muted">Problems with a {{ language.name }} starter in the editor.</p>
+  <div class="grid g4">{% for p in problems %}
+    <a class="card" href="/practice/problems/{{ p.slug }}"><span class="title">{{ p.title }}</span>
+      <span class="chip diff-{{ p.difficulty }}">{{ p.difficulty }}</span></a>{% endfor %}</div>
+  {% else %}
+  <div class="empty"><span class="em" aria-hidden="true">{{ icon("layers", 26) }}</span>No coding problem has a {{ language.name }} starter yet.
+    The problem set is honest about that rather than opening an editor that cannot run your language —
+    the modules, checkpoints and capstone above are all fully usable.
+    <a href="/practice/problems">Browse all problems →</a></div>
+  {% endif %}
+  <p class="small mt"><a href="/practice/problems">All coding problems →</a></p>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/academy.js" defer></script>{% endblock %}

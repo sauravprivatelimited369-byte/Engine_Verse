@@ -1,0 +1,1660 @@
+#!/usr/bin/env python3
+"""EngineVerse database seeder.
+
+Builds a complete, realistic content library from the modules in ``seed_data/``.
+Safe to re-run: it wipes content tables first and rebuilds from scratch, so a
+fresh checkout and a developer machine converge on exactly the same data.
+
+Usage
+-----
+    python scripts/seed.py            # seed into the configured database
+    python scripts/seed.py --fresh    # drop and recreate the schema first
+    python scripts/seed.py --stats    # print a row count summary and exit
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for path in (ROOT, os.path.join(ROOT, "backend")):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+from engineverse import auth, brand, community, db, diagrams, models3d, progress, search  # noqa: E402
+from engineverse.config import get_settings  # noqa: E402
+from engineverse.judge import local as judge_local  # noqa: E402
+from engineverse import drivers  # noqa: E402
+from engineverse.security.ids import ulid  # noqa: E402
+from engineverse.security.sanitize import slugify  # noqa: E402
+
+from seed_data import branches as branch_data  # noqa: E402
+from seed_data import catalog as catalog_data  # noqa: E402
+from seed_data import library_data  # noqa: E402
+from seed_data import models_3d as model_content  # noqa: E402
+from seed_data import flashcards_extra as flashcard_content  # noqa: E402
+from seed_data import diagrams_data  # noqa: E402
+from seed_data import notes_extra  # noqa: E402
+from seed_data import resource_sources  # noqa: E402
+from seed_data import practice_data  # noqa: E402
+from seed_data import coding_book  # noqa: E402
+from seed_data import coding_core  # noqa: E402
+from seed_data import coding_sheets as sheet_data  # noqa: E402
+from seed_data import coding_streams  # noqa: E402
+from seed_data import topics_core  # noqa: E402
+from seed_data import topics_cse  # noqa: E402
+from seed_data import foundations as topics_foundations  # noqa: E402
+from seed_data import subject_paths  # noqa: E402
+from seed_data import community_data  # noqa: E402
+from seed_data import language_paths  # noqa: E402
+from seed_data import language_foundations  # noqa: E402
+from seed_data import language_book_c  # noqa: E402
+from seed_data import language_book_cpp  # noqa: E402
+from seed_data import language_book_csharp  # noqa: E402
+from seed_data import language_book_java  # noqa: E402
+from seed_data import language_book_js  # noqa: E402
+from seed_data import language_book_other  # noqa: E402
+from seed_data import language_book_py  # noqa: E402
+from seed_data import language_curriculum  # noqa: E402
+from seed_data import language_projects  # noqa: E402
+from seed_data import academy  # noqa: E402
+
+
+#: The book-depth modules merged after the legacy catalogue in
+#: ``seed_languages`` (language -> module rows), and the per-module judged
+#: problem each book module ends with (module slug -> problem slug).
+BOOK_MODULES_BY_LANGUAGE: dict[str, list[tuple]] = {}
+BOOK_PRACTICE: dict[str, str] = {}
+for _book in (language_book_py, language_book_java, language_book_c, language_book_cpp,
+              language_book_csharp, language_book_js, language_book_other):
+    for _language, _rows in _book.BOOK_MODULES.items():
+        BOOK_MODULES_BY_LANGUAGE.setdefault(_language, []).extend(_rows)
+    for _module, _problem in _book.MODULE_PRACTICE.items():
+        if _module in BOOK_PRACTICE:
+            raise RuntimeError(f"two book modules share the slug {_module!r}")
+        BOOK_PRACTICE[_module] = _problem
+del _book, _language, _rows, _module, _problem
+
+
+def now_ms() -> int:
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
+def jdump(value) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# The 13-section engineering note template.
+#
+#   1 simple        2 definition     3 intuition      4 points
+#   5 formula       6 derivation     7 example        8 applications
+#   9 mistakes     10 exam          11 interview     12 diagram
+#  13 industry
+#
+# Every topic is expanded into up to four reading depths. Each depth is a real,
+# distinct document assembled from the authored material, not a copy with a
+# different label:
+#
+#   beginner -> sections 1, 4, 7, 9          (short first read)
+#   standard -> all 13 sections              (the full note)
+#   advanced -> 2, 5, 6, 7, 10               (rigour and derivation)
+#   industry -> 8, 13, 11, 9                 (how it is used at work)
+# ---------------------------------------------------------------------------
+
+SECTIONS = [
+    ("simple", "Explain it simply", "remember"),
+    ("definition", "Formal definition", None),
+    ("intuition", "Intuition - why it works", "remember"),
+    ("points", "Key points", None),
+    ("formula", "Formula and variables", "exam"),
+    ("derivation", "Derivation", None),
+    ("example", "Worked example", "exam"),
+    ("applications", "Real-world applications", "realworld"),
+    ("mistakes", "Common mistakes", "warning"),
+    ("exam", "Exam questions", "exam"),
+    ("interview", "Interview questions", "interview"),
+    ("diagram", "Diagram", None),
+    ("industry", "Industry practice", "realworld"),
+]
+
+DEPTHS = {
+    "beginner": ["simple", "points", "example", "mistakes"],
+    "standard": [kind for kind, _, _ in SECTIONS],
+    "advanced": ["definition", "formula", "derivation", "example", "exam"],
+    "industry": ["applications", "industry", "interview", "mistakes"],
+}
+
+
+def formula_body(formula: dict) -> str:
+    lines = [f"**{formula['name']}**", "", f"$$ {formula['latex']} $$", "", "| Symbol | Meaning | Unit |",
+             "| --- | --- | --- |"]
+    for variable in formula.get("variables", []):
+        lines.append(f"| ${variable['s']}$ | {variable['n']} | {variable['u']} |")
+    if formula.get("conditions"):
+        lines += ["", f"**Valid when:** {formula['conditions']}"]
+    return "\n".join(lines)
+
+
+def example_body(example: dict) -> str:
+    parts = [f"**Problem.** {example['problem']}"]
+    if example.get("approach"):
+        parts.append(f"\n**Approach.** {example['approach']}")
+    if example.get("solution"):
+        parts.append(f"\n**Solution.**\n\n{example['solution']}")
+    if example.get("answer"):
+        parts.append(f"\n**Answer.** {example['answer']}")
+    return "\n".join(parts)
+
+
+def bullet_list(items: list[str]) -> str:
+    return "\n".join(f"- {item}" for item in items)
+
+
+def numbered_list(items: list[str]) -> str:
+    return "\n".join(f"{index}. {item}" for index, item in enumerate(items, start=1))
+
+
+def section_body(kind: str, topic: dict, slug: str = "") -> str:
+    if kind == "simple":
+        return topic["simple"] or topic["summary"]
+    if kind == "definition":
+        return topic["definition"]
+    if kind == "intuition":
+        return topic["intuition"]
+    if kind == "points":
+        return bullet_list(topic["points"])
+    # The four fields below were empty for most topics, so the gaps are filled
+    # from seed_data.notes_extra keyed by slug. The topic table still wins when
+    # it has content, so nothing here shadows hand-written material.
+    if kind == "formula":
+        formula = topic["formula"] or notes_extra.formula(slug)
+        return formula_body(formula) if formula else ""
+    if kind == "derivation":
+        return topic["derivation"] or notes_extra.derivation(slug)
+    if kind == "example":
+        example = topic["example"] or notes_extra.example(slug)
+        if not example:
+            return ""
+        body = example_body(example)
+        second = topic.get("second_example")
+        if second:
+            # A second, independent problem: the first shows the method, the
+            # second checks that the method - and not one memorised number - is
+            # what the learner took away.
+            body += "\n\n**Second worked check.**\n\n" + example_body(second)
+        return body
+    if kind == "applications":
+        return bullet_list(topic["applications"])
+    if kind == "mistakes":
+        return bullet_list(topic["mistakes"])
+    if kind == "exam":
+        return numbered_list(topic["exam"])
+    if kind == "interview":
+        return numbered_list(topic["interview"])
+    if kind == "industry":
+        return topic["industry"] or notes_extra.industry(slug)
+    if kind == "diagram":
+        # Reads from diagrams_data, which covers every topic. The old
+        # library_data.DIAGRAMS had six entries, so 42 notes rendered this
+        # section empty while the diagram itself appeared elsewhere on the page.
+        try:
+            scene = diagrams_data.build(slug)
+        except KeyError:
+            return ""
+        return (f"_See the interactive diagram: **{scene['title']}** below._\n\n"
+                f"{scene['caption']}")
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# Catalogue
+# ---------------------------------------------------------------------------
+
+def seed_config() -> None:
+    brand.set_many(library_data.SITE_CONFIG)
+
+
+COLLEGE_IDS: dict[str, str] = {}
+
+
+def seed_universities() -> dict[str, str]:
+    university_ids: dict[str, str] = {}
+    with db.transaction():
+        for slug, name, code, country, region in catalog_data.UNIVERSITIES:
+            university_ids[slug] = slug
+            db.execute(
+                "INSERT INTO universities (id,name,code,country,region,website,created_at) VALUES (?,?,?,?,?,NULL,?) "
+                "ON CONFLICT(id) DO NOTHING",
+                slug, name, code, country, region, now_ms(),
+            )
+        for university_slug, name, city in catalog_data.COLLEGES:
+            country = next(
+                (entry[3] for entry in catalog_data.UNIVERSITIES if entry[0] == university_slug), "India"
+            )
+            college_id = slugify(name)
+            COLLEGE_IDS[name] = college_id
+            db.execute(
+                "INSERT INTO colleges (id,university_id,name,city,country) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(id) DO NOTHING",
+                college_id, university_ids.get(university_slug), name, city, country,
+            )
+    return university_ids
+
+
+def seed_branches() -> dict[str, str]:
+    ids: dict[str, str] = {}
+    with db.transaction():
+        for index, (slug, name, category, icon, color, description) in enumerate(branch_data.BRANCHES):
+            ids[slug] = slug
+            db.execute(
+                "INSERT INTO branches (id,slug,name,category,description,icon,color,order_index,is_active) "
+                "VALUES (?,?,?,?,?,?,?,?,1) ON CONFLICT(id) DO UPDATE SET name=excluded.name, "
+                "category=excluded.category, description=excluded.description, icon=excluded.icon, "
+                "color=excluded.color",
+                slug, slug, name, category, description, icon, color, index,
+            )
+    return ids
+
+
+def seed_semesters() -> None:
+    with db.transaction():
+        for semester_id, label, year in catalog_data.SEMESTERS:
+            db.execute(
+                "INSERT INTO semesters (id,label,year) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET label=excluded.label",
+                semester_id, label, year,
+            )
+
+
+def seed_subjects(branch_ids: dict[str, str]) -> dict[str, str]:
+    ids: dict[str, str] = {}
+    with db.transaction():
+        for index, entry in enumerate(catalog_data.SUBJECTS):
+            slug, name, branch_slug, semester, first_year, code, credits, difficulty, icon, color, description = entry
+            subject_id = slug
+            ids[slug] = subject_id
+            db.execute(
+                "INSERT INTO subjects (id,slug,name,branch_id,semester_id,code,credits,difficulty,description,icon,"
+                "color,is_first_year,order_index,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'published') "
+                "ON CONFLICT(id) DO UPDATE SET name=excluded.name, description=excluded.description, status='published'",
+                subject_id, slug, name, branch_ids.get(branch_slug) if branch_slug else None, semester,
+                code, credits, difficulty, description, icon, color, 1 if first_year else 0, index,
+            )
+    return ids
+
+
+def seed_curricula(subject_ids: dict[str, str], branch_ids: dict[str, str], university_ids: dict[str, str]) -> None:
+    """Bind a real subject list to each (university, branch) so nothing is hard-coded in the UI."""
+    by_branch: dict[str, list[tuple[str, int]]] = {}
+    for entry in catalog_data.SUBJECTS:
+        slug, branch_slug, semester = entry[0], entry[2], entry[3]
+        if branch_slug:
+            by_branch.setdefault(branch_slug, []).append((slug, semester))
+        else:
+            # First-year common subjects belong to every branch.
+            for every in branch_ids:
+                by_branch.setdefault(every, []).append((slug, semester))
+
+    with db.transaction():
+        for university_slug in ("generic", "NPTEL", "MITOCW", "IIT"):
+            university_id = university_ids.get(university_slug)
+            if not university_id:
+                continue
+            for branch_slug, subjects in by_branch.items():
+                branch_id = branch_ids.get(branch_slug)
+                if not branch_id:
+                    continue
+                branch_name = branch_slug.replace("-", " ").title()
+                curriculum_id = f"{university_slug}-{branch_slug}"
+                db.execute(
+                    "INSERT INTO curricula (id,university_id,branch_id,name,effective_year,is_active) "
+                    "VALUES (?,?,?,?,2024,1) ON CONFLICT(id) DO NOTHING",
+                    curriculum_id, university_id, branch_id, f"{branch_name} Syllabus 2024",
+                )
+                for subject_slug, semester in subjects:
+                    subject_id = subject_ids.get(subject_slug)
+                    if not subject_id:
+                        continue
+                    db.execute(
+                        "INSERT INTO curriculum_subjects (curriculum_id,subject_id,semester_id,is_core) "
+                        "VALUES (?,?,?,1) ON CONFLICT(curriculum_id,subject_id) DO NOTHING",
+                        curriculum_id, subject_id, semester,
+                    )
+
+
+# ---------------------------------------------------------------------------
+# Topics, modules, notes, diagrams, formulas
+# ---------------------------------------------------------------------------
+
+def seed_topics(subject_ids: dict[str, str]) -> dict[str, str]:
+    """Returns slug -> topic id for every seeded topic."""
+    all_topics = (list(topics_cse.TOPICS) + list(topics_core.TOPICS)
+                  + list(topics_foundations.TOPICS) + list(subject_paths.TOPICS))
+    topic_ids: dict[str, str] = {}
+    module_ids: dict[str, str] = {}
+    per_subject_index: dict[str, int] = {}
+    ts = now_ms()
+
+    with db.transaction():
+        for entry in all_topics:
+            subject_slug = entry["subject"]
+            subject_id = subject_ids.get(subject_slug)
+            if not subject_id:
+                print(f"  ! skipped topic '{entry['title']}' - unknown subject '{subject_slug}'")
+                continue
+            slug = slugify(entry["title"])
+            if slug in topic_ids:
+                continue
+            order = per_subject_index.get(subject_slug, 0)
+            per_subject_index[subject_slug] = order + 1
+            topic_id = slug
+            topic_ids[slug] = topic_id
+            db.execute(
+                "INSERT INTO topics (id,slug,subject_id,module_id,title,summary,difficulty,est_minutes,order_index,"
+                "prerequisites,tags,status,accuracy_state,version,view_count,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,'[]',?,'published',?,1,0,?,?) "
+                "ON CONFLICT(id) DO UPDATE SET title=excluded.title, summary=excluded.summary, "
+                "tags=excluded.tags, status='published', accuracy_state=excluded.accuracy_state, "
+                "updated_at=excluded.updated_at",
+                topic_id, slug, subject_id, None, entry["title"], entry["summary"], entry["difficulty"],
+                entry["minutes"], order, jdump(entry["tags"]), entry.get("accuracy_state", "reviewed"), ts, ts,
+            )
+
+        # One module per subject so the subject page can group its topics.
+        for subject_slug, subject_id in subject_ids.items():
+            count = db.scalar("SELECT count(*) AS c FROM topics WHERE subject_id = ?", subject_id)
+            if not count:
+                continue
+            name = db.scalar("SELECT name FROM subjects WHERE id = ?", subject_id) or subject_slug
+            module_id = f"{subject_slug}::essentials"
+            module_ids[subject_slug] = module_id
+            db.execute(
+                "INSERT INTO modules (id,subject_id,slug,title,summary,order_index) VALUES (?,?,?,?,?,0) "
+                "ON CONFLICT(id) DO NOTHING",
+                module_id, subject_id, "essentials", f"{name} Essentials",
+                f"The core topics of {name}, in reading order.",
+            )
+            db.execute("UPDATE topics SET module_id = ? WHERE subject_id = ?", module_id, subject_id)
+
+    return topic_ids
+
+
+def seed_notes(topic_ids: dict[str, str]) -> int:
+    all_topics = {
+        slugify(entry["title"]): entry
+        for entry in (list(topics_cse.TOPICS) + list(topics_core.TOPICS)
+                      + list(topics_foundations.TOPICS) + list(subject_paths.TOPICS))
+    }
+    # Content keyed to a topic that no longer exists would simply stop rendering,
+    # so fail on it rather than letting a rename silently orphan the material.
+    stale = notes_extra.unknown_keys(set(all_topics))
+    if stale:
+        raise KeyError(f"note content keyed to topics that do not exist: {stale}")
+    ts = now_ms()
+    notes = 0
+    with db.transaction():
+        for slug, topic_id in topic_ids.items():
+            entry = all_topics.get(slug)
+            if not entry:
+                continue
+            for depth, kinds in DEPTHS.items():
+                wanted = [k for k in kinds if section_body(k, entry, slug)]
+                if not wanted:
+                    continue
+                note_id = f"{slug}::{depth}"
+                db.execute(
+                    "INSERT INTO notes (id,topic_id,quality_level,language,status,version,created_at,updated_at) "
+                    "VALUES (?,?,?,'en','published',1,?,?) ON CONFLICT(id) DO UPDATE SET "
+                    "status='published', version=excluded.version, updated_at=excluded.updated_at",
+                    note_id, topic_id, depth, ts, ts,
+                )
+                for order, kind in enumerate(wanted):
+                    title = next(t for k, t, _ in SECTIONS if k == kind)
+                    callout = next(c for k, _, c in SECTIONS if k == kind)
+                    db.execute(
+                        "INSERT INTO note_sections (id,note_id,kind,title,body,callout,order_index) VALUES (?,?,?,?,?,?,?) "
+                        "ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, title=excluded.title, "
+                        "body=excluded.body, callout=excluded.callout, order_index=excluded.order_index",
+                        f"{note_id}::{kind}", note_id, kind, title, section_body(kind, entry, slug), callout, order,
+                    )
+                notes += 1
+    return notes
+
+
+def seed_diagrams(topic_ids: dict[str, str]) -> int:
+    """Render one diagram per topic from ``diagrams_data`` and store it.
+
+    Every diagram is built through ``diagrams.render()``, which validates the
+    scene and rebuilds the SVG from scratch. A topic with no diagram authored
+    raises rather than being skipped: six of forty-eight topics had a diagram
+    under the old hand-written path, and the other forty-two rendered their
+    notes with no picture at all while the seed reported success.
+    """
+    missing = sorted(set(topic_ids) - set(diagrams_data.all_slugs()))
+    if missing:
+        raise KeyError(f"{len(missing)} topics have no diagram authored: {missing[:6]}")
+    count = 0
+    with db.transaction():
+        for slug, topic_id in topic_ids.items():
+            scene = diagrams_data.build(slug)
+            spec, hotspots = diagrams.render(scene)
+            db.execute(
+                "INSERT INTO diagrams (id,topic_id,title,kind,spec,caption,hotspots,source_ref,created_at) "
+                "VALUES (?,?,?,?,?,?,?,'EngineVerse',?) ON CONFLICT(id) DO UPDATE SET spec=excluded.spec",
+                f"{slug}::diagram", topic_id, scene["title"], "svg", spec, scene["caption"],
+                hotspots, now_ms(),
+            )
+            count += 1
+    return count
+
+
+def seed_models_3d(topic_ids: dict[str, str]) -> int:
+    """Write the 3D models, validating each one on the way in.
+
+    A scene that does not survive ``validate_scene()`` is skipped with a
+    warning rather than stored, so a bad edit to seed_data/models_3d.py shows
+    up here instead of as a broken page later.
+    """
+    count = 0
+    with db.transaction():
+        for slug, topic_id in sorted(topic_ids.items()):
+            entry = model_content.MODELS_3D.get(slug)
+            if not entry:
+                continue
+            encoded = models3d.scene_json(entry["scene"])
+            if not encoded:
+                print(f"  ! skipped 3D model for {slug}: the scene did not validate")
+                continue
+            db.execute(
+                "INSERT INTO models_3d (id,topic_id,title,caption,scene,source_ref,order_index,created_at) "
+                "VALUES (?,?,?,?,?, 'EngineVerse', 0, ?) "
+                "ON CONFLICT(id) DO UPDATE SET title=excluded.title, caption=excluded.caption, scene=excluded.scene",
+                f"{slug}::3d", topic_id, entry["title"], entry["caption"], encoded, now_ms(),
+            )
+            count += 1
+    return count
+
+
+def seed_formulas(subject_ids: dict[str, str], topic_ids: dict[str, str]) -> None:
+    with db.transaction():
+        for index, entry in enumerate(library_data.FORMULAS):
+            slug, subject_slug, category, name, latex, variables, meaning, application, example, constraints = entry
+            db.execute(
+                "INSERT INTO formulas (id,slug,subject_id,topic_id,category,name,latex,variables,meaning,application,"
+                "example_latex,constraints,order_index) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(slug) DO UPDATE SET latex=excluded.latex, meaning=excluded.meaning",
+                slug, slug, subject_ids.get(subject_slug), topic_ids.get(slug), category, name, latex,
+                jdump([{"symbol": s, "name": n, "unit": u} for s, n, u in variables]),
+                meaning, application, example, constraints, index,
+            )
+
+        for index, entry in enumerate(subject_paths.TOPICS, start=len(library_data.FORMULAS)):
+            topic_slug = slugify(entry["title"])
+            formula_slug = f"{topic_slug}-relation"
+            formula = entry["formula"]
+            subject_name = db.scalar("SELECT name FROM subjects WHERE id = ?", subject_ids[entry["subject"]])
+            category = db.scalar(
+                "SELECT b.category FROM subjects s LEFT JOIN branches b ON b.id = s.branch_id WHERE s.id = ?",
+                subject_ids[entry["subject"]],
+            ) or "core"
+            db.execute(
+                "INSERT INTO formulas (id,slug,subject_id,topic_id,category,name,latex,variables,meaning,application,"
+                "example_latex,constraints,order_index) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(slug) DO UPDATE SET topic_id=excluded.topic_id, name=excluded.name, "
+                "latex=excluded.latex, variables=excluded.variables, meaning=excluded.meaning, "
+                "application=excluded.application, example_latex=excluded.example_latex, constraints=excluded.constraints",
+                formula_slug, formula_slug, subject_ids[entry["subject"]], topic_ids[topic_slug], category,
+                formula["name"], formula["latex"],
+                jdump([{"symbol": v["s"], "name": v["n"], "unit": v["u"]} for v in formula["variables"]]),
+                entry["summary"], f"{subject_name}: {entry['applications'][0]}",
+                entry["example"]["solution"], formula["conditions"], index,
+            )
+
+
+# ---------------------------------------------------------------------------
+# Practice
+# ---------------------------------------------------------------------------
+
+def seed_questions(subject_ids: dict[str, str], topic_ids: dict[str, str]) -> dict[str, str]:
+    """Seed the authored bank, one concept-check per topic and every stage checkpoint."""
+    all_topics = (list(topics_cse.TOPICS) + list(topics_core.TOPICS)
+                  + list(topics_foundations.TOPICS) + list(subject_paths.TOPICS))
+    entries: list[dict] = []
+    for original in practice_data.QUESTIONS:
+        entry = dict(original)
+        entry["topic"] = subject_paths.resolve_question_topic(entry, all_topics)
+        entries.append(entry)
+    entries.extend(subject_paths.questions_for_topics(all_topics))
+    # Language-stage checkpoints are ordinary bank questions: same table, same
+    # grading, same attempt-based XP, same DPP rotation. The
+    # language_checkpoints link rows (written once the languages exist) are the
+    # only thing that makes them checkpoints.
+    entries.extend(language_curriculum.checkpoint_questions())
+
+    ids: dict[str, str] = {}
+    with db.transaction():
+        for entry in entries:
+            slug = slugify(entry["title"])
+            if slug in ids:
+                continue
+            question_id = slug
+            ids[slug] = question_id
+            subject_slug = entry.get("subject")
+            subject_id = subject_ids.get(subject_slug)
+            if not subject_id:
+                raise RuntimeError(
+                    f"question {slug!r} refers to missing subject {subject_slug!r}"
+                )
+            topic_slug = entry.get("topic")
+            topic_id = topic_ids.get(topic_slug) if topic_slug else None
+            if topic_slug and not topic_id:
+                raise RuntimeError(f"question {slug!r} refers to missing topic {topic_slug!r}")
+            tags = list(entry.get("tags") or [])
+            source = entry.get("source") or "EngineVerse Bank"
+            if source not in tags:
+                tags.append(source)
+            db.execute(
+                "INSERT INTO questions (id,slug,topic_id,subject_id,kind,difficulty,stem,explanation,answer_index,"
+                "tags,time_weight,is_active,created_at) VALUES (?,?,?,?, 'mcq',?,?,?,?,?,1,1,?) "
+                "ON CONFLICT(id) DO UPDATE SET topic_id=COALESCE(excluded.topic_id,questions.topic_id), "
+                "subject_id=excluded.subject_id, difficulty=excluded.difficulty, stem=excluded.stem, "
+                "explanation=excluded.explanation, answer_index=excluded.answer_index, tags=excluded.tags, is_active=1",
+                question_id, slug, topic_id, subject_id, entry["difficulty"],
+                entry.get("statement", entry.get("stem", "")), entry["explanation"],
+                entry["correct"], jdump(tags), now_ms(),
+            )
+            for position, option in enumerate(entry["options"]):
+                label = chr(ord("A") + position)
+                db.execute(
+                    "INSERT INTO question_options (id,question_id,label,body,is_correct,order_index) "
+                    "VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body, "
+                    "is_correct=excluded.is_correct, order_index=excluded.order_index",
+                    f"{question_id}::{label}", question_id, label, option,
+                    1 if position == entry["correct"] else 0, position,
+                )
+    return ids
+
+
+def _schedule_dpp_questions(
+    questions_by_subject: list[list[str]], per_set: int = 5
+) -> list[list[str]]:
+    """Interleave subject question queues into full sets without duplicate ids."""
+    if per_set < 1:
+        raise ValueError("per_set must be positive")
+    groups = [list(group) for group in questions_by_subject if group]
+    question_ids = [question_id for group in groups for question_id in group]
+    if len(question_ids) != len(set(question_ids)):
+        raise ValueError("a question may appear in only one subject queue")
+    if len(question_ids) < per_set:
+        raise RuntimeError(f"DPP rotation needs at least {per_set} active questions")
+
+    subject_for = {
+        question_id: subject_index
+        for subject_index, group in enumerate(groups)
+        for question_id in group
+    }
+    positions = [0] * len(groups)
+    remaining = len(question_ids)
+    cursor = 0
+    scheduled_sets: list[list[str]] = []
+    while remaining:
+        daily: list[str] = []
+        used_subjects: set[int] = set()
+        while len(daily) < per_set and remaining:
+            for offset in range(len(groups)):
+                subject_index = (cursor + offset) % len(groups)
+                if subject_index not in used_subjects and positions[subject_index] < len(groups[subject_index]):
+                    break
+            else:
+                # Near the end, fewer than five subjects may still have new
+                # questions. Keep the set full with a distinct question from
+                # the subject that has the largest remaining queue.
+                pending = [index for index, group in enumerate(groups) if positions[index] < len(group)]
+                if not pending:
+                    break
+                subject_index = max(
+                    pending,
+                    key=lambda index: (
+                        len(groups[index]) - positions[index],
+                        -((index - cursor) % len(groups)),
+                    ),
+                )
+            daily.append(groups[subject_index][positions[subject_index]])
+            positions[subject_index] += 1
+            remaining -= 1
+            used_subjects.add(subject_index)
+            cursor = (subject_index + 1) % len(groups)
+        scheduled_sets.append(daily)
+
+    if len(scheduled_sets[-1]) < per_set:
+        final_set = scheduled_sets[-1]
+        needed = per_set - len(final_set)
+        already_in_final = set(final_set)
+        earlier = [question_id for daily in scheduled_sets[:-1] for question_id in daily
+                   if question_id not in already_in_final]
+        final_subjects = {subject_for[question_id] for question_id in final_set}
+        preferred = [question_id for question_id in earlier
+                     if subject_for[question_id] not in final_subjects]
+        preferred_set = set(preferred)
+        fillers = preferred + [question_id for question_id in earlier if question_id not in preferred_set]
+        if len(fillers) < needed:
+            raise RuntimeError("cannot fill final DPP set without repeating a question within the set")
+        final_set.extend(fillers[:needed])
+    if any(len(daily) != per_set for daily in scheduled_sets):
+        raise RuntimeError("DPP rotation could not form complete five-question sets")
+    return scheduled_sets
+
+
+def seed_dpp() -> int:
+    """Publish five-question sets that cover the active bank and mix subjects.
+
+    Questions are interleaved by subject: the first pass gives every subject a
+    place before a second question from any one subject appears. The dated
+    archive grows with the question bank, rather than leaving most active
+    questions reachable only from the question-bank page.
+    """
+    subjects = db.query("SELECT id, slug FROM subjects WHERE status='published' ORDER BY order_index, slug")
+    if not subjects:
+        return 0
+
+    questions_by_subject: list[list[str]] = []
+    for subject in subjects:
+        rows = db.query(
+            "SELECT q.id FROM questions q WHERE q.subject_id = ? AND q.is_active = 1 "
+            "ORDER BY CASE WHEN q.topic_id IS NULL THEN 1 ELSE 0 END, q.id",
+            subject["id"],
+        )
+        if not rows:
+            raise RuntimeError(f"subject {subject['slug']!r} has no question for the DPP rotation")
+        questions_by_subject.append([row["id"] for row in rows])
+
+    scheduled_sets = _schedule_dpp_questions(questions_by_subject)
+    day_count = len(scheduled_sets)
+    today = datetime.now(timezone.utc).date()
+    sets = 0
+    with db.transaction():
+        for day_index in range(day_count):
+            day = today - timedelta(days=day_count - day_index - 1)
+            window = scheduled_sets[day_index]
+            set_id = f"dpp-{day.isoformat()}"
+            db.execute(
+                "INSERT INTO dpp_sets (id,date,title,subject_id,difficulty,duration_minutes,published,created_at) "
+                "VALUES (?,?,?,NULL,'mixed',30,1,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title, "
+                "published=1, duration_minutes=excluded.duration_minutes",
+                set_id, day.isoformat(), f"Daily Practice - {day.strftime('%d %B %Y')}", now_ms(),
+            )
+            db.execute("DELETE FROM dpp_questions WHERE set_id = ?", set_id)
+            for position, question_id in enumerate(window):
+                db.execute(
+                    "INSERT INTO dpp_questions (set_id,question_id,position) VALUES (?,?,?) "
+                    "ON CONFLICT(set_id,question_id) DO UPDATE SET position=excluded.position",
+                    set_id, question_id, position,
+                )
+            sets += 1
+    return sets
+
+
+# ---------------------------------------------------------------------------
+# Coding
+# ---------------------------------------------------------------------------
+
+def seed_languages() -> dict[str, str]:
+    ids: dict[str, str] = {}
+    with db.transaction():
+        for index, (slug, name, icon, color, blurb, judge) in enumerate(library_data.LANGUAGES):
+            ids[slug] = slug
+            # runnable is derived, not asserted. It used to be hard-coded to 1,
+            # which offered languages in the code editor's picker with no
+            # warning and then returned "unsupported_language" on Run. Deriving
+            # it from the local runner table keeps the seeded flag honest for
+            # whatever this host can actually execute (every catalogue language
+            # has a runner; the toolchain still has to be installed).
+            runnable = 1 if judge in judge_local.RUNNERS else 0
+            db.execute(
+                "INSERT INTO programming_languages (id,slug,name,icon,color,blurb,judge_slug,runnable,order_index) "
+                "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET blurb=excluded.blurb, "
+                "judge_slug=excluded.judge_slug, runnable=excluded.runnable",
+                slug, slug, name, icon, color, blurb, judge, runnable, index,
+            )
+        modules_by_language: dict[str, list[tuple]] = {}
+        for language_slug in ids:
+            modules: list[tuple] = []
+            seen: set[str] = set()
+            for row in language_foundations.FOUNDATION_MODULES.get(language_slug, []):
+                if row[0] not in seen:
+                    modules.append(row)
+                    seen.add(row[0])
+            for row in library_data.LANGUAGE_MODULES.get(language_slug, []):
+                if row[0] not in seen:
+                    modules.append(row)
+                    seen.add(row[0])
+            for row in language_paths.EXTRA_MODULES.get(language_slug, []):
+                if row[0] not in seen:
+                    modules.append(row)
+                    seen.add(row[0])
+            for row in BOOK_MODULES_BY_LANGUAGE.get(language_slug, []):
+                if row[0] not in seen:
+                    modules.append(row)
+                    seen.add(row[0])
+            modules_by_language[language_slug] = modules
+
+        # Fail before writing anything if the staged curriculum has drifted from
+        # the module catalogue: a module with no stage, a stage assignment to a
+        # module that does not exist, or a language missing a stage would all
+        # render as a silently shorter path otherwise.
+        language_curriculum.validate(
+            set(ids), {slug: [row[0] for row in rows] for slug, rows in modules_by_language.items()}
+        )
+        academy.validate_catalogue({slug: [row[0] for row in rows] for slug, rows in modules_by_language.items()})
+        stage_of = language_curriculum.module_stage_map()
+
+        # The same for the "code what you learned" links: a practice slug that
+        # names no problem would render a button to a 404. Problems are seeded
+        # after languages, so this is checked against the authored banks.
+        known_problems = {entry["slug"] for entry in practice_data.CODING_PROBLEMS}
+        known_problems |= {entry["slug"] for entry in coding_core.PROBLEMS}
+        known_problems |= {entry["slug"] for entry in coding_streams.PROBLEMS}
+        known_problems |= {entry["slug"] for entry in coding_book.PROBLEMS}
+        dangling = sorted(
+            f"{module}->{problem}" for module, problem in BOOK_PRACTICE.items() if problem not in known_problems
+        )
+        if dangling:
+            raise SeedRefused(f"book practice links name unknown problems: {dangling}")
+        seeded_slugs = {row[0] for rows in modules_by_language.values() for row in rows}
+        orphaned = sorted(slug for slug in BOOK_PRACTICE if slug not in seeded_slugs)
+        if orphaned:
+            raise SeedRefused(f"book practice links for unseeded modules: {orphaned}")
+
+        for language_slug, language_id in ids.items():
+            for order, (stage, title, summary) in enumerate(language_curriculum.STAGES):
+                db.execute(
+                    "INSERT INTO language_stages (id,language_id,stage,title,summary,order_index) "
+                    "VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title, "
+                    "summary=excluded.summary, order_index=excluded.order_index",
+                    f"{language_slug}::{stage}", language_id, stage, title, summary, order,
+                )
+            for order, (slug, title, summary, body, example, exercise) in enumerate(modules_by_language[language_slug]):
+                unit = academy.UNITS.get(slug)
+                if unit:
+                    body = academy.searchable_body(unit)
+                    example = unit["code_examples"][0]["code"]
+                    exercise = unit["challenge"]
+                db.execute(
+                    "INSERT INTO language_modules (id,language_id,slug,title,summary,body,example,exercise,"
+                    "stage,order_index,practice_slug,lesson_data) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
+                    "body=excluded.body, stage=excluded.stage, order_index=excluded.order_index, "
+                    "practice_slug=excluded.practice_slug, lesson_data=excluded.lesson_data, "
+                    "example=excluded.example, exercise=excluded.exercise",
+                    slug, language_id, slug, title, summary, body, example, exercise,
+                    stage_of[language_slug][slug], order, BOOK_PRACTICE.get(slug), jdump(unit) if unit else None,
+                )
+    return ids
+
+
+def seed_language_checkpoints(language_ids: dict[str, str], question_ids: dict[str, str]) -> int:
+    """Write the (language, stage) -> question links that make bank questions checkpoints.
+
+    The questions themselves were seeded by ``seed_questions()`` as ordinary
+    rows; this only records where each one is used as a stage gate. A link to a
+    language or question that does not exist fails the seed naming the offender
+    rather than rendering an empty checkpoint panel.
+    """
+    count = 0
+    with db.transaction():
+        for language_slug, stage, question_slug, order in language_curriculum.checkpoint_links():
+            language_id = language_ids.get(language_slug)
+            if not language_id:
+                raise KeyError(f"checkpoint for stage {stage!r} references unknown language {language_slug!r}")
+            question_id = question_ids.get(question_slug)
+            if not question_id:
+                raise KeyError(
+                    f"checkpoint question {question_slug!r} ({language_slug}/{stage}) was not seeded - "
+                    "its title must slugify to a banked question"
+                )
+            db.execute(
+                "INSERT INTO language_checkpoints (id,language_id,stage,question_id,order_index) "
+                "VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET language_id=excluded.language_id, "
+                "stage=excluded.stage, question_id=excluded.question_id, order_index=excluded.order_index",
+                f"{language_slug}::{stage}::cp{order}", language_id, stage, question_id, order,
+            )
+            count += 1
+    return count
+
+
+def _problem_bank() -> list[dict]:
+    """Every problem the platform ships, from all four banks.
+
+    ``practice_data`` holds the original hand-written 13 with stubs for four
+    languages; ``coding_core``, ``coding_streams`` and ``coding_book`` hold the
+    sheet bank, which declares one Python entry point per problem and generates
+    its stub. The seeder treats them identically, so a problem is a problem
+    whichever module it was written in.
+    """
+    bank = list(practice_data.CODING_PROBLEMS)
+    bank += list(coding_core.PROBLEMS)
+    bank += list(coding_streams.PROBLEMS)
+    bank += list(coding_book.PROBLEMS)
+    seen: set[str] = set()
+    for entry in bank:
+        slug = entry["slug"]
+        if slug in seen:
+            raise SeedRefused(f"two problems share the slug {slug!r}")
+        seen.add(slug)
+        # A wrapper that does not exist composes no harness, so the submission
+        # would run without ever calling the learner's function and every test
+        # would fail with an empty output. Catch it here, not on the problem page.
+        wrapper = entry.get("wrapper", "raw")
+        if wrapper not in drivers.WRAPPERS:
+            raise SeedRefused(f"problem {slug!r} uses unknown wrapper {wrapper!r}")
+        if not entry.get("tests"):
+            raise SeedRefused(f"problem {slug!r} has no test cases")
+    return bank
+
+
+def seed_problems(language_ids: dict[str, str]) -> dict[str, str]:
+    ids: dict[str, str] = {}
+    with db.transaction():
+        for entry in _problem_bank():
+            slug = entry["slug"]
+            ids[slug] = slug
+            examples = "\n\n".join(
+                f"**Input.** `{example['input']}`\n**Output.** `{example['output']}`"
+                + (f"\n{example['explain']}" if example.get("explain") else "")
+                for example in entry["examples"]
+            )
+            db.execute(
+                "INSERT INTO coding_problems (id,slug,title,statement,difficulty,topics,hints,editorial,solution_md,"
+                "tags,expected_time,expected_space,wrapper,solve_count,attempt_count,is_premium,created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'0','0',0,?) "
+                "ON CONFLICT(id) DO UPDATE SET statement=excluded.statement, wrapper=excluded.wrapper",
+                slug, slug, entry["title"],
+                f"{entry['statement']}\n\n### Examples\n\n{examples}",
+                entry["difficulty"], jdump(entry["topics"]), jdump(entry["hints"]), entry["editorial"],
+                entry["solution"].get("python", ""), jdump([entry["company"]]),
+                entry.get("expected_time") or "O(n)", entry.get("expected_space") or "O(n)",
+                entry.get("wrapper", "raw"), now_ms(),
+            )
+            for language_slug, stub in entry["stub"].items():
+                language_id = language_ids.get(language_slug)
+                if not language_id:
+                    continue
+                db.execute(
+                    "INSERT INTO coding_problem_stubs (problem_id,language_id,stub,signature) VALUES (?,?,?,?) "
+                    "ON CONFLICT(problem_id,language_id) DO UPDATE SET stub=excluded.stub",
+                    slug, language_id, stub, entry["signature"].get(language_slug, ""),
+                )
+            for order, test in enumerate(entry["tests"]):
+                db.execute(
+                    "INSERT INTO coding_testcases (id,problem_id,input,expected,is_sample,explanation,order_index) "
+                    "VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET expected=excluded.expected",
+                    f"{slug}::tc{order}", slug, test["input"], test["expected"], 1 if order < 2 else 0,
+                    test.get("explain"), order,
+                )
+    return ids
+
+
+def seed_sheets(problem_ids: dict[str, str], branch_ids: dict[str, str]) -> int:
+    """Writes the curated sheets and their membership.
+
+    ``sheet_data.validate()`` runs first: it refuses a sheet that names a problem
+    that does not exist, lists one twice, or leaves any problem out of every
+    sheet. A sheet that renders short is worse than a seed that fails loudly.
+    """
+    sheet_data.validate()
+    count = 0
+    with db.transaction():
+        for sheet in sheet_data.SHEETS:
+            # ``audience`` is the general mechanism: sheet_data lists branch
+            # categories, and the hub filters on them. A sheet may also name one
+            # branch directly, which is what branch_id is for.
+            branch_id = branch_ids.get(sheet.get("branch_slug", ""))
+            db.execute(
+                "INSERT INTO coding_sheets (id,slug,title,blurb,level,audience,branch_id,est_hours,"
+                "topic_focus,order_index,status) VALUES (?,?,?,?,?,?,?,?,?,?,'published') "
+                "ON CONFLICT(id) DO UPDATE SET title=excluded.title, blurb=excluded.blurb, "
+                "level=excluded.level, audience=excluded.audience, est_hours=excluded.est_hours, "
+                "topic_focus=excluded.topic_focus, order_index=excluded.order_index, status='published'",
+                sheet["slug"], sheet["slug"], sheet["title"], sheet["blurb"], sheet["level"],
+                sheet["audience"], branch_id, sheet["est_hours"], jdump(sheet["topic_focus"]),
+                sheet["order_index"],
+            )
+            db.execute("DELETE FROM coding_sheet_problems WHERE sheet_id = ?", sheet["slug"])
+            for order, slug in enumerate(sheet["problems"]):
+                problem_id = problem_ids.get(slug)
+                if problem_id is None:
+                    raise SeedRefused(f"sheet {sheet['slug']!r} references unseeded problem {slug!r}")
+                db.execute(
+                    "INSERT INTO coding_sheet_problems (sheet_id,problem_id,order_index) VALUES (?,?,?)",
+                    sheet["slug"], problem_id, order,
+                )
+            count += 1
+    return count
+
+
+# ---------------------------------------------------------------------------
+# Projects
+# ---------------------------------------------------------------------------
+
+def seed_projects(subject_ids: dict[str, str], branch_ids: dict[str, str],
+                  language_ids: dict[str, str]) -> int:
+    """Seed the library briefs and the language-linked capstones.
+
+    Capstones carry a ``language`` key resolving to ``projects.language_id``;
+    the language page links forward to the brief and the brief links back. An
+    unknown language fails the seed instead of unlinking the capstone.
+    """
+    entries = list(library_data.PROJECTS) + list(language_projects.CAPSTONES)
+    language_projects.validate(
+        set(language_ids), {entry["slug"] for entry in library_data.PROJECTS}
+    )
+    with db.transaction():
+        for index, entry in enumerate(entries):
+            slug = entry["slug"]
+            language_key = entry.get("language")
+            language_id = None
+            if language_key:
+                language_id = language_ids.get(language_key)
+                if not language_id:
+                    raise KeyError(f"project {slug!r} references unknown language {language_key!r}")
+            db.execute(
+                "INSERT INTO projects (id,slug,title,branch_id,subject_id,language_id,difficulty,category,"
+                "est_hours,summary,problem_statement,objective,prerequisites,hardware,software,architecture,"
+                "source_code,database_design,testing,expected_output,improvements,resume_md,"
+                "interview_questions,tech,skills,build_count,status,order_index,created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'0','published',?,?) "
+                "ON CONFLICT(id) DO UPDATE SET branch_id=excluded.branch_id, subject_id=excluded.subject_id, "
+                "language_id=excluded.language_id",
+                slug, slug, entry["title"], branch_ids.get(entry["branch"] or ""),
+                subject_ids.get(entry["subject"] or ""), language_id, entry["difficulty"], entry["category"],
+                entry["est_hours"],
+                entry["summary"], entry["problem_statement"], entry["objective"], jdump(entry["prerequisites"]),
+                entry["hardware"], entry["software"], entry["architecture"], entry["source_code"],
+                entry["database_design"], entry["testing"], entry["expected_output"], jdump(entry["improvements"]),
+                entry["resume_md"], jdump(entry["interview_questions"]), jdump(entry["tech"]), jdump(entry["skills"]),
+                index, now_ms(),
+            )
+            for order, (phase, title, body) in enumerate(entry.get("steps", [])):
+                db.execute(
+                    "INSERT INTO project_steps (id,project_id,phase,title,body,order_index) VALUES (?,?,?,?,?,?) "
+                    "ON CONFLICT(id) DO UPDATE SET body=excluded.body",
+                    f"{slug}::step{order}", slug, phase, title, body, order,
+                )
+            for kind, title, url, note in entry.get("resources", []):
+                db.execute(
+                    "INSERT INTO project_resources (id,project_id,kind,title,url,note) VALUES (?,?,?,?,?,?) "
+                    "ON CONFLICT(id) DO UPDATE SET url=excluded.url",
+                    f"{slug}::res-{slugify(title)}", slug, kind, title, url, note,
+                )
+    return len(entries)
+
+
+# ---------------------------------------------------------------------------
+# Library
+# ---------------------------------------------------------------------------
+
+def seed_videos(subject_ids: dict[str, str]) -> None:
+    with db.transaction():
+        rows = list(library_data.VIDEOS) + resource_sources.build_videos(_subject_rows())
+        for title, channel, url, minutes, level, category, subject_slug, why in rows:
+            slug = slugify(title)
+            db.execute(
+                "INSERT INTO videos (id,slug,title,channel,url,duration_s,language,level,category,topic_id,"
+                "subject_id,rating,why_useful,embeddable,created_at) VALUES (?,?,?,?,?,?,'en',?,?,NULL,?,4,?,0,?) "
+                "ON CONFLICT(slug) DO NOTHING",
+                slug, slug, title, channel, url, minutes * 60, level, category, subject_ids.get(subject_slug), why,
+                now_ms(),
+            )
+
+
+def seed_books(subject_ids: dict[str, str]) -> None:
+    with db.transaction():
+        for entry in list(library_data.BOOKS) + resource_sources.build_books(_subject_rows()):
+            title, author, subject_slug, level, description, why, topics, url, access, publisher = entry
+            slug = slugify(title)
+            db.execute(
+                "INSERT INTO books (id,slug,title,author,subject_id,branch_id,level,description,why_read,"
+                "topics_covered,legal_url,access_kind,publisher,created_at) "
+                "VALUES (?,?,?,?,?,NULL,?,?,?,?,?,?,?,?) ON CONFLICT(slug) DO NOTHING",
+                slug, slug, title, author, subject_ids.get(subject_slug), level, description, why, jdump(topics),
+                url, access, publisher, now_ms(),
+            )
+
+
+def _subject_rows() -> list[dict]:
+    """Every subject with its branch category, for per-discipline expansion."""
+    return db.query(
+        "SELECT s.slug AS slug, s.name AS name, COALESCE(b.category, 'core') AS category "
+        "FROM subjects s LEFT JOIN branches b ON b.id = s.branch_id ORDER BY s.slug"
+    )
+
+
+def seed_resources(subject_ids: dict[str, str]) -> None:
+    with db.transaction():
+        rows = list(library_data.RESOURCES) + resource_sources.build(_subject_rows())
+        for title, url, kind, category, subject_slug, level, description in rows:
+            slug = slugify(title)
+            db.execute(
+                "INSERT INTO resources (id,slug,title,url,kind,category,branch_id,subject_id,level,format,language,"
+                "is_free,description,created_at) VALUES (?,?,?,?,?,?,NULL,?,?,'web','en',1,?,?) "
+                "ON CONFLICT(slug) DO NOTHING",
+                slug, slug, title, url, kind, category, subject_ids.get(subject_slug) if subject_slug else None,
+                level, description, now_ms(),
+            )
+
+
+def _assert_known_refs(subject_ids: dict[str, str], topic_ids: dict[str, str],
+                       problem_ids: dict[str, str], branch_ids: dict[str, str]) -> None:
+    """Fail the seed if any content row points at something that does not exist.
+
+    Every seeder resolves a key with ``dict.get()`` and a miss becomes NULL. A
+    NULL subject means the row never appears on any subject page, and a NULL
+    roadmap reference renders as a node that links nowhere — in both cases the
+    seed reports success. That is how four rows keyed to a
+    ``probability-statistics`` subject that was never created went unnoticed:
+    a book, a formula, a roadmap step and a flashcard, all silently dropped.
+
+    Checking up front turns that into a clear error naming the offender. Project
+    branch and subject references are checked together because a valid-but-wrong
+    branch can quietly remove a project from its subject branch page.
+    """
+    problems: list[str] = []
+
+    def check(value: str | None, known: dict[str, str], what: str, where: str) -> None:
+        if value is None:
+            return                       # a genuinely unassigned row is allowed
+        if value not in known:
+            problems.append(f"{where}: {what} {value!r} does not exist")
+
+    for index, entry in enumerate(list(library_data.PROJECTS) + list(language_projects.CAPSTONES)):
+        branch_key = entry.get("branch")
+        subject_key = entry.get("subject")
+        where = f"PROJECTS[{index}] {entry.get('slug')!r}"
+        check(branch_key, branch_ids, "branch", where)
+        check(subject_key, subject_ids, "subject", where)
+        if branch_key in branch_ids and subject_key in subject_ids:
+            subject_branch = db.scalar(
+                "SELECT branch_id FROM subjects WHERE id = ?", subject_ids[subject_key], default=None
+            )
+            if subject_branch and branch_ids[branch_key] != subject_branch:
+                problems.append(
+                    f"{where}: branch {branch_key!r} does not match subject {subject_key!r}'s branch"
+                )
+
+    for index, row in enumerate(library_data.VIDEOS):
+        check(row[6], subject_ids, "subject", f"VIDEOS[{index}] {row[0]!r}")
+    for index, row in enumerate(library_data.BOOKS):
+        check(row[2], subject_ids, "subject", f"BOOKS[{index}] {row[0]!r}")
+    for index, row in enumerate(library_data.RESOURCES):
+        check(row[4], subject_ids, "subject", f"RESOURCES[{index}] {row[0]!r}")
+    for index, row in enumerate(library_data.FLASHCARDS):
+        check(row[0], subject_ids, "subject", f"FLASHCARDS[{index}] {row[2]!r}")
+    for index, row in enumerate(library_data.FORMULAS):
+        check(row[1], subject_ids, "subject", f"FORMULAS[{index}] {row[3]!r}")
+
+    project_slugs = {r["slug"] for r in db.query("SELECT slug FROM projects")}
+    module_slugs = {r["slug"] for r in db.query("SELECT slug FROM language_modules")}
+    lookups = {"subject": subject_ids, "topic": topic_ids, "coding": problem_ids,
+               "project": project_slugs, "module": module_slugs}
+    for entry in library_data.ROADMAPS:
+        for order, node in enumerate(entry["nodes"]):
+            ref_type, ref_key = node[2], node[3]
+            if ref_type not in lookups:
+                problems.append(f"{entry['slug']} node {order}: unknown ref_type {ref_type!r}")
+                continue
+            check(ref_key, lookups[ref_type], ref_type, f"{entry['slug']} node {order} {node[0]!r}")
+
+    if problems:
+        raise SystemExit("Seed data references things that do not exist:\n  " + "\n  ".join(problems))
+
+
+def seed_roadmaps(branch_ids: dict[str, str], topic_ids: dict[str, str],
+                  problem_ids: dict[str, str], subject_ids: dict[str, str]) -> None:
+    lookup = {
+        "topic": topic_ids, "coding": problem_ids, "subject": subject_ids,
+        # A node may point at a project or at a language module. Neither was in
+        # the lookup before, so those references resolved to NULL and the step
+        # rendered with nothing to click. These map slug -> slug to match the
+        # convention the other three use: roadmap_nodes.ref_id holds a slug,
+        # which is what the URL needs.
+        "project": {r["slug"]: r["slug"] for r in db.query("SELECT slug FROM projects")},
+        "module": {r["slug"]: r["slug"] for r in db.query("SELECT slug FROM language_modules")},
+    }
+    with db.transaction():
+        for index, entry in enumerate(library_data.ROADMAPS):
+            slug = entry["slug"]
+            db.execute(
+                "INSERT INTO roadmaps (id,slug,title,kind,branch_id,target_role,summary,description,order_index) "
+                "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET description=excluded.description",
+                slug, slug, entry["title"], entry["kind"], branch_ids.get(entry["branch"] or ""),
+                entry["target_role"], entry["summary"], entry["description"], index,
+            )
+            for order, (title, summary, ref_type, ref_key, required) in enumerate(entry["nodes"]):
+                ref_id = lookup.get(ref_type, {}).get(ref_key)
+                if ref_key and not ref_id:
+                    raise KeyError(f"roadmap {slug!r} node {order} references unknown {ref_type} {ref_key!r}")
+                db.execute(
+                    "INSERT INTO roadmap_nodes (id,roadmap_id,title,summary,ref_type,ref_id,is_required,order_index) "
+                    "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET ref_id=excluded.ref_id",
+                    f"{slug}::n{order}", slug, title, summary, ref_type, ref_id, 1 if required else 0, order,
+                )
+
+
+def seed_flashcards(subject_ids: dict[str, str]) -> None:
+    with db.transaction():
+        counts: dict[str, int] = {}
+        for row in library_data.FLASHCARDS:
+            counts[row[0]] = counts.get(row[0], 0) + 1
+        rows = list(library_data.FLASHCARDS) + flashcard_content.build(_subject_rows(), counts)
+        for subject_slug, deck, front, back, hint, difficulty in rows:
+            # Keyed by subject as well as the question, because two subjects can
+            # legitimately ask the same thing. With the subject left out, the
+            # second card's ON CONFLICT clause overwrote the first instead of
+            # adding it — machine-learning silently lost a card to a shared
+            # "What is the bias-variance trade-off?" stem.
+            card_id = f"fc-{slugify(subject_slug)}-{slugify(front)}"
+            db.execute(
+                "INSERT INTO flashcards (id,topic_id,subject_id,deck,front,back,hint,difficulty,created_at) "
+                "VALUES (?,NULL,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET back=excluded.back",
+                card_id, subject_ids.get(subject_slug), deck, front, back, hint, difficulty, now_ms(),
+            )
+
+
+def seed_plans() -> None:
+    with db.transaction():
+        for slug, name, price_inr, tagline, features, _is_default in library_data.PLANS:
+            db.execute(
+                "INSERT INTO plans (id,slug,name,price_cents,currency,interval,features,is_active) "
+                "VALUES (?,?,?,?,?,'month',?,1) ON CONFLICT(id) DO UPDATE SET features=excluded.features, "
+                "price_cents=excluded.price_cents",
+                slug, slug, f"{name} - {tagline}", price_inr * 100, "INR", jdump(features),
+            )
+
+
+# ---------------------------------------------------------------------------
+# Demo accounts
+# ---------------------------------------------------------------------------
+
+class SeedRefused(RuntimeError):
+    """A destructive or demo-account operation the current environment forbids."""
+
+
+DEMO_USERS = [
+    ("admin@engineverse.local", "evadmin", "EngineVerse Admin", "Str0ngPassphrase#42!", "super_admin"),
+    # subject_expert is the authored-content role: create, update and publish.
+    # There is no "faculty" role in rbac.ROLES, so using one here would leave the
+    # account with zero capabilities and a "Student" label.
+    ("faculty@engineverse.local", "profsharma", "Dr. Meera Sharma", "TeachLearn#2026!", "subject_expert"),
+    ("asha@example.com", "asha", "Asha Verma", "LearnBuild#2026!", "student"),
+    ("ravi@example.com", "ravi", "Ravi Kumar", "LearnBuild#2026!", "student"),
+    ("priya@example.com", "priya", "Priya Nair", "LearnBuild#2026!", "student"),
+]
+
+DEMO_PROFILES = {
+    "asha": {"branchId": "computer-science", "semester": 5, "college": "IIT Bombay",
+             "careerGoal": "placement", "weeklyStudyHours": 12,
+             "headline": "Third year CSE. Building towards a backend engineering role."},
+    "ravi": {"branchId": "mechanical-engineering", "semester": 6, "college": "IIT Delhi",
+             "careerGoal": "gate", "weeklyStudyHours": 15,
+             "headline": "Mechanical undergraduate preparing for GATE."},
+    "priya": {"branchId": "electronics-communication", "semester": 3, "college": "VJTI Mumbai",
+              "careerGoal": "placement", "weeklyStudyHours": 10,
+              "headline": "ECE student interested in embedded systems and VLSI."},
+}
+
+
+def seed_users() -> dict[str, str]:
+    ids: dict[str, str] = {}
+    for email, username, full_name, password, role in DEMO_USERS:
+        existing = auth.find_by_email(email)
+        if existing:
+            ids[username] = existing.get("id", "")
+            continue
+        user = auth.register(email=email, username=username, password=password, full_name=full_name,
+                             ip="127.0.0.1", user_agent="engineverse-seeder")
+        ids[username] = user["id"]
+        if role != "student":
+            db.execute("UPDATE users SET role = ? WHERE id = ?", role, user["id"])
+        profile = DEMO_PROFILES.get(username)
+        if profile:
+            onboarding = {key: value for key, value in profile.items() if key not in ("college", "headline")}
+            college_id = COLLEGE_IDS.get(profile["college"])
+            if college_id:
+                onboarding["collegeId"] = college_id
+            auth.update_onboarding(user["id"], onboarding)
+            auth.update_profile(user["id"], {"headline": profile["headline"]})
+    return ids
+
+
+def seed_demo_activity(user_ids: dict[str, str], topic_ids: dict[str, str]) -> None:
+    """Give the demo students a believable history so leaderboards and heatmaps are not empty."""
+    topic_slugs = list(topic_ids)
+    ts = now_ms()
+    with db.transaction():
+        for username, count in (("asha", 30), ("ravi", 16), ("priya", 9)):
+            user_id = user_ids.get(username)
+            if not user_id:
+                continue
+            for index in range(count):
+                topic_id = topic_ids[topic_slugs[index % len(topic_slugs)]]
+                status = "completed" if index < count - 2 else "in_progress"
+                mastery = 85 if status == "completed" else 40
+                day = (datetime.now(timezone.utc) - timedelta(days=index)).strftime("%Y-%m-%d")
+                db.execute(
+                    "INSERT INTO user_progress (user_id,topic_id,status,mastery,time_spent_s,last_viewed_at,"
+                    "completed_at) VALUES (?,?,?,?,?,?,?) "
+                    "ON CONFLICT(user_id,topic_id) DO UPDATE SET status=excluded.status, mastery=excluded.mastery",
+                    user_id, topic_id, status, mastery, 1800 if status == "completed" else 420, ts,
+                    ts if status == "completed" else None,
+                )
+                db.execute(
+                    "INSERT INTO xp_events (id,user_id,amount,reason,entity_type,entity_id,created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    ulid(), user_id, 20 if status == "completed" else 2, "topic", "topic", topic_id, ts,
+                )
+                db.execute(
+                    "INSERT INTO activity (user_id,day,notes_studied,minutes,xp) VALUES (?,?,1,35,22) "
+                    # The right-hand side must name the table. PostgreSQL reads an
+                    # unqualified column here as ambiguous between the stored row
+                    # and EXCLUDED and raises AmbiguousColumn; SQLite picks the
+                    # stored row silently, so this only ever failed in production.
+                    "ON CONFLICT(user_id,day) DO UPDATE SET notes_studied = activity.notes_studied + 1, "
+                    "minutes = activity.minutes + 35, xp = activity.xp + 22",
+                    user_id, day,
+                )
+            db.execute(
+                "UPDATE streaks SET total_xp = (SELECT COALESCE(sum(amount),0) FROM xp_events WHERE user_id = ?), "
+                "longest_streak = ?, current_streak = ? WHERE user_id = ?",
+                user_id, count, min(count, 5), user_id,
+            )
+
+
+MS_PER_DAY = 86_400_000
+
+
+def _known(mapping: dict[str, str], key: str, what: str) -> str:
+    """Resolve a seed reference, or name the bad key instead of dropping the row.
+
+    Every seeder in this file used ``dict.get()`` and skipped on a miss, which is
+    how twenty-one roadmap steps ended up pointing at topics that did not exist
+    while the seed reported success. A community thread anchored to a typo'd
+    topic slug should fail the seed, not silently lose its link.
+    """
+    if key not in mapping:
+        raise KeyError(f"{what}: {key!r} is not a known key - fix seed_data/community_data.py")
+    return mapping[key]
+
+
+def seed_community(user_ids: dict[str, str], topic_ids: dict[str, str]) -> tuple[int, int]:
+    """Populate the forum, which shipped rendering "No discussions yet".
+
+    Goes through ``community.create_thread`` / ``add_comment`` / ``vote`` rather
+    than raw INSERTs so reply counters, XP awards and notifications match what a
+    real post would produce. Timestamps are backdated afterwards: those functions
+    stamp ``now_ms()``, which would make every thread read "just now" on a fresh
+    install and leave the ordering meaningless.
+
+    Votes are one row per (voter, entity), so a comment can score at most one
+    point per other participant. The ``upvotes`` figure in the content module is
+    therefore a ceiling, not a promise - the counter is never inflated past the
+    number of votes that actually exist.
+    """
+    ts = now_ms()
+    everyone = list(user_ids.values())
+    threads = 0
+    replies = 0
+    # No wrapping transaction here: create_thread, add_comment and vote each
+    # open their own (vote via db.transaction, the others via award_xp), and
+    # SQLite will not nest them.
+    for entry in community_data.THREADS:
+        author = _known(user_ids, entry["author"], "thread author")
+        topic_id = _known(topic_ids, entry["topic"], f"topic for thread {entry['title']!r}")
+        created = ts - entry["days_ago"] * MS_PER_DAY
+        thread_id = community.create_thread(
+            author, title=entry["title"], body=entry["body"], kind=entry["kind"],
+            tags=entry["tags"], entity_type="topic", entity_id=topic_id,
+        )
+        last_activity = created
+        for voter in [u for u in everyone if u != author][:4]:
+            community.vote(voter, "discussion", thread_id, 1)
+
+        for reply in entry["replies"]:
+            commenter = _known(user_ids, reply["author"], f"reply on {entry['title']!r}")
+            comment_id = community.add_comment(commenter, thread_id, reply["body"])
+            replied_at = ts - reply["days_ago"] * MS_PER_DAY
+            db.execute("UPDATE comments SET created_at = ? WHERE id = ?", replied_at, comment_id)
+            voters = [u for u in everyone if u != commenter]
+            for voter in voters[:min(reply["upvotes"], len(voters))]:
+                community.vote(voter, "comment", comment_id, 1)
+            last_activity = max(last_activity, replied_at)
+            replies += 1
+
+        db.execute(
+            "UPDATE discussions SET created_at = ?, last_activity_at = ?, is_resolved = ? WHERE id = ?",
+            created, last_activity, 1 if entry["resolved"] else 0, thread_id,
+        )
+        threads += 1
+    return threads, replies
+
+
+#: username, practice answers to record, coding problems solved.
+DEMO_PRACTICE = (("asha", 112, 7), ("ravi", 58, 3), ("priya", 24, 1))
+
+
+def seed_demo_practice(user_ids: dict[str, str]) -> tuple[int, int]:
+    """Give the demo students answer, coding and bookmark history.
+
+    Without this the badge catalogue is decoration: eleven badges exist and the
+    seeded data satisfied exactly one criterion (a seven-day streak), because
+    nothing wrote to ``submissions``, ``coding_submissions`` or ``bookmarks``.
+    The checks are real queries against those tables, so the history has to be
+    real too - fabricating the badge rows instead would leave the counts on the
+    profile page disagreeing with the activity that supposedly earned them.
+
+    The spread is deliberately uneven. Gold badges that need 25 distinct
+    accepted problems or interview-kind questions stay unearned, because the
+    seeded corpus does not support them and a badge nobody has yet is more
+    believable than one everybody has.
+    """
+    ts = now_ms()
+    questions = db.query("SELECT id, answer_index FROM questions ORDER BY created_at")
+    if not questions:
+        raise RuntimeError("cannot seed practice history: no questions were seeded")
+    # Newest DPP set, answered in full and correctly, so the Flawless badge has
+    # a real set behind it rather than a synthetic one.
+    perfect_set = db.query(
+        "SELECT q.question_id FROM dpp_questions q JOIN dpp_sets s ON s.id = q.set_id "
+        "ORDER BY s.date DESC LIMIT 5"
+    )
+    perfect_ids = {row["question_id"] for row in perfect_set}
+    set_of = {row["question_id"]: row["set_id"] for row in db.query(
+        "SELECT set_id, question_id FROM dpp_questions")}
+    problems = [row["id"] for row in db.query("SELECT id FROM coding_problems ORDER BY created_at")]
+    project_id = db.scalar("SELECT id FROM projects ORDER BY created_at LIMIT 1", default=None)
+
+    answers = 0
+    runs = 0
+    with db.transaction():
+        for username, wanted, solved in DEMO_PRACTICE:
+            user_id = user_ids.get(username)
+            if not user_id:
+                raise KeyError(f"demo student {username!r} is missing from the seeded users")
+
+            for index in range(wanted):
+                question = questions[index % len(questions)]
+                # The flawless set is answered correctly; elsewhere ~4 in 5, so
+                # accuracy stats on the profile are not a flat 100%.
+                correct = 1 if question["id"] in perfect_ids else (1 if index % 5 else 0)
+                age_days = index // 8
+                db.execute(
+                    "INSERT INTO submissions (id,user_id,question_id,dpp_set_id,answer_index,answer_text,"
+                    "is_correct,time_ms,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                    ulid(), user_id, question["id"], set_of.get(question["id"]),
+                    question["answer_index"], None, correct, 45_000 + index * 977,
+                    ts - age_days * MS_PER_DAY,
+                )
+                answers += 1
+
+            for index in range(min(solved, len(problems))):
+                db.execute(
+                    "INSERT INTO coding_submissions (id,user_id,problem_id,language,code,status,passed,total,"
+                    "runtime_ms,memory_kb,stderr,is_accepted,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    ulid(), user_id, problems[index], "python",
+                    "# seeded reference solution", "accepted", 5, 5, 42 + index * 13, 18_432, None, 1,
+                    ts - (index + 1) * MS_PER_DAY,
+                )
+                runs += 1
+
+            if project_id and username in ("asha", "ravi"):
+                db.execute(
+                    "INSERT INTO bookmarks (user_id,entity_type,entity_id,note,created_at) "
+                    "VALUES (?,?,?,?,?) ON CONFLICT DO NOTHING",
+                    user_id, "project", project_id, "Want to build this over the break.",
+                    ts - 2 * MS_PER_DAY,
+                )
+    return answers, runs
+
+
+def seed_certificates(user_ids: dict[str, str]) -> int:
+    """Give the demo students something on the certificates page.
+
+    A certificate is normally issued when a subject is completed, so a fresh
+    install has none and ``/certificates/{verify_id}`` has nothing to resolve.
+    Issued through ``progress.issue_certificate`` so the verify id format, the
+    notification and the dedupe rule are the real ones.
+    """
+    issued = 0
+    for username, wanted in (("asha", 2), ("ravi", 1), ("priya", 1)):
+        user_id = user_ids.get(username)
+        if not user_id:
+            raise KeyError(f"demo student {username!r} is missing from the seeded users")
+        rows = db.query(
+            "SELECT s.id AS subject_id, s.name AS subject_name, count(*) AS done FROM user_progress up "
+            "JOIN topics t ON t.id = up.topic_id JOIN subjects s ON s.id = t.subject_id "
+            "WHERE up.user_id = ? AND up.status = 'completed' "
+            "GROUP BY s.id, s.name ORDER BY done DESC LIMIT ?",
+            user_id, wanted,
+        )
+        for row in rows:
+            progress.issue_certificate(
+                user_id, "subject", "subject", row["subject_id"],
+                f"Completed {row['subject_name']}",
+                {"topics_completed": int(row["done"]), "seeded": True},
+            )
+            issued += 1
+    return issued
+
+
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+
+TABLES = [
+    "universities", "colleges", "branches", "semesters", "curricula", "curriculum_subjects", "subjects",
+    "modules", "topics", "notes", "note_sections", "diagrams", "models_3d", "formulas", "questions",
+    "question_options",
+    "dpp_sets", "dpp_questions", "programming_languages", "language_modules", "language_stages",
+    "language_checkpoints", "coding_problems", "coding_sheets", "coding_sheet_problems",
+    "coding_problem_stubs", "coding_testcases", "projects", "project_steps", "project_resources", "videos",
+    "books", "resources", "roadmaps", "roadmap_nodes", "flashcards", "plans", "site_config", "badges",
+    "users", "user_progress", "xp_events", "submissions", "coding_submissions", "bookmarks",
+    "discussions", "comments", "votes",
+    "certificates", "user_badges", "notifications",
+]
+
+
+def print_stats() -> None:
+    print(f"\n{'table':<26}{'rows':>8}")
+    print("-" * 34)
+    for table in TABLES:
+        try:
+            count = db.row_count(table)
+        except db.DatabaseError:
+            count = -1
+        print(f"{table:<26}{count:>8}")
+    print("-" * 34)
+    print(f"{'search index':<26}{search.indexed_count():>8}\n")
+
+
+def _demo_enabled(explicit: bool | None) -> bool:
+    settings = get_settings()
+    if settings.is_production:
+        if explicit is True:
+            raise SeedRefused("refusing to create demo accounts when ENGINEVERSE_ENV is production")
+        return False
+    if explicit is not None:
+        return explicit
+    return settings.allows_demo_accounts
+
+
+def _has_non_demo_users() -> bool:
+    """True when the database already holds an account this seeder did not define."""
+    settings = get_settings()
+    if not settings.uses_postgres and not settings.sqlite_path.exists():
+        return False
+    try:
+        if not db.table_exists("users"):
+            return False
+    except db.DatabaseError:
+        return False
+    emails = [email.lower() for email, *_rest in DEMO_USERS]
+    placeholders = ",".join("?" for _ in emails)
+    count = db.scalar(
+        "SELECT count(*) AS c FROM users WHERE deleted_at IS NULL "
+        f"AND lower(email) NOT IN ({placeholders})",
+        *emails,
+    )
+    return int(count or 0) > 0
+
+
+def run(fresh: bool, *, demo: bool | None = None, destroy_users: bool = False) -> None:
+    started = datetime.now()
+    settings = get_settings()
+    if settings.is_production and fresh:
+        raise SeedRefused("refusing --fresh when ENGINEVERSE_ENV is production")
+    if settings.is_production and demo is True:
+        raise SeedRefused("refusing to create demo accounts when ENGINEVERSE_ENV is production")
+    if fresh and _has_non_demo_users() and not destroy_users:
+        raise SeedRefused(
+            "refusing --fresh: this database has users that are not the development demo accounts. "
+            "Pass --destroy-users only when deleting those accounts is intentional. "
+            "Production refuses --fresh even with that flag."
+        )
+    if fresh:
+        print("Resetting database ...")
+        db.reset_database()
+    db.migrate()
+
+    print("Seeding site configuration ...")
+    seed_config()
+
+    print("Seeding universities and colleges ...")
+    university_ids = seed_universities()
+
+    print("Seeding branches and semesters ...")
+    branch_ids = seed_branches()
+    seed_semesters()
+
+    print("Seeding subjects and curricula ...")
+    subject_ids = seed_subjects(branch_ids)
+    seed_curricula(subject_ids, branch_ids, university_ids)
+
+    print("Seeding topics, notes and diagrams ...")
+    topic_ids = seed_topics(subject_ids)
+    notes = seed_notes(topic_ids)
+    diagrams = seed_diagrams(topic_ids)
+    models = seed_models_3d(topic_ids)
+    seed_formulas(subject_ids, topic_ids)
+    print(f"  {len(topic_ids)} topics, {notes} notes, {diagrams} diagrams, {models} 3D models")
+
+    print("Seeding practice questions and DPP sets ...")
+    question_ids = seed_questions(subject_ids, topic_ids)
+    sets = seed_dpp()
+    print(f"  {len(question_ids)} questions, {sets} daily sets")
+
+    print("Seeding programming languages and problems ...")
+    language_ids = seed_languages()
+    problem_ids = seed_problems(language_ids)
+    sheets = seed_sheets(problem_ids, branch_ids)
+    checkpoints = seed_language_checkpoints(language_ids, question_ids)
+    staged_modules = int(db.scalar("SELECT count(*) AS c FROM language_modules") or 0)
+    stages = int(db.scalar("SELECT count(*) AS c FROM language_stages") or 0)
+    print(f"  {len(language_ids)} languages, {staged_modules} staged modules across {stages} stages, "
+          f"{len(problem_ids)} problems in {sheets} sheets, {checkpoints} checkpoint questions")
+
+    print("Seeding projects ...")
+    project_count = seed_projects(subject_ids, branch_ids, language_ids)
+    capstones = int(db.scalar("SELECT count(*) AS c FROM projects WHERE language_id IS NOT NULL") or 0)
+    print(f"  {project_count} project briefs, including {capstones} language-linked capstones")
+
+    # Runs before the library phase so a bad cross-reference fails the seed
+    # with the offending row named, instead of quietly dropping it.
+    _assert_known_refs(subject_ids, topic_ids, problem_ids, branch_ids)
+
+    print("Seeding library (videos, books, resources, roadmaps, flashcards) ...")
+    seed_videos(subject_ids)
+    seed_books(subject_ids)
+    seed_resources(subject_ids)
+    seed_roadmaps(branch_ids, topic_ids, problem_ids, subject_ids)
+    seed_flashcards(subject_ids)
+    seed_plans()
+
+    print("Catalogue rows are upserted. Re-running overwrites CMS edits to those seeded ids.")
+
+    want_demo = _demo_enabled(demo)
+    progress.ensure_badges()
+    if want_demo:
+        print("Creating demo accounts ...")
+        user_ids = seed_users()
+        seed_demo_activity(user_ids, topic_ids)
+        print("Seeding community, certificates and badges ...")
+        answers, runs = seed_demo_practice(user_ids)
+        threads, replies = seed_community(user_ids, topic_ids)
+        certificates = seed_certificates(user_ids)
+        # Badges are evaluated against real progress, so this has to run after the
+        # demo activity is in - and the seeder writes progress with raw SQL, which
+        # never reaches the code path that awards them.
+        badges = {user: progress.evaluate_badges(uid) for user, uid in user_ids.items()}
+        print(f"  {answers} practice answers, {runs} coding runs, {threads} threads, "
+              f"{replies} replies, {certificates} certificates, "
+              f"{sum(len(v) for v in badges.values())} badges awarded")
+    else:
+        print("Skipping demo accounts.")
+        user_ids = {}
+
+    print("Building the search index ...")
+    indexed = search.reindex_all()
+
+    print_stats()
+    elapsed = (datetime.now() - started).total_seconds()
+    print(f"Done in {elapsed:.1f}s. {indexed} searchable entities indexed.")
+    if want_demo:
+        print("\nDemo accounts (development and test only; never created in production):")
+        for email, username, _name, password, role in DEMO_USERS:
+            print(f"  {role:<12} {email:<28} {password}")
+    else:
+        print("\nNo demo accounts were created and no passwords were printed.")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Seed the EngineVerse database.")
+    parser.add_argument("--fresh", action="store_true", help="drop the local SQLite file before seeding")
+    parser.add_argument(
+        "--destroy-users",
+        action="store_true",
+        help="allow --fresh to delete a database that contains non-demo users (never honoured in production)",
+    )
+    parser.add_argument("--demo", action="store_true", help="create development demo accounts (refused in production)")
+    parser.add_argument("--no-demo", action="store_true", help="do not create demo accounts")
+    parser.add_argument("--stats", action="store_true", help="print row counts and exit")
+    args = parser.parse_args()
+    if args.demo and args.no_demo:
+        print("pass only one of --demo and --no-demo", file=sys.stderr)
+        return 2
+    demo: bool | None
+    if args.demo:
+        demo = True
+    elif args.no_demo:
+        demo = False
+    else:
+        demo = None
+
+    # --stats used to return here, before run(). That made `seed.py --fresh
+    # --stats` migrate an empty schema, print a table of zeros and exit 0 - so
+    # CI's "Seed a throwaway database" step looked like it had seeded and had
+    # not, and --fresh was silently dropped on the floor.
+    if args.fresh or not args.stats:
+        try:
+            run(args.fresh, demo=demo, destroy_users=args.destroy_users)
+        except SeedRefused as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+    if args.stats:
+        print_stats()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

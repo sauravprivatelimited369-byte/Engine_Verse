@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Progress · ranked by XP</p>
+  <h1>Leaderboard</h1>
+  <p class="lead">XP is knowledge-based: a question pays its difficulty value the first time you answer it
+    correctly, and a coding problem pays on your first accepted solution. Wrong answers and repeats pay
+    nothing — so more XP means more questions genuinely passed.</p>
+  <details class="hero-fineprint" style="margin-top:12px">
+    <summary>How XP and this list work</summary>
+    <p>XP from before 19 October 2026 was earned under the older attempt-based rule and is kept as recorded.
+      XP is not mastery: it counts first-time correct answers, not depth. Learners who turn off
+      “Show my progress” in Settings are not listed here.</p>
+  </details>
+</section>
+
+<form class="panel mb filter-panel" method="get">
+  <div class="row">
+    <label class="inline-field">
+      <span>Branch</span>
+      <select name="branch">
+        <option value="">All branches</option>
+        {% for b in branches %}<option value="{{ b.slug }}" {{ 'selected' if active_branch == b.slug }}>{{ b.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="inline-field">
+      <span>Period</span>
+      <select name="period">
+        {% for p in ('all','month','week') %}
+        <option value="{{ p }}" {{ 'selected' if active_period == p }}>{{ p | titlecase }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn btn-primary">{{ icon("check", 15) }} Apply</button>
+  </div>
+</form>
+
+<div class="panel">
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>#</th><th>Engineer</th><th>Level</th><th>XP</th><th>Streak</th><th>Topics</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        {% set rank = loop.index %}
+        <tr>
+          <td><span class="rank-badge rank-{{ rank if rank < 4 else 'n' }}">{{ rank }}</span></td>
+          <td>
+            <a class="rank-who" href="/portfolio/{{ row.username }}">
+              <span class="rank-avatar" aria-hidden="true">{{ (row.full_name or row.username)[:1] | upper }}</span>
+              <span>
+                <span class="rank-name">{{ row.full_name or row.username }}</span>
+                <span class="tiny muted">@{{ row.username }}</span>
+              </span>
+            </a>
+          </td>
+          <td><span class="chip">Lv {{ row.level }}</span></td>
+          <td class="nowrap"><strong>{{ row.xp }}</strong> <span class="tiny muted">XP</span></td>
+          <td class="nowrap">{{ row.current_streak }} <span aria-hidden="true" class="rank-flame">{{ icon("flame", 13, true) }}</span></td>
+          <td>{{ row.topics or 0 }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6">
+          <div class="empty"><span class="em" aria-hidden="true">{{ icon("trophy", 26) }}</span>
+            <strong>No activity in this period yet.</strong>
+            <p class="small muted" style="margin:6px 0 12px">Answer one DPP question or solve one problem and this list starts with you.</p>
+            <a class="btn btn-primary btn-sm" href="/dpp">Open today's DPP</a>
+          </div>
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

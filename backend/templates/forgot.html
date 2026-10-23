@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Reset your password — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  {% include "_auth_aside.html" %}
+<div class="form-panel panel">
+  <h1>Reset your password</h1>
+  {% if sent %}
+    {% if reset_token %}
+      {# Development only. Gated in the route by ENGINEVERSE_REVEAL_RESET_TOKEN
+         and refused outright when ENGINEVERSE_ENV is production, because
+         showing a live reset link makes this form an account-takeover
+         endpoint for anyone who knows an address. #}
+      <div class="callout warning"><span class="label">Development build</span>
+        <p class="small muted">This instance is configured to show reset links instead of emailing them. Never enable
+          this outside development. The link expires in 30 minutes and works once.</p>
+        <p><a class="btn btn-primary" href="/reset-password?token={{ reset_token }}">Continue to reset</a></p>
+        <p class="small muted">Token: <code>{{ reset_token }}</code></p>
+      </div>
+    {% else %}
+      <div class="callout"><span class="label">Request received</span>
+        If an account exists and this site can send email, a reset link will be sent. If you do not receive one,
+        contact the site administrator. This message is the same for every address.</div>
+    {% endif %}
+    <a class="btn btn-ghost" href="/login">Back to sign in</a>
+  {% else %}
+    {% if error %}<div class="callout warning mb"><span class="label">Recovery error</span>{{ error }}</div>{% endif %}
+    <p class="muted">Recover your password via Gmail / email or via 6-digit OTP to your Gmail or mobile number (with country code).</p>
+    <form method="post" action="/forgot-password">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="field"><label for="email">Gmail / Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" placeholder="you@gmail.com"
+          value="{{ email or '' }}" autofocus></div>
+      <div class="field"><label for="phone">Or Mobile number (with country code)</label>
+        <div class="phone-cc-row">
+          <select id="country_code" name="country_code" aria-label="Country code">
+            {% include "_country_codes.html" %}
+          </select>
+          <input id="phone" name="phone" type="tel" maxlength="20" autocomplete="tel-national"
+            placeholder="{{ (selected_country_code or '+91') | phone_example }}" value="{{ phone or '' }}">
+        </div>
+      </div>
+      <div class="field"><label for="otp_channel">Recovery method</label>
+        <select id="otp_channel" name="otp_channel">
+          <option value="">Email reset link (default)</option>
+          <option value="email">6-digit OTP to Gmail / Email</option>
+          <option value="phone">6-digit OTP to Mobile Number (SMS)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Send reset link or 6-digit OTP</button>
+    </form>
+  {% endif %}
+</div>
+</div>
+{% endblock %}

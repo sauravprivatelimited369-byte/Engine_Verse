@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Install the app — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Install · Android · iPhone</p>
+  <h1>Use {{ brand.site_name }} on your phone</h1>
+  <p class="lead">You can use the full website without downloading anything. On Android or iPhone, add this
+    same HTTPS site to your home screen. Sign in to your account to keep progress across devices;
+    installing an app is not required.</p>
+</section>
+
+<div class="stack install-cards">
+  <section class="panel install-card">
+    <span class="install-mark" aria-hidden="true">{{ icon("download", 18) }}</span>
+    <div class="install-body">
+      <h2>Android — install the web app</h2>
+      <ol class="steps">
+        <li>Open this site in Chrome.</li>
+        <li>Tap the ⋮ menu, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li>
+        <li>Confirm. The icon appears on your home screen.</li>
+      </ol>
+      <button class="btn btn-primary hide" id="install-btn" type="button">Install web app</button>
+      <p class="small muted">The web app uses this site's account and data. Offline access is limited to
+        previously cached public pages; submissions and sign-in need a connection.</p>
+    </div>
+  </section>
+
+  <section class="panel install-card">
+    <span class="install-mark" aria-hidden="true">{{ icon("hammer", 18) }}</span>
+    <div class="install-body">
+      <h2>Android — signed APK</h2>
+      {% if apk_url %}
+        <p>An alternative Android wrapper for this same HTTPS website is available as a signed GitHub Release.</p>
+        <p><a class="btn btn-primary" href="{{ apk_url }}" rel="noopener noreferrer">Download EngineVerse.apk</a></p>
+        <p class="small muted">Check the release, its SHA-256 checksum and signing certificate before installing.
+          Android may ask you to allow installs from this source. Only install the APK from the official release;
+          never from a forwarded copy. Updates require a new signed release.</p>
+      {% else %}
+        <p>No signed APK has been published and configured for this site yet. Do not install an APK from an
+          unofficial source — use the web app above in the meantime.</p>
+      {% endif %}
+      <p class="small muted">The APK is a Trusted Web Activity, not an offline copy of the backend.
+        Accounts, saved progress and live code execution still require this website to be online;
+        execution also requires an operator-configured judge.</p>
+    </div>
+  </section>
+
+  <section class="panel install-card">
+    <span class="install-mark" aria-hidden="true">{{ icon("globe", 18) }}</span>
+    <div class="install-body">
+      <h2>iPhone — Safari</h2>
+      <ol class="steps">
+        <li>Open this site in Safari.</li>
+        <li>Tap Share.</li>
+        <li>Choose <strong>Add to Home Screen</strong>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="panel install-card">
+    <span class="install-mark" aria-hidden="true">{{ icon("grid", 18) }}</span>
+    <div class="install-body">
+      <h2>Desktop</h2>
+      <p>Use your browser menu or the install icon in the address bar. Installing does not change where your
+        account data is stored: the operator's private database.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}

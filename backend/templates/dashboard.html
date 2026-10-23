@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+
+<section class="dash-hero ev-reveal">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <span class="hero-grid-lines" aria-hidden="true"></span>
+  <div class="dash-hero-copy">
+    <p class="ev-eyebrow">Dashboard · <span data-local-date>today</span></p>
+    <h1>Welcome back, {{ user.full_name.split(' ')[0] }}</h1>
+    <p class="lead">Pick up where you stopped, keep the streak alive, and leave today with one more
+      thing you can actually build.</p>
+    <div class="dash-chips">
+      <span class="dash-chip">{{ icon("flame", 15, true) }} {{ stats.currentStreak }}-day streak</span>
+      <span class="dash-chip">{{ icon("spark", 15) }} Level {{ stats.level }} · {{ stats.rank }}</span>
+      <span class="dash-chip">{{ icon("trophy", 15) }} {{ stats.xp }} XP</span>
+    </div>
+    <div class="row hero-actions">
+      <a class="btn btn-primary" href="/today">Today's plan {{ icon("chevron", 14) }}</a>
+      <a class="btn btn-ghost" href="/dpp">Daily practice</a>
+    </div>
+  </div>
+  <div class="dash-level-card">
+    <div class="ring" style="--p:{{ stats.levelPct }}"><b>Lv {{ stats.level }}</b></div>
+    <p class="small muted">{{ stats.neededForNext }} XP to level {{ stats.level + 1 }}</p>
+    <div class="bar" aria-hidden="true"><span style="width:{{ stats.levelPct }}%"></span></div>
+    <a class="small dash-level-link" href="/profile">View profile {{ icon("chevron", 12) }}</a>
+  </div>
+</section>
+
+<div class="grid g4 dash-stats ev-reveal">
+  <div class="stat dash-stat">
+    <span class="dash-stat-ico" aria-hidden="true">{{ icon("spark", 18) }}</span>
+    <div class="n">{{ stats.xp }}</div><div class="l">Total XP</div>
+  </div>
+  <div class="stat dash-stat">
+    <span class="dash-stat-ico" aria-hidden="true">{{ icon("book", 18) }}</span>
+    <div class="n">{{ stats.topicsCompleted }}</div><div class="l">Topics done</div>
+  </div>
+  <div class="stat dash-stat">
+    <span class="dash-stat-ico" aria-hidden="true">{{ icon("terminal", 18) }}</span>
+    <div class="n">{{ stats.problemsSolved }}</div><div class="l">Problems solved</div>
+  </div>
+  <div class="stat dash-stat">
+    <span class="dash-stat-ico" aria-hidden="true">{{ icon("target", 18) }}</span>
+    <div class="n">{{ stats.accuracy }}%</div><div class="l">Accuracy</div>
+  </div>
+</div>
+
+{# The stream strip: for a student, "my branch" is the natural map of the
+   catalogue, so it is on the dashboard rather than three clicks deep. #}
+{% if my_stream %}
+<section class="dash-stream ev-reveal">
+  <div class="dash-stream-copy">
+    <span class="dash-stream-ico" aria-hidden="true">{{ icon("compass", 20) }}</span>
+    <div>
+      <h2>Your stream: {{ my_stream.name }}</h2>
+      <p class="muted small">{{ my_stream.subjects }} subjects · {{ my_stream.notes }} notes ·
+        {{ my_stream.questions }} practice questions · {{ my_stream.projects }} projects</p>
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-primary btn-sm" href="/stream/{{ my_stream.slug }}">Open study hub</a>
+    <a class="btn btn-ghost btn-sm" href="/streams">Switch stream</a>
+  </div>
+</section>
+{% else %}
+<section class="dash-stream ev-reveal">
+  <div class="dash-stream-copy">
+    <span class="dash-stream-ico" aria-hidden="true">{{ icon("compass", 20) }}</span>
+    <div>
+      <h2>Choose your stream</h2>
+      <p class="muted small">Tell us your branch and this dashboard opens with its subjects, sheets
+        and projects.</p>
+    </div>
+  </div>
+  <a class="btn btn-primary btn-sm" href="/streams">Pick a stream</a>
+</section>
+{% endif %}
+
+<div class="layout-2">
+  <div class="stack">
+    <section class="panel panel-section ev-reveal">
+      <div class="section-head compact">
+        <div>
+          <p class="ev-eyebrow">Roughly an hour</p>
+          <h2>Today's plan</h2>
+        </div>
+        <a class="section-link" href="/today">Open the full plan {{ icon("chevron", 13) }}</a>
+      </div>
+      <div class="dash-today">
+        <a class="dash-today-card" href="{% if dpp %}/dpp/{{ dpp.set.date }}{% else %}/dpp{% endif %}">
+          <span class="dash-today-ico">{{ icon("target", 18) }}</span>
+          <span class="dash-today-title">Daily practice</span>
+          <span class="dash-today-meta">{% if dpp %}{{ dpp.questions | length }} {{ dpp.questions | length | plural('question') }} · {{ dpp.set.duration_minutes }} min{% else %}Today's set{% endif %}</span>
+        </a>
+        <a class="dash-today-card" href="/revision">
+          <span class="dash-today-ico">{{ icon("cards", 18) }}</span>
+          <span class="dash-today-title">Due flashcards</span>
+          <span class="dash-today-meta">{{ due_cards }} card{{ '' if due_cards == 1 else 's' }} to review</span>
+        </a>
+        {% if continue_learning %}
+        <a class="dash-today-card" href="/topics/{{ continue_learning[0].slug }}">
+          <span class="dash-today-ico">{{ icon("book", 18) }}</span>
+          <span class="dash-today-title">Continue learning</span>
+          <span class="dash-today-meta">{{ continue_learning[0].title | excerpt(44) }}</span>
+        </a>
+        {% else %}
+        <a class="dash-today-card" href="/explore">
+          <span class="dash-today-ico">{{ icon("book", 18) }}</span>
+          <span class="dash-today-title">Start a topic</span>
+          <span class="dash-today-meta">Pick one from the catalogue</span>
+        </a>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if continue_learning %}
+    <section class="panel panel-section ev-reveal">
+      <div class="section-head compact">
+        <h2>Continue where you left off</h2>
+        <a class="section-link" href="/explore">Catalogue {{ icon("chevron", 13) }}</a>
+      </div>
+      <div class="stack">
+        {% for item in continue_learning %}
+          <a class="continue-card" href="/topics/{{ item.slug }}">
+            <span class="continue-mark" aria-hidden="true">{{ item.title[:1] }}</span>
+            <span class="continue-body">
+              <span class="title">{{ item.title }}</span>
+              <span class="desc">{{ item.subject }}</span>
+            </span>
+            <span class="continue-progress">
+              <span class="bar thin"><span style="width:{{ item.mastery or 0 }}%"></span></span>
+              <span class="tiny muted">{{ item.mastery or 0 }}%</span>
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if dashboard and dashboard.lessons %}
+    <section class="panel panel-section ev-reveal">
+      <div class="section-head compact">
+        <h2>Recommended for you</h2>
+        <p class="section-sub">Based on your stream and recent practice.</p>
+      </div>
+      <div class="grid g2">
+        {% for rec in dashboard.lessons %}
+          <a class="card rec-card" href="/topics/{{ rec.slug }}">
+            <span class="chip">{{ rec.subject }}</span>
+            <span class="title">{{ rec.title }}</span>
+            <span class="desc">{{ rec.difficulty }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if dashboard and dashboard.weak %}
+    <section class="panel panel-section ev-reveal">
+      <div class="section-head compact">
+        <h2>Needs another pass</h2>
+        <p class="section-sub">Questions you got wrong recently. A short revisit is worth more than a new topic.</p>
+      </div>
+      <div class="grid g2">
+        {% for w in dashboard.weak %}
+          <a class="card rec-card weak-card" href="/topics/{{ w.slug }}">
+            <span class="chip bad">{{ w.accuracy }}% correct</span>
+            <span class="title">{{ w.title }}</span>
+            <span class="desc">{{ w.subject }} · {{ w.attempts }} attempts</span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if dashboard and dashboard.projects %}
+    <section class="panel panel-section ev-reveal">
+      <div class="section-head compact">
+        <h2>Projects for your branch</h2>
+        <a class="section-link" href="/projects">All projects {{ icon("chevron", 13) }}</a>
+      </div>
+      <div class="grid g3">
+        {% for proj in dashboard.projects %}
+          <a class="card" href="/projects/{{ proj.slug }}">
+            <span class="title">{{ proj.title }}</span>
+            <span class="desc">{{ proj.summary | excerpt(120) }}</span>
+            <span class="chip accent">{{ proj.difficulty }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="sidebar">
+    <div class="panel tight quick-panel ev-reveal">
+      <h3>Quick actions</h3>
+      <div class="quick-links">
+        <a class="quick-link" href="/revision">{{ icon("cards", 17) }} <span>Revise due cards</span><b>{{ due_cards }}</b></a>
+        <a class="quick-link" href="/mistakes">{{ icon("eraser", 17) }} <span>Mistake notebook</span>{{ icon("chevron", 13) }}</a>
+        <a class="quick-link" href="/formulas">{{ icon("sigma", 17) }} <span>Formula centre</span>{{ icon("chevron", 13) }}</a>
+        <a class="quick-link" href="/portfolio/{{ user.username }}">{{ icon("briefcase", 17) }} <span>My portfolio</span>{{ icon("chevron", 13) }}</a>
+      </div>
+    </div>
+
+    {% if trending %}
+    <div class="panel tight ev-reveal">
+      <h3>Trending searches</h3>
+      <div class="tags">{% for t in trending %}<a class="chip" href="/search?q={{ t.query | urlencode }}">{{ t.query }}</a>{% endfor %}</div>
+    </div>
+    {% endif %}
+
+    <div class="panel tight streak-card ev-reveal">
+      <span class="streak-card-ico" aria-hidden="true">{{ icon("flame", 22, true) }}</span>
+      <div>
+        <h3>{{ stats.currentStreak }} day{{ '' if stats.currentStreak == 1 else 's' }} strong</h3>
+        <p class="small muted">One session today keeps it alive. The heatmap shows the whole story.</p>
+        <a class="btn btn-soft btn-sm" href="/streaks">See my heatmap</a>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}

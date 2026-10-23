@@ -1,0 +1,101 @@
+{# ==========================================================================
+   The footer, rendered from engineverse/navigation.py.
+
+   Every heading and link comes from the same table the top bar uses, so the two
+   cannot disagree. The last column keeps the feedback form, which is the one
+   thing in the footer that is not navigation.
+   ========================================================================== #}
+{% from "_icons.html" import icon %}
+
+<footer class="footer">
+  {% if not gated %}
+  <div class="wrap">
+    <div class="footer-cta-band">
+      <span class="footer-glow" aria-hidden="true"></span>
+      <div>
+        <p class="ev-eyebrow">Free to start · no card · no trial timer</p>
+        {# A <p>, not an <h2>: the footer's h2s are the column headings generated
+           from navigation.py and the page outline must stay exactly that. #}
+        <p class="footer-band-title">One hour a day compounds.</p>
+        {% if static_export %}
+        <p class="muted">Notes, judged practice, projects and interview prep. Free to read, progress kept
+          in this browser, no trackers.</p>
+        {% else %}
+        <p class="muted">Notes, judged practice, projects and interview prep — one account, every
+          device, no trackers.</p>
+        {% endif %}
+      </div>
+      <div class="row">
+        <a class="btn btn-primary" href="{{ '/stream' if user else ('/explore' if static_export else '/register') }}">
+          {{ 'Open my stream' if user else 'Start learning free' }} {{ icon("chevron", 14) }}</a>
+        <a class="btn btn-ghost" href="/explore">Explore the catalogue</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <div class="logo logo-footer">
+        <span class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"
+               stroke-linejoin="round" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M16 3.5 5.5 9.5v13L16 28.5l10.5-6v-13z"/>
+            <path d="M11.5 20.2V12.2l4.5 4.1 4.5-4.1v8"/>
+          </svg>
+        </span>
+        <span class="logo-text">{{ brand.site_name }}</span>
+      </div>
+      <p class="muted">{{ brand.tagline }}</p>
+      <p class="muted small">{{ brand.free_tier_note }}</p>
+      <p class="footer-cta">
+        <a class="btn btn-soft btn-sm" href="{{ '/stream' if user else '/streams' }}">
+          {{ icon("compass", 15) }} {{ 'My stream' if user else 'All streams' }}</a>
+        <a class="btn btn-soft btn-sm" href="/resources">
+          {{ icon("grid", 15) }} Everything on {{ brand.site_name }}</a>
+      </p>
+    </div>
+
+    {% for column in footer_columns %}
+    <div>
+      <h2>{{ column.heading }}</h2>
+      {% for link in column.links %}
+      <a href="{{ link.path }}" class="{{ 'on' if link.matches(path) }}">{{ link.label }}</a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <div>
+      <h2>Account</h2>
+      {% for link in footer_account %}
+      <a href="{{ link.path }}" class="{{ 'on' if link.matches(path) }}">{{ link.label }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="footer-feedback" id="site-feedback">
+      <h2>Tell us what's wrong</h2>
+      {% if static_export %}
+      <p class="small">Broken page? Wrong answer? Missing subject? Open an issue with the page URL and what you
+        expected. Never include passwords or personal details.</p>
+      <p><a class="btn btn-soft btn-sm" href="{{ issues_url }}/new/choose" rel="noopener noreferrer" target="_blank">Report on GitHub<span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="small" href="/support">More ways to get help</a></p>
+      {% else %}
+      <form class="stack" method="post" action="/api/feedback" data-json-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="path" value="{{ path }}">
+        <label class="field">
+          <span class="label">Broken page? Wrong answer? Missing subject?</span>
+          <textarea name="message" rows="3" required minlength="5"
+                    placeholder="Be specific — a URL and what you expected helps us fix it."></textarea>
+        </label>
+        <button class="btn btn-soft btn-sm" type="submit">Send feedback</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="wrap footer-base">
+    <span>&copy; {{ brand.site_name }}. Built for engineers, by engineers.</span>
+    <span class="muted">{% if gated %}<a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · {% endif %}{{ 'Static copy hosted on GitHub Pages' if static_export else 'Self-hosted' }}. No trackers. No third-party scripts.</span>
+    <div class="lang-picker" id="ev-lang-picker"></div>
+  </div>
+</footer>

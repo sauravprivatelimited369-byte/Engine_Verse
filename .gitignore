@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+coverage.xml
+
+# Local database + runtime state (never commit learner data)
+data/*
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Secrets
+.env
+.env.local
+.env.*.local
+deploy/.env
+
+# Backups and signing material. Never commit these.
+backups/
+*.dump
+*.sql.gz
+*.keystore
+*.jks
+*.p12
+*.age
+*.apk
+*.aab
+
+# Android build output and npm toolchain (neither is source)
+node_modules/
+android/.generated/
+
+# Toolchains fetched locally (never committed)
+.toolchain/
+*.jar
+sandbox-java/target/
+sandbox-java/build/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
+.scratch/
+site/
+
+# Downloaded CPython (Pyodide) runtime binaries: fetched into the Pages
+# artifact by scripts/fetch_pyodide.py, never source.
+pyodide/
+
+# Android (native Gradle project in android/)
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+*.iml
+*.aab
+# The Gradle wrapper jar is part of the build and must be committed.
+!android/gradle/wrapper/gradle-wrapper.jar

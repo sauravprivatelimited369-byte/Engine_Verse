@@ -1,0 +1,54 @@
+{# ==========================================================================
+   The "how to use this" ladder and the fields-with-notes list.
+
+   Both used to render as full sections above the page's actual content, so
+   /projects, /practice and /programming opened on three paragraphs of
+   instructions and zero projects or problems. They are advice, not the page, so
+   they are now folded into a single collapsed disclosure that sits under the
+   page hero. Anyone who wants the advice is one click away; everyone else gets
+   straight to the work.
+   ========================================================================== #}
+{% if ladder or fields %}
+<details class="ladder">
+  <summary>
+    <h2 class="ladder-summary-title">{{ ladder_title or "How to use this" }}</h2>
+    <span class="ladder-summary-hint">Read this once</span>
+  </summary>
+  <div class="ladder-body">
+    {% if ladder_note %}<p class="muted">{{ ladder_note }}</p>{% endif %}
+    {% if ladder %}
+      <div class="ladder-steps">
+        {% for step in ladder %}
+          <article class="ladder-step">
+            <span class="ladder-num" aria-hidden="true">{{ step.n }}</span>
+            <div>
+              <h3>{{ step.title }}</h3>
+              <p>{{ step.body }}</p>
+              {% if step.href %}<a class="small" href="{{ step.href }}">{{ step.label }} →</a>{% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if fields %}
+      <div class="ladder-fields">
+        <h3>Fields you can start today</h3>
+        <p class="small muted">These branches already have notes. A subject with no topics is still only a
+          catalogue entry. This is not a complete course in mechanical, electrical, computer, or any other field.</p>
+        <div class="grid g3">
+          {% for field in fields %}
+            <article class="panel tight">
+              <h4 style="margin-top:0"><a href="/branches/{{ field.slug }}">{{ field.name }}</a></h4>
+              <div class="stack">
+                {% for topic in field.topics %}
+                  <a class="small" href="/topics/{{ topic.slug }}">{{ topic.title }}</a>
+                {% endfor %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</details>
+{% endif %}

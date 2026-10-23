@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_quiz.html" import quiz_card with context %}
+{% block title %}{{ topic.title }} — {{ brand.site_name }}{% endblock %}
+{% block description %}{{ topic.summary }}{% endblock %}
+{% block content %}
+
+<div class="layout-2">
+  <article>
+    <header class="topic-head panel">
+      <div class="grow">
+        <h1>{{ topic.title }}</h1>
+        <p class="muted">{{ topic.summary }}</p>
+        <div class="tags">
+          <span class="chip diff-{{ topic.difficulty }}">{{ topic.difficulty }}</span>
+          <span class="chip">{{ topic.est_minutes }} min</span>
+          {% for tag in (topic.tags | fromjson([]))[:6] %}<span class="chip">{{ tag }}</span>{% endfor %}
+        </div>
+      </div>
+      <div class="row">
+        {% if user or static_export %}
+          {% if user and my_progress and my_progress.status in ('completed','mastered') %}
+            <span class="chip ok">Completed ✓</span>
+          {% else %}
+            <button class="btn btn-primary btn-sm" data-complete-topic="{{ topic.id }}" data-id="{{ topic.id }}">Mark complete</button>
+          {% endif %}
+          <button class="btn btn-soft btn-sm" data-bookmark="topic" data-type="topic" data-id="{{ topic.id }}"
+                  aria-pressed="false">☆ Save</button>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if topic.accuracy_state != 'reviewed' %}
+    <div class="callout warning mt"><span class="label">Public learning draft</span>
+      <p>This structured note has not completed editorial review. Use it to study, then verify safety-critical or exam-critical decisions against your course material and authoritative references.</p>
+      {% if topic.subject_slug == 'cryptography-security' %}<p>Security examples are defensive and for authorized systems and labs only.</p>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if available_depths | length > 1 %}
+    <p class="muted">New to this? Start at Beginner. If you already use it, read Advanced and Industry. Same topic, different reader. None of these is a full textbook.</p>
+    <nav class="depthbar" aria-label="Reading depth">
+      {% for row in available_depths %}
+        <a class="chip {{ 'accent' if row.quality_level == quality }}"
+           href="{% if all_depths %}#depth-{{ row.quality_level }}{% else %}/topics/{{ topic.slug }}?depth={{ row.quality_level }}{% endif %}">{{ row.quality_level | titlecase }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+
+    {% if not sections %}
+      <div class="empty"><span class="em" aria-hidden="true">{{ icon("book", 26) }}</span>Notes for this topic are being written.</div>
+    {% endif %}
+
+    {% for model in models_3d %}
+      <section class="note-section" id="model-3d">
+        <h2>3D model</h2>
+        {# The scene is validated JSON geometry, emitted into an attribute and
+           drawn by static/js/engine3d.js. Autoescaping is on, and the scene
+           itself contains only finite numbers, hex colours and allowlisted
+           mesh names, so there is no markup to escape. #}
+        <figure class="ev3d" data-model3d data-scene="{{ model.scene_json }}">
+          <canvas tabindex="0" role="img"
+                  aria-label="Interactive 3D model: {{ model.title }}"></canvas>
+          <div class="ev3d-labels" aria-hidden="true"></div>
+          <p class="ev3d-hint">This model is drawn live in your browser — it needs JavaScript and WebGL.</p>
+        </figure>
+        <div class="row ev3d-controls">
+          <span class="tiny muted">Drag to rotate · double-click to reset · click the model, then scroll or use the arrow keys to zoom and tilt.</span>
+        </div>
+        <p class="small"><strong>{{ model.title }}.</strong> {{ model.caption }}</p>
+      </section>
+    {% endfor %}
+
+    {% if all_depths %}
+      {% for depth in all_depths %}
+        <section class="note-section" id="depth-{{ depth.quality }}">
+          <h2>{{ depth.quality | titlecase }} reading</h2>
+          <p class="muted">{{ depth.blurb }}</p>
+        </section>
+        {% with sections=depth.sections, id_prefix=depth.quality + "-" %}
+          {% include "_sections.html" %}
+        {% endwith %}
+      {% endfor %}
+    {% else %}
+      {% with id_prefix="" %}
+        {% include "_sections.html" %}
+      {% endwith %}
+    {% endif %}
+
+    {% for diagram in diagrams %}
+      <section class="note-section">
+        <h2>Diagram</h2>
+        {# hotspots_data is the parsed list; tojson + normal autoescaping keeps
+           quotes/apostrophes in hotspot text inside the attribute. The raw
+           JSON column was previously emitted with |safe in a single-quoted
+           attribute, so one apostrophe broke the attribute (and authored
+           text could inject attributes). The HTML parser decodes the
+           escaped value back to JSON for dataset.hotspots. #}
+        <figure class="diagram" data-diagram data-hotspots="{{ diagram.hotspots_data | tojson | forceescape }}">
+          {{ diagram.spec | safe }}
+          <figcaption><strong>{{ diagram.title }}.</strong> {{ diagram.caption }}
+            {% if diagram.hotspots_data %}<br><span class="tiny muted">Tap a highlighted region for an explanation.</span>{% endif %}
+          </figcaption>
+          <div class="hotspot-note" role="status"></div>
+        </figure>
+      </section>
+    {% endfor %}
+
+    {% if formulas %}
+      <section class="note-section">
+        <h2>Formulas from this topic</h2>
+        {% for formula in formulas %}
+          <div class="panel tight mb">
+            <strong>{{ formula.name }}</strong>
+            <div class="prose"><div class="math-display">{{ ("$$ " + formula.latex + " $$") | md | safe }}</div></div>
+            <p class="small muted" style="margin:0">{{ formula.meaning }}</p>
+          </div>
+        {% endfor %}
+        <a class="small" href="/formulas">Open the formula centre →</a>
+      </section>
+    {% endif %}
+
+    {% if questions %}
+      <section class="note-section">
+        <h2>Check yourself</h2>
+        {% for question in questions %}
+          {% call quiz_card(question, attempt=attempts.get(question.id) if attempts else None, card_class="mb") %}
+            <span class="chip diff-{{ question.difficulty }}">{{ question.difficulty }}</span>
+          {% endcall %}
+        {% endfor %}
+      </section>
+    {% endif %}
+
+    {% if flashcards %}
+      <section class="note-section">
+        <h2>Flashcards</h2>
+        <div class="stack">
+          {% for card in flashcards %}
+            <div class="panel tight"><strong>{{ card.front }}</strong>
+              <p class="muted small" style="margin:6px 0 0">{{ card.back }}</p></div>
+          {% endfor %}
+        </div>
+        <a class="small" href="/revision">Practise with spaced repetition →</a>
+      </section>
+    {% endif %}
+
+    <nav class="between mt">
+      {% if siblings.prev %}<a class="btn btn-ghost btn-sm" href="/topics/{{ siblings.prev.slug }}">← {{ siblings.prev.title }}</a>
+      {% else %}<span></span>{% endif %}
+      {% if siblings.next %}<a class="btn btn-primary btn-sm" href="/topics/{{ siblings.next.slug }}">{{ siblings.next.title }} →</a>{% endif %}
+    </nav>
+  </article>
+
+  <aside class="sidebar">
+    {% if user %}
+    <div class="panel tight">
+      <h3>Your progress</h3>
+      {% if my_progress %}
+        <div class="bar"><span style="width:{{ my_progress.mastery }}%"></span></div>
+        <p class="small muted">{{ my_progress.mastery }}% mastery · {{ my_progress.status }}</p>
+      {% else %}
+        <p class="small muted">Not started yet.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if user %}
+    <div class="panel tight">
+      <h3>My notes</h3>
+      <form class="stack" method="post" action="/api/notes/personal" data-json-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="entityType" value="topic">
+        <input type="hidden" name="entityId" value="{{ topic.id }}">
+        <label class="field">
+          <span class="label">Jot down what clicked — or what didn't</span>
+          <textarea name="content" rows="4" required minlength="2"
+                    placeholder="e.g. Bernoulli is just energy conservation per unit volume. I keep forgetting the pressure term is per area."></textarea>
+        </label>
+        <button class="btn btn-soft btn-sm" type="submit">Save note</button>
+      </form>
+      {% if my_notes %}
+        <div class="stack mt">
+          {% for note in my_notes[:5] %}
+            <article class="note">
+              <p class="small">{{ note.content }}</p>
+              <p class="tiny muted">{{ note.created_at | ago }}</p>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="panel tight">
+      <h3>Certificate</h3>
+      {% if my_certificate %}
+        <p class="small">Issued. Verify it with this ID:</p>
+        <p class="small mono"><a href="/certificates/{{ my_certificate.verify_id }}">{{ my_certificate.verify_id }}</a></p>
+      {% elif my_progress and my_progress.status in ('completed', 'mastered') %}
+        <p class="small muted">You finished this topic — claim a verifiable certificate.</p>
+        <form method="post" action="/api/certificates/issue" data-json-form>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="kind" value="topic">
+          <input type="hidden" name="entityType" value="topic">
+          <input type="hidden" name="entityId" value="{{ topic.id }}">
+          <input type="hidden" name="title" value="{{ topic.title }}">
+          <button class="btn btn-primary btn-sm" type="submit">Claim certificate</button>
+        </form>
+      {% else %}
+        <p class="small muted">Mark this topic complete to unlock a certificate.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if related %}
+    <div class="panel tight">
+      <h3>Related topics</h3>
+      <div class="stack">
+        {% for item in related %}
+          <a class="small" href="/topics/{{ item.slug }}">{{ item.title }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if recommendations %}
+    <div class="panel tight">
+      <h3>Next up</h3>
+      <div class="stack">
+        {% for rec in recommendations %}
+          <a class="card" href="{{ rec.url }}"><span class="title small">{{ rec.title }}</span>
+            <span class="desc tiny">{{ rec.reason }}</span></a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if resources.videos or resources.books %}
+    <div class="panel tight">
+      <h3>Study material</h3>
+      <div class="stack">
+        {% for video in resources.videos[:5] %}
+          <a class="small" href="{{ video.url }}" rel="noopener noreferrer nofollow" target="_blank">▶ {{ video.title }}</a>
+        {% endfor %}
+        {% for book in resources.books[:4] %}
+          <a class="small" href="{{ book.legal_url }}" rel="noopener noreferrer nofollow" target="_blank">📖 {{ book.title }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

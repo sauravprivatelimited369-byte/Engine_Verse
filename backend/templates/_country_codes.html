@@ -1,0 +1,15 @@
+{# The <option> list for every country-code selector on the site.
+
+   Register listed thirteen countries, forgot-password nine and Settings eleven,
+   each written out by hand, while the validator knew about fifteen: a learner
+   could be offered a dialling code the server would refuse, or be denied one it
+   accepted. These options come from ``phone_countries``, which is generated from
+   the same table ``phone_rules`` validates against, so an option cannot exist
+   without a numbering plan behind it.
+
+   Set ``selected_country_code`` before including to preselect the account's own
+   dialling code; it defaults to India, which is what the hardcoded markup did.
+   The include expects to sit inside an open ``<select>`` element. #}
+{% for plan in phone_countries %}
+<option value="{{ plan.code }}"{% if plan.code == (selected_country_code or '+91') %} selected{% endif %}>{{ plan.flag }} {{ plan.label }} ({{ plan.code }})</option>
+{% endfor %}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.EngineVerse.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>
+        <item name="postSplashScreenTheme">@style/Theme.EngineVerse</item>
+    </style>
+
+    <style name="Theme.EngineVerse" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash_dark</item>
+    </style>
+</resources>

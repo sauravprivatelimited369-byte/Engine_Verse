@@ -1,0 +1,597 @@
+"""Database access layer.
+
+Two drivers share one interface:
+
+* ``sqlite3`` (standard library) - zero-dependency default, WAL mode, FTS5.
+  Suitable for development and single-node deployments.
+* PostgreSQL via any DB-API 2.0 driver (psycopg) - production. The DDL in
+  ``db/postgres/schema.pg.sql`` is hash-partitioned for the multi-hundred-million
+  user case; see db/postgres/README.md. That file is generated from
+  ``db/schema.sql`` by ``scripts/gen_pg_schema.py`` - edit the SQLite schema and
+  regenerate, never the Postgres one.
+
+All SQL in the application lives in this module or in ``repositories``-style
+modules that call these helpers, so a driver swap touches one file.
+"""
+from __future__ import annotations
+
+import os
+import re
+import sqlite3
+import threading
+from contextlib import contextmanager
+from datetime import date, datetime
+from pathlib import Path
+from typing import Any, Iterable, Iterator, Sequence
+
+from .config import REPO_ROOT, get_settings
+
+_local = threading.local()
+_write_lock = threading.RLock()
+
+
+class DatabaseError(RuntimeError):
+    """Raised when the database layer cannot satisfy a request."""
+
+
+def _adapt(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bytes)):
+        return value
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if isinstance(value, (datetime,)):
+        return int(value.timestamp() * 1000)
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, (list, tuple, dict, set)):
+        import json
+
+        return json.dumps(value, default=str)
+    return str(value)
+
+
+def _params(values: Sequence[Any]) -> tuple:
+    return tuple(_adapt(v) for v in values)
+
+
+def _sqlite_connect(path: Path) -> sqlite3.Connection:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path, timeout=30.0, isolation_level=None, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
+    conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
+    conn.execute("PRAGMA temp_store = MEMORY;")
+    conn.execute("PRAGMA cache_size = -32000;")
+    conn.execute("PRAGMA mmap_size = 268435456;")
+    return conn
+
+
+class PostgresConnection:
+    """Thin DB-API adapter so callers can use the same `?` placeholders."""
+
+    def __init__(self, raw: Any) -> None:
+        self._raw = raw
+
+    @staticmethod
+    def _convert(sql: str) -> str:
+        """Rewrites SQLite-style SQL for psycopg.
+
+        Two translations, both needed because ``db.execute`` always hands
+        psycopg a parameter tuple - even an empty one - which makes psycopg scan
+        the query for placeholders before PostgreSQL ever sees it.
+
+        ``?`` becomes ``%s`` outside string literals.
+
+        Every literal ``%`` is doubled. psycopg's placeholder pattern is ``%``
+        followed by *any* character, and it raises
+        ``ProgrammingError: only '%s', '%b', '%t' are allowed as placeholders``
+        for anything else. Two real statements hit that: ``catalog.py`` builds a
+        pattern with ``LIKE '%' || t.title || '%'``, and the generated schema's
+        PL/pgSQL helpers use PostgreSQL ``format()`` specifiers ``%I`` and
+        ``%s`` inside their bodies. SQLite has no percent escaping, so doubling
+        belongs here rather than at the call sites, which must stay valid on
+        both engines.
+        """
+        out = []
+        in_string = False
+        for ch in sql:
+            if ch == "'":
+                in_string = not in_string
+                out.append(ch)
+            elif ch == "%":
+                out.append("%%")
+            elif ch == "?" and not in_string:
+                out.append("%s")
+            else:
+                out.append(ch)
+        return "".join(out)
+
+    def cursor(self):
+        return _PgCursor(self._raw.cursor())
+
+    def commit(self) -> None:
+        self._raw.commit()
+
+    def rollback(self) -> None:
+        self._raw.rollback()
+
+    def close(self) -> None:
+        self._raw.close()
+
+
+class _PgCursor:
+    def __init__(self, cur: Any) -> None:
+        self._cur = cur
+
+    def execute(self, sql: str, params: Sequence[Any] = ()) -> "_PgCursor":
+        self._cur.execute(PostgresConnection._convert(sql), tuple(params))
+        return self
+
+    @property
+    def description(self):
+        return self._cur.description
+
+    @property
+    def rowcount(self) -> int:
+        return self._cur.rowcount
+
+    def fetchone(self):
+        row = self._cur.fetchone()
+        return dict(zip([d[0] for d in self._cur.description], row)) if row else None
+
+    def fetchall(self):
+        cols = [d[0] for d in self._cur.description] if self._cur.description else []
+        return [dict(zip(cols, r)) for r in self._cur.fetchall()]
+
+    def close(self) -> None:
+        self._cur.close()
+
+
+def _pg_connect(url: str) -> PostgresConnection:
+    try:
+        import psycopg  # type: ignore
+    except ImportError as exc:  # pragma: no cover - depends on deployment
+        raise DatabaseError(
+            "ENGINEVERSE_DB_URL is set but no PostgreSQL driver is installed. "
+            "Run: pip install 'psycopg[binary]'"
+        ) from exc
+    return PostgresConnection(psycopg.connect(url, autocommit=False))
+
+
+def connection() -> Any:
+    """Returns a thread-local connection."""
+    conn = getattr(_local, "conn", None)
+    if conn is not None:
+        if isinstance(conn, sqlite3.Connection):
+            try:
+                conn.execute("SELECT 1")
+                return conn
+            except sqlite3.ProgrammingError:
+                _local.conn = None
+        else:
+            return conn
+    settings = get_settings()
+    conn = _pg_connect(settings.db_url) if settings.uses_postgres else _sqlite_connect(settings.sqlite_path)
+    _local.conn = conn
+    return conn
+
+
+def uses_postgres() -> bool:
+    """True when this runtime is configured for PostgreSQL."""
+    return get_settings().uses_postgres
+
+
+def close_connection() -> None:
+    conn = getattr(_local, "conn", None)
+    if conn is not None:
+        try:
+            conn.close()
+        finally:
+            _local.conn = None
+
+
+def _transaction_control(conn: Any, statement: str) -> None:
+    """Run BEGIN/SAVEPOINT control SQL without passing through db.execute()."""
+    if isinstance(conn, sqlite3.Connection):
+        conn.execute(statement)
+        return
+    cur = conn.cursor()
+    try:
+        cur.execute(statement)
+    finally:
+        cur.close()
+
+
+@contextmanager
+def transaction() -> Iterator[None]:
+    """Serialise writes and make nested transactions safe on both databases.
+
+    SQLite needs ``BEGIN IMMEDIATE`` to claim its single-writer slot before a
+    read/modify/write sequence. PostgreSQL already opens a DB-API transaction on
+    the first statement; ``db.execute`` must not commit individual statements
+    while this context is active. Nested calls use savepoints rather than issuing
+    a second BEGIN (or accidentally committing their caller's work).
+    """
+    with _write_lock:
+        conn = connection()
+        depth = int(getattr(_local, "transaction_depth", 0))
+        savepoint = f"engineverse_sp_{depth + 1}"
+        if isinstance(conn, sqlite3.Connection):
+            _transaction_control(conn, "BEGIN IMMEDIATE;" if depth == 0 else f"SAVEPOINT {savepoint};")
+        elif depth > 0:  # pragma: no cover - postgres path
+            _transaction_control(conn, f"SAVEPOINT {savepoint};")
+        _local.transaction_depth = depth + 1
+        try:
+            yield
+        except Exception:
+            try:
+                if depth == 0:
+                    conn.rollback()
+                else:
+                    _transaction_control(conn, f"ROLLBACK TO SAVEPOINT {savepoint};")
+                    _transaction_control(conn, f"RELEASE SAVEPOINT {savepoint};")
+            except Exception:
+                pass
+            raise
+        else:
+            if isinstance(conn, sqlite3.Connection):
+                _transaction_control(conn, "COMMIT;" if depth == 0 else f"RELEASE SAVEPOINT {savepoint};")
+            elif depth == 0:  # pragma: no cover
+                conn.commit()
+            else:  # pragma: no cover
+                _transaction_control(conn, f"RELEASE SAVEPOINT {savepoint};")
+        finally:
+            _local.transaction_depth = depth
+
+
+def query(sql: str, *params: Any) -> list[dict]:
+    cur = connection().cursor()
+    try:
+        cur.execute(sql, _params(params))
+        rows = cur.fetchall()
+        if rows and not isinstance(rows[0], dict):
+            cols = [d[0] for d in cur.description]
+            return [dict(zip(cols, r)) for r in rows]
+        return list(rows or [])
+    finally:
+        cur.close()
+
+
+def query_one(sql: str, *params: Any) -> dict | None:
+    rows = query(sql, *params)
+    return rows[0] if rows else None
+
+
+def scalar(sql: str, *params: Any, default: Any = 0) -> Any:
+    row = query_one(sql, *params)
+    if not row:
+        return default
+    return next(iter(row.values()), default)
+
+
+def execute(sql: str, *params: Any) -> int:
+    with _write_lock:
+        cur = connection().cursor()
+        try:
+            cur.execute(sql, _params(params))
+            conn = connection()
+            if isinstance(conn, sqlite3.Connection):
+                return cur.rowcount if cur.rowcount is not None else 0
+            if not getattr(_local, "transaction_depth", 0):
+                conn.commit()
+            return cur.rowcount
+        finally:
+            cur.close()
+
+
+def execute_many(sql: str, rows: Iterable[Sequence[Any]]) -> None:
+    with _write_lock:
+        conn = connection()
+        cur = conn.cursor()
+        try:
+            for row in rows:
+                cur.execute(sql, _params(row))
+            if not isinstance(conn, sqlite3.Connection):  # pragma: no cover
+                conn.commit()
+        finally:
+            cur.close()
+
+
+def executescript(script: str) -> None:
+    """Runs a multi-statement SQL script (migrations, schema)."""
+    conn = connection()
+    if isinstance(conn, sqlite3.Connection):
+        with _write_lock:
+            conn.executescript(script)
+    else:  # pragma: no cover - postgres path
+        with _write_lock:
+            for statement in split_sql(script):
+                cur = conn.cursor()
+                try:
+                    cur.execute(statement)
+                finally:
+                    cur.close()
+            conn.commit()
+
+
+# A PostgreSQL dollar-quote opener: $$ or $tag$.
+_DOLLAR_QUOTE = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$")
+
+
+def split_sql(script: str) -> list[str]:
+    """Splits SQL on `;` while respecting string literals, dollar-quoted bodies
+    and ``--`` comments.
+
+    Dollar-quoting matters only for PostgreSQL, whose PL/pgSQL functions wrap
+    their body in ``$body$ ... $body$`` and are full of internal semicolons.
+    Without handling it this splitter cut ``engineverse_create_partitions`` in
+    half at the first one, so ``migrate()`` handed PostgreSQL a CREATE FUNCTION
+    with no body. The schema itself was fine - psql understands dollar-quoting,
+    which is why applying it by hand in CI worked and applying it through the
+    application did not.
+    """
+    statements: list[str] = []
+    buffer: list[str] = []
+    in_string = False
+    i = 0
+    while i < len(script):
+        ch = script[i]
+        if in_string:
+            if ch == "'":
+                if i + 1 < len(script) and script[i + 1] == "'":
+                    buffer.append("''")
+                    i += 2
+                    continue
+                in_string = False
+            buffer.append(ch)
+            i += 1
+            continue
+        if ch == "'":
+            in_string = True
+            buffer.append(ch)
+            i += 1
+            continue
+        if ch == "$":
+            # A dollar-quote opener: $$ or $tag$. Everything up to the matching
+            # closer is copied verbatim, semicolons included.
+            match = _DOLLAR_QUOTE.match(script, i)
+            if match:
+                tag = match.group(0)
+                end = script.find(tag, match.end())
+                if end == -1:  # unterminated: take the rest rather than loop
+                    buffer.append(script[i:])
+                    break
+                buffer.append(script[i:end + len(tag)])
+                i = end + len(tag)
+                continue
+        if ch == "-" and i + 1 < len(script) and script[i + 1] == "-":
+            while i < len(script) and script[i] != "\n":
+                i += 1
+            continue
+        if ch == ";":
+            statement = "".join(buffer).strip()
+            if statement:
+                statements.append(statement)
+            buffer = []
+            i += 1
+            continue
+        buffer.append(ch)
+        i += 1
+    tail = "".join(buffer).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
+def json_flag(column: str, key: str, *, default: bool = True) -> str:
+    """A boolean expression for one key inside a TEXT column holding JSON.
+
+    True when the key is absent or truthy, false only when it is explicitly
+    false - which is what ``COALESCE(json_extract(col, '$.k'), 1) = 1`` meant.
+
+    The two engines are not interchangeable here. SQLite's ``json_extract``
+    returns the integers 1 and 0; PostgreSQL has no such function and its
+    ``->>`` operator returns the strings ``'true'`` and ``'false'``, so the
+    comparison has to change shape as well as spelling. ``NULLIF`` keeps an
+    empty string, which is not valid JSON, from raising on the cast.
+    """
+    if get_settings().uses_postgres:
+        expr, yes, no = f"NULLIF({column}, '')::jsonb ->> '{key}'", "'true'", "'false'"
+    else:
+        expr, yes, no = f"json_extract({column}, '$.{key}')", "1", "0"
+    return f"COALESCE({expr}, {yes if default else no}) <> {no}"
+
+
+def sql_greatest(a: str, b: str) -> str:
+    """A scalar maximum spelled so that both backends accept it.
+
+    SQLite's ``MAX(a, b)`` returns the larger of two values. PostgreSQL's
+    ``MAX`` is aggregate-only - its scalar equivalent is ``GREATEST``, which
+    SQLite does not have. Neither engine accepts the other's spelling, so this
+    emits a ``CASE`` expression that is valid on both rather than branching at
+    every call site.
+
+    A ``?`` passed as an argument appears twice in the result and therefore has
+    to be supplied twice by the caller.
+    """
+    return f"CASE WHEN {a} > {b} THEN {a} ELSE {b} END"
+
+
+def epoch_ms_column_type() -> str:
+    """The column type for an epoch-millisecond timestamp on the active backend.
+
+    SQLite's ``INTEGER`` is 64-bit. PostgreSQL's is 32-bit and overflows at
+    2147483647, which a millisecond timestamp passed in 2001 - so inserting
+    ``now_ms()`` raised ``NumericValueOutOfRange``.
+
+    ``schema_meta`` and ``search_log`` are created inline in Python rather than
+    by the schema file, so they never reach ``scripts/gen_pg_schema.py``, which
+    is the thing that widens ``INTEGER`` to ``BIGINT`` for precisely this reason.
+    Both worked on SQLite and failed only against PostgreSQL.
+    """
+    return "BIGINT" if get_settings().uses_postgres else "INTEGER"
+
+
+def migrate(schema_file: str | Path | None = None) -> int:
+    """Applies the schema (idempotent: everything is CREATE ... IF NOT EXISTS).
+
+    Picks the file matching the backend in use. This used to be unconditionally
+    ``db/schema.sql``, which is SQLite: line 927 is ``CREATE VIRTUAL TABLE ...
+    USING fts5(...)``, and PostgreSQL rejects it. So ``migrate()`` worked in
+    development and in CI - both SQLite - and would have failed on the first
+    boot of the production container, where ``docker-compose.yml`` points
+    ``ENGINEVERSE_DB_URL`` at PostgreSQL. The generated ``schema.pg.sql`` is the
+    Postgres equivalent and is kept in step by ``scripts/gen_pg_schema.py``.
+
+    The web process must not call this in production. ``scripts/release.py``
+    does, using the bootstrap connection. The runtime role is refused here as
+    well as by its missing ``CREATE`` privilege, so a mis-pointed app URL
+    cannot apply DDL.
+    """
+    _refuse_runtime_role_ddl()
+    if schema_file:
+        path = Path(schema_file)
+    elif get_settings().uses_postgres:
+        path = REPO_ROOT / "db" / "postgres" / "schema.pg.sql"
+    else:
+        path = REPO_ROOT / "db" / "schema.sql"
+    if not path.exists():
+        raise DatabaseError(f"schema file not found: {path}")
+    statements = split_sql(path.read_text(encoding="utf-8"))
+    for statement in statements:
+        execute(statement)
+    execute(
+        "CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, "
+        f"updated_at {epoch_ms_column_type()} NOT NULL)"
+    )
+    # Columns added after the table was first created. Kept here so a database
+    # that was seeded by an older build picks them up on the next migrate().
+    # The phone index must be created *after* these ALTER TABLEs. Putting the
+    # index in schema.sql makes an upgrade fail before the new columns exist on
+    # an older database (and PostgreSQL has the same ordering requirement).
+    ensure_column("users", "phone", "TEXT")
+    ensure_column("users", "phone_verified", "INTEGER NOT NULL DEFAULT 0")
+    execute("UPDATE users SET phone_verified = 0 WHERE phone_verified IS NULL")
+    execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) "
+        "WHERE phone IS NOT NULL AND phone <> ''"
+    )
+    ensure_column("certificates", "tier", "TEXT NOT NULL DEFAULT 'bronze'")
+    # Staged language paths: a module that predates staging keeps the honest
+    # default until the seeder restages it from seed_data/language_curriculum.py.
+    ensure_column("language_modules", "stage", "TEXT NOT NULL DEFAULT 'foundations'")
+    # The per-module "code what you learned" link; NULL means no linked problem.
+    # Plain TEXT, not a foreign key: languages seed before problems, so the
+    # seeder validates the links against the authored banks instead.
+    ensure_column("language_modules", "practice_slug", "TEXT")
+    ensure_column("language_modules", "lesson_data", "TEXT")
+    # Language-linked capstone projects; NULL simply means "not a capstone".
+    ensure_column("projects", "language_id", "TEXT REFERENCES programming_languages(id) ON DELETE SET NULL")
+    # search_log is created on demand by the search module. Creating it here,
+    # on the migration connection, means the runtime role only needs INSERT.
+    execute(
+        "CREATE TABLE IF NOT EXISTS search_log ("
+        "id TEXT PRIMARY KEY, query TEXT NOT NULL, results INTEGER NOT NULL, "
+        f"created_at {epoch_ms_column_type()} NOT NULL)"
+    )
+    execute("CREATE INDEX IF NOT EXISTS idx_search_log_query ON search_log(query)")
+    import time
+
+    execute(
+        "INSERT INTO schema_meta (key, value, updated_at) VALUES ('schema_version', '1.0.0', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        int(time.time() * 1000),
+    )
+    return len(statements)
+
+
+def ensure_column(table: str, column: str, ddl: str) -> bool:
+    """Adds a column if the table does not already have it. Returns True if added.
+
+    The schema file is entirely ``CREATE TABLE IF NOT EXISTS``, so it can add
+    tables on an existing database but never add a column to one. Without this,
+    a new field means every deployment has to be rebuilt from scratch to pick
+    it up. Idempotent on both engines: PostgreSQL supports the clause directly,
+    SQLite does not, so it is checked against ``PRAGMA table_info`` first.
+    """
+    if get_settings().uses_postgres:  # pragma: no cover - exercised in the CI postgres job
+        execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {ddl}")
+        return True
+    existing = {row["name"] for row in query(f"PRAGMA table_info({table})")}
+    if column in existing:
+        return False
+    execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+    return True
+
+
+def table_exists(name: str) -> bool:
+    """Whether a table is present in the schema.
+
+    Replaces ``table_count``, which returned the *row* count on Postgres and a
+    0/1 ``sqlite_master`` match on SQLite - so one function meant "how many users
+    are there" on one backend and "does this table exist" on the other. Both of
+    its callers only ever wanted existence, and on Postgres the old version
+    would have raised for a table that did not exist instead of returning 0.
+    """
+    settings = get_settings()
+    if settings.uses_postgres:  # pragma: no cover
+        # to_regclass yields NULL for a missing table rather than raising.
+        return scalar("SELECT to_regclass(?) AS t", name, default=None) is not None
+    return bool(scalar(
+        "SELECT count(*) AS c FROM sqlite_master WHERE type='table' AND name = ?", name, default=0
+    ))
+
+
+def schema_table_count() -> int:
+    """How many tables the schema defines. What /health always meant to report."""
+    settings = get_settings()
+    if settings.uses_postgres:  # pragma: no cover
+        return int(scalar(
+            "SELECT count(*) AS c FROM information_schema.tables WHERE table_schema = 'public'",
+            default=0,
+        ))
+    return int(scalar("SELECT count(*) AS c FROM sqlite_master WHERE type='table'", default=0))
+
+
+def row_count(name: str) -> int:
+    return int(scalar(f"SELECT count(*) AS c FROM {name}"))
+
+
+def _refuse_runtime_role_ddl() -> None:
+    """The application login must not be able to change the schema.
+
+    Checked by role name because that is the login ``deploy/`` creates. A
+    different runtime role is still blocked if it lacks ``CREATE``; this check
+    is the application-level half of that boundary.
+    """
+    settings = get_settings()
+    if not settings.uses_postgres:
+        return
+    # Tests can mark the settings as Postgres while the live connection is still
+    # SQLite. The role check is a Postgres query; do not send it at a SQLite file.
+    if isinstance(connection(), sqlite3.Connection):
+        return
+    from .config import RUNTIME_DB_ROLE
+
+    role = scalar("SELECT current_user AS role", default="")
+    if str(role) == RUNTIME_DB_ROLE:
+        raise DatabaseError(
+            f"The runtime role {RUNTIME_DB_ROLE} cannot migrate. "
+            "Run scripts/release.py with the bootstrap connection."
+        )
+
+
+def reset_database() -> None:
+    """Deletes the local SQLite file. Never call this against production."""
+    close_connection()
+    settings = get_settings()
+    if settings.is_production:
+        raise DatabaseError("refusing to reset a database when ENGINEVERSE_ENV is production")
+    if settings.uses_postgres:
+        raise DatabaseError("refusing to reset a PostgreSQL database automatically")
+    for suffix in ("", "-wal", "-shm"):
+        target = Path(str(settings.sqlite_path) + suffix)
+        if target.exists():
+            os.unlink(target)

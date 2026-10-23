@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Search {{ q }} — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Search</p>
+  <h1>Search</h1>
+  <form class="search-hero" method="get" role="search">
+    <input name="q" value="{{ q }}" placeholder="Try 'bernoulli', 'deadlock', 'two sum'"
+           aria-label="Search {{ brand.site_name }}" autofocus>
+    <button class="btn btn-primary" type="submit">{{ icon("search", 15) }} Search</button>
+  </form>
+</section>
+
+{% if q %}
+  <p class="muted">{{ total }} result{{ '' if total == 1 else 's' }} for “{{ q }}”
+    {% if suggestion %} — did you mean <a href="/search?q={{ suggestion | urlencode }}">{{ suggestion }}</a>?{% endif %}</p>
+  {% if not total %}<div class="empty"><span class="em" aria-hidden="true">{{ icon("search", 26) }}</span>
+    <strong>Nothing matched “{{ q }}”.</strong>
+    <p class="small muted" style="margin:6px 0 12px">Try a shorter or broader term — a topic name, a formula, or a language.</p>
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-soft btn-sm" href="/explore">Browse the catalogue</a>
+      <a class="btn btn-soft btn-sm" href="/practice/problems">Coding problems</a>
+    </div></div>{% endif %}
+
+  {% for group_type, group_items in groups.items() %}
+    <section class="section"><h2>{{ group_type | titlecase }} <span class="muted small">({{ group_items | length }})</span></h2>
+      <div class="grid g3">{% for item in group_items %}
+        <a class="card" href="{{ item.url }}"><span class="title">{{ item.title }}</span>
+          <span class="desc">{{ item.snippet or item.body | excerpt(140) }}</span>
+          <div class="tags">{% if item.branch %}<span class="chip accent">{{ item.branch }}</span>{% endif %}
+            {% if item.difficulty %}<span class="chip">{{ item.difficulty }}</span>{% endif %}</div></a>
+      {% endfor %}</div></section>
+  {% endfor %}
+{% else %}
+  {% if trending %}<section class="section"><h2>Trending</h2><div class="tags">
+    {% for t in trending %}<a class="chip" href="/search?q={{ t.query | urlencode }}">{{ t.query }} ({{ t.count }})</a>{% endfor %}
+  </div></section>{% endif %}
+  <section class="section"><h2>Browse instead</h2><div class="row">
+    <a class="btn btn-ghost" href="/explore">All subjects</a><a class="btn btn-ghost" href="/flashcards">Flashcards</a>
+    <a class="btn btn-ghost" href="/formulas">Formulas</a><a class="btn btn-ghost" href="/practice/problems">Coding problems</a>
+    <a class="btn btn-ghost" href="/projects">Projects</a>
+  </div></section>
+{% endif %}
+{% endblock %}
