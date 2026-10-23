@@ -43,6 +43,13 @@ const MIME = {
 
 let failures = 0;
 let passes = 0;
+// In GitHub Actions, failures also become annotations so they can be read
+// from the run summary (and the checks API) without opening the raw log.
+function annotate(message) {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const clean = String(message).replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+  console.log(`::error title=Browser runtime check::${clean.slice(0, 900)}`);
+}
 function check(label, condition, detail) {
   if (condition) {
     passes += 1;
@@ -50,6 +57,7 @@ function check(label, condition, detail) {
   } else {
     failures += 1;
     console.log(`  FAIL - ${label}${detail ? `\n       ${String(detail).slice(0, 400)}` : ""}`);
+    annotate(`${label}${detail ? ": " + String(detail).slice(0, 400) : ""}`);
   }
 }
 
@@ -551,6 +559,7 @@ main().then(
   (code) => process.exit(code),
   (err) => {
     console.error(err);
+    annotate(`crashed: ${(err && err.stack) || err}`);
     process.exit(1);
   }
 );

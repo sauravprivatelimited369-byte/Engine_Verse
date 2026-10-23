@@ -71,6 +71,34 @@ jobs:
           ls -l "$apk"
           sha256sum "$apk" | tee "$apk.sha256"
 
+      - name: Summarise tests, lint and APK
+        # Notices land on the run summary and in the checks API.
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, hashlib, os, xml.etree.ElementTree as ET
+          tests = failures = errors = skipped = 0
+          for f in glob.glob("app/build/test-results/testDebugUnitTest/*.xml"):
+              r = ET.parse(f).getroot()
+              tests += int(r.get("tests", 0)); failures += int(r.get("failures", 0))
+              errors += int(r.get("errors", 0)); skipped += int(r.get("skipped", 0))
+          print(f"::notice title=Unit tests::{tests} JVM unit tests, {failures} failures, {errors} errors, {skipped} skipped")
+          lint = "app/build/reports/lint-results-debug.xml"
+          if os.path.exists(lint):
+              issues = ET.parse(lint).getroot().findall("issue")
+              sev = {}
+              for i in issues:
+                  sev[i.get("severity")] = sev.get(i.get("severity"), 0) + 1
+              print(f"::notice title=Android lint::{len(issues)} issues {sev}")
+              for i in issues[:15]:
+                  loc = i.find("location")
+                  where = f"{loc.get('file','').split('/android/')[-1]}:{loc.get('line','')}" if loc is not None else ""
+                  print(f"::notice title=Lint {i.get('severity')} {i.get('id')}::{where} {i.get('message','')[:300]}")
+          for apk in glob.glob("app/build/outputs/apk/debug/*.apk"):
+              digest = hashlib.sha256(open(apk, "rb").read()).hexdigest()
+              print(f"::notice title=Debug APK::{os.path.basename(apk)} {os.path.getsize(apk)} bytes sha256 {digest}")
+          PY
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:

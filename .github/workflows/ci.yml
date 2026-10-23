@@ -293,7 +293,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
 
       # The 3D scene check runs the shipped scenes through the shipped renderer,
       # which needs the Python that defines them. No third-party packages.

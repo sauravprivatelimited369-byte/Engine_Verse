@@ -5,6 +5,20 @@ security code lives mainly in `backend/engineverse/security/`, `backend/main.py`
 and the route handlers. Tests exercise these controls, but a green suite is not
 a penetration test, a production deployment, or proof that a remote judge is safe.
 
+## Reporting a vulnerability
+
+Please report security problems privately. When the repository's
+[private vulnerability reporting](https://github.com/sauravprivatelimited369-byte/Engine_Verse/security/advisories/new)
+form is available, use it. It is a repository setting the maintainer must turn
+on (Settings > Code security > Private vulnerability reporting). If it is not on
+yet, open an issue that only asks for a private contact, with no technical
+details and no real learner data.
+
+Include the affected page or file, steps to reproduce and the impact you
+expect. This is a volunteer project, so there is no bounty and no guaranteed
+response time, but reports are taken seriously and fixes are credited in the
+changelog if you wish.
+
 ## Threat model
 
 The assets are learner identities, sessions, progress, submissions, private notes,
@@ -349,35 +363,38 @@ Pages is a static reading copy until a full HTTPS application origin is
 configured. It cannot be the authority for accounts or progress; never put
 learner rows, database dumps, `.env` files or signing keys in this public
 repository or Pages artifact. On a live instance, PostgreSQL holds account data
-and cookies stay on that instance's origin. The Android PWA and optional signed
-TWA APK open that *same* origin; neither embeds a database, an API secret or a
-judge. The APK download link is restricted to an explicitly configured,
-versioned release asset and its certificate must match Digital Asset Links.
+and cookies stay on that instance's origin.
 
-What the reading copy *does* offer is a browser-side account so a visitor can
-keep XP, streaks and solved problems without a server. Be precise about what that
-is worth:
+The reading copy has **no accounts**. Earlier versions offered a browser-side
+"account" with a fast password digest, an on-page six-digit code and an optional
+push of progress snapshots to a public learner registry
+(`data/learners/registry.json`) via a GitHub token kept in the browser. That
+design put learner data in a public repository (see
+[the issue #39 incident](INCIDENT_ISSUE_39_REDACTION.md)) and could not protect a
+password, so it was removed rather than patched:
 
-- The account, its password digest and the session live in that browser
-  (`ev:learner-store:v2` plus a cookie and IndexedDB mirrors). Clearing site data,
-  changing device or using a private window starts from nothing unless the
-  learner pushed a snapshot to the learner vault in `data/learners/registry.json`.
-- A six-digit code cannot be *delivered* by a static host, so the reading copy
-  prints the code on the page. That verifies intent, not identity: it stops a
-  mistyped address from creating an account, and it is what makes "new account",
-  "forgot password" and "change password" distinguishable from an ordinary
-  sign-in, but anyone holding the browser profile can complete it.
-- A pushed snapshot is **progress-only**. Earlier versions carried
-  `password_sha256` (the SHA-256 of `engineverse-v1:<username>:<password>`)
-  plus unsalted email/phone hashes into the public registry, and the merge
-  trusted a self-asserted `password_changed_via_otp` flag to replace another
-  learner's digest. Snapshots now strip all credential/identifier fields
-  (`github_storage.validate_snapshot`), legacy values are blanked on load,
-  and the sync workflow no longer auto-commits untrusted public issues - a
-  maintainer reviews each snapshot. The device-local digest never leaves the
-  browser; it is still a fast hash, so never reuse a reading-copy password
-  anywhere else, and prefer the hosted instance (scrypt, server-side
-  sessions) for anything that matters.
+- `backend/static/js/pages-live.js` keeps one device-local profile
+  (`ev:local-profile:v1`): display name, branch, progress, bookmarks and the
+  mistake notebook. It holds no password, email, phone or token, and nothing is
+  uploaded. On load it migrates progress out of the old store and deletes the
+  old keys, the IndexedDB mirror and any stored GitHub token.
+- Imported JSON is validated field by field (`sanitizeProfile`); unknown keys
+  are dropped and lengths are capped.
+- The registry file, `github_storage.py`, the sync script, the sync workflow and
+  the `/api/sync/*` routes are deleted. Tests in
+  `backend/tests/test_audit_2026_10_19.py` keep them deleted.
+- Pages that only make sense with an account (sign-in, OTP, password reset)
+  are not exported; personal pages carry `noindex`.
+
+The native Android app (`android/`) stores its own progress and planner in
+app-private storage. Only that small preferences file is included in the user's
+own Android backup and device transfer; WebView cookies, storage and cache are
+not. Its web
+viewer loads only this site's HTTPS pages, adds no JavaScript bridge and refuses
+mixed content; see [android/README.md](../android/README.md). Release signing
+keys are supplied to CI as repository secrets and never committed. The optional
+TWA builder (`android/build-twa.cjs`) is for self-hosters with their own
+origin, where the certificate must match Digital Asset Links.
 
 An operator may opt in to `deploy/github-backups.yml`: it streams a Postgres
 dump through `age` before writing a temporary **ciphertext** archive and
