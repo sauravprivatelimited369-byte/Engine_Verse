@@ -1,0 +1,141 @@
+"""CSRF protection (defence in depth).
+
+Every state-changing request must carry an HMAC token bound to the signed-in
+session or, for public pages, a random HttpOnly cookie unique to that browser.
+The cookie is SameSite=Strict (and host-prefixed over HTTPS); the MAC key is
+ENGINEVERSE_SECRET.
+"""
+from __future__ import annotations
+
+import hashlib
+import hmac
+import os
+import re
+import secrets
+
+from starlette.requests import Request
+
+from ..config import get_settings
+from .sessions import CSRF_COOKIE
+
+CSRF_HEADER = "x-csrf-token"
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+_NONCE_RE = re.compile(r"^[0-9a-f]{32}$")
+_MAC_RE = re.compile(r"^[0-9a-f]{64}$")
+_ANONYMOUS_SUBJECT_RE = re.compile(r"^[A-Za-z0-9_-]{43}$")
+
+
+def _key() -> bytes:
+    return get_settings().effective_secret()
+
+
+def issue_token(session_id: str) -> str:
+    nonce = os.urandom(16).hex()
+    mac = hmac.new(_key(), f"{session_id}:{nonce}".encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{nonce}.{mac}"
+
+
+def cookie_name() -> str:
+    """Use the host-only cookie prefix whenever Secure cookies are available."""
+    settings = get_settings()
+    return "__Host-ev_csrf" if settings.is_https or settings.cookie_secure else CSRF_COOKIE
+
+
+def anonymous_subject(request: Request) -> str:
+    """Return the browser-bound subject for CSRF tokens on public pages.
+
+    An empty string is not an adequate anonymous subject: a valid token copied
+    from an attacker's own browser would then work against any victim. Bind
+    public-page tokens to a random, HttpOnly cookie; use the __Host- prefix on
+    HTTPS to prevent a sibling subdomain from tossing a parent-domain cookie.
+    """
+    existing = request.cookies.get(cookie_name(), "")
+    if _ANONYMOUS_SUBJECT_RE.fullmatch(existing):
+        return existing
+    pending = getattr(request.state, "ev_anonymous_csrf", "")
+    if _ANONYMOUS_SUBJECT_RE.fullmatch(pending):
+        return pending
+    value = secrets.token_urlsafe(32)
+    if get_settings().frame_preview:
+        value = "frame-preview-browser"
+    request.state.ev_anonymous_csrf = value
+    return value
+
+
+def verify_token(token: str | None, session_id: str) -> bool:
+    # Tokens issued here are exactly 32 hex characters plus a 64-character MAC.
+    # Reject malformed/oversized values before hashing attacker-controlled data.
+    if not isinstance(token, str) or len(token) != 97:
+        return False
+    nonce, separator, mac = token.partition(".")
+    if not separator or not _NONCE_RE.fullmatch(nonce) or not _MAC_RE.fullmatch(mac):
+        return False
+    expected = hmac.new(_key(), f"{session_id}:{nonce}".encode("ascii"), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(mac, expected)
+
+
+CSRF_FIELD = "csrf_token"
+
+
+def request_csrf(request: Request) -> str | None:
+    return request.headers.get(CSRF_HEADER) or request.headers.get(CSRF_HEADER.upper())
+
+
+async def form_csrf(request: Request) -> str | None:
+    """Reads the token from a form-encoded body.
+
+    A plain HTML form submission cannot set a custom header, so every
+    server-rendered form carries the token as a field instead. Without this the
+    check would reject every non-JavaScript form POST.
+
+    ``body()`` is awaited first on purpose: under Starlette's BaseHTTPMiddleware
+    the request is a ``_CachedRequest``, and caching the body here is what lets
+    the downstream handler read it again. Going straight to ``form()`` would
+    consume the stream and leave the handler with an empty body.
+    """
+    try:
+        await request.body()
+    except Exception:
+        if request.scope.get("state", {}).get("ev_body_too_large"):
+            raise
+        return None
+    try:
+        form = await request.form()
+    except Exception:
+        return None
+    value = form.get(CSRF_FIELD)
+    return value if isinstance(value, str) and value else None
+
+
+def check(request: Request, session_id: str | None, token: str | None = None) -> bool:
+    """True when the request is safe to process.
+
+    ``token`` lets an async caller (the middleware) supply a token it read from
+    the form body; falling back to the header keeps XHR clients working.
+    """
+    if request.method.upper() in SAFE_METHODS:
+        return True
+    effective_session = session_id or ("frame-preview-browser" if get_settings().frame_preview else None)
+    if not effective_session:
+        return False
+    return verify_token(token or request_csrf(request), effective_session)
+
+
+def cookie_options() -> dict:
+    settings = get_settings()
+    return {
+        "httponly": True,
+        "secure": settings.is_https or settings.cookie_secure,
+        "samesite": "strict",
+        "path": "/",
+        "max_age": 30 * 86_400,
+    }
+
+
+def clear_anonymous_cookie(response) -> None:
+    """Expire the active and legacy CSRF cookie names at auth transitions."""
+    options = cookie_options()
+    for name in {cookie_name(), CSRF_COOKIE, "__Host-ev_csrf"}:
+        response.delete_cookie(
+            name, path="/", secure=options["secure"], samesite=options["samesite"]
+        )

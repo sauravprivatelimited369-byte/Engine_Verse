@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}CodeLab — Online Compiler — {{ brand.site_name }}{% endblock %}
+{% block description %}Write, compile, and execute real programs in Python, Java, C, C++, JavaScript, TypeScript, Go, SQL, and Shell on desktop and Android phones.{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/codelab.css">
+{% endblock %}
+
+{% block content %}
+<div class="cl-page" id="codelab-root">
+  <header class="cl-hero">
+    <div class="cl-hero-main">
+      <h1>CodeLab — Online Compiler</h1>
+      <p class="muted small">
+        Write, compile, and run complete programs in genuine isolated compilers and runtimes — never simulated output.
+        Designed for both desktop keyboards and Android touch screens.
+      </p>
+    </div>
+    <div class="cl-runtime-pill" aria-live="polite">
+      <span class="cl-runtime-dot{{ '' if registry.provider.available else ' off' }}" id="cl-runtime-dot" aria-hidden="true"></span>
+      <span id="cl-runtime-label">
+        {% if registry.provider.available %}
+          {{ registry.executable | length }} verified language runtimes active
+        {% else %}
+          Execution service unavailable on this host
+        {% endif %}
+      </span>
+    </div>
+  </header>
+
+  <section class="cl-toolbar" aria-label="Compiler toolbar">
+    <div class="cl-lang-row">
+      <div class="cl-lang-pills" id="cl-lang-pills" role="group" aria-label="Executable languages"></div>
+      <div class="cl-select-group">
+        <label class="tiny muted" for="cl-lang-select">Language</label>
+        <select class="cl-select" id="cl-lang-select" aria-label="Select programming language"></select>
+        <select class="cl-select" id="cl-example-select" aria-label="Load starter or example program">
+          <option value="">Load example…</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="cl-actions-row">
+      <div class="cl-primary-actions">
+        <button type="button" class="cl-btn cl-btn-run" id="cl-run-btn" title="Compile and run (Ctrl/Cmd + Enter)">
+          <span>&#9654; Run Code</span>
+          <span class="cl-kbd">Ctrl+&#9166;</span>
+        </button>
+        <button type="button" class="cl-btn cl-btn-stop" id="cl-stop-btn" disabled title="Stop running execution">
+          <span>&#9632; Stop</span>
+        </button>
+        <button type="button" class="cl-btn" id="cl-format-btn" title="Auto-indent and format source code (Ctrl+Shift+F)">
+          Format
+        </button>
+        <button type="button" class="cl-btn" id="cl-reset-btn" title="Reset editor to language starter template">
+          Reset
+        </button>
+      </div>
+
+      <div class="cl-utility-actions">
+        <button type="button" class="cl-btn" id="cl-copy-btn" title="Copy source code">Copy</button>
+        <button type="button" class="cl-btn" id="cl-download-btn" title="Download or share source file">Download</button>
+        <button type="button" class="cl-btn" id="cl-clear-code-btn" title="Clear editor">Clear</button>
+        <button type="button" class="cl-btn" id="cl-save-snippet-btn" title="Save snippet (Ctrl/Cmd + S)">Save Snippet</button>
+        <button type="button" class="cl-btn" id="cl-toggle-snippets-btn" aria-expanded="false" aria-controls="cl-snippets-drawer">
+          Snippets
+        </button>
+      </div>
+    </div>
+    <p class="cl-unavailable-note" id="cl-unavailable-note"></p>
+  </section>
+
+  <!-- Mobile / Android Workspace View Switcher -->
+  <div class="cl-mobile-switcher" role="tablist" aria-label="Mobile workspace view">
+    <button type="button" class="cl-mobile-tab active" role="tab" aria-selected="true" data-cl-mobile-tab="code">
+      Code
+    </button>
+    <button type="button" class="cl-mobile-tab" role="tab" aria-selected="false" data-cl-mobile-tab="stdin">
+      Input (stdin)
+    </button>
+    <button type="button" class="cl-mobile-tab" role="tab" aria-selected="false" data-cl-mobile-tab="output">
+      Output
+    </button>
+    <button type="button" class="cl-mobile-run-fab" id="cl-mobile-run-btn" aria-label="Run code">
+      &#9654; Run
+    </button>
+  </div>
+
+  <!-- Main Workspace: CodeEditor + (InputPanel & OutputConsole) -->
+  <div class="cl-workspace" id="cl-workspace" data-mobile-view="code">
+    <!-- Left Pane: CodeEditor -->
+    <section class="cl-pane cl-editor-pane" aria-labelledby="cl-editor-heading">
+      <div class="cl-pane-head">
+        <h2 class="cl-pane-title" id="cl-editor-heading">
+          <span>Source Editor</span>
+          <span class="cl-file-tag" id="cl-file-tag">main.py</span>
+        </h2>
+        <div class="cl-editor-tools">
+          <button type="button" class="cl-mini-btn" id="cl-font-dec" aria-label="Decrease editor font size">A&minus;</button>
+          <button type="button" class="cl-mini-btn" id="cl-font-inc" aria-label="Increase editor font size">A+</button>
+        </div>
+      </div>
+
+      <!-- Quick coding symbol strip especially tailored for Android soft keyboards -->
+      <div class="cl-symbol-bar" id="cl-symbol-bar" aria-label="Quick code symbol keys">
+        <button type="button" class="cl-sym-btn" data-sym="TAB" title="Insert indentation">Tab</button>
+        <button type="button" class="cl-sym-btn" data-sym="{">{</button>
+        <button type="button" class="cl-sym-btn" data-sym="}">}</button>
+        <button type="button" class="cl-sym-btn" data-sym="(">(</button>
+        <button type="button" class="cl-sym-btn" data-sym=")">)</button>
+        <button type="button" class="cl-sym-btn" data-sym="[">[</button>
+        <button type="button" class="cl-sym-btn" data-sym="]">]</button>
+        <button type="button" class="cl-sym-btn" data-sym=";">;</button>
+        <button type="button" class="cl-sym-btn" data-sym=":">:</button>
+        <button type="button" class="cl-sym-btn" data-sym="&quot;">&quot;</button>
+        <button type="button" class="cl-sym-btn" data-sym="'">'</button>
+        <button type="button" class="cl-sym-btn" data-sym="=">=</button>
+        <button type="button" class="cl-sym-btn" data-sym="<">&lt;</button>
+        <button type="button" class="cl-sym-btn" data-sym=">">&gt;</button>
+        <button type="button" class="cl-sym-btn" data-sym="_">_</button>
+        <button type="button" class="cl-sym-btn" data-sym="/">/</button>
+        <button type="button" class="cl-sym-btn" data-sym="!">!</button>
+        <button type="button" class="cl-sym-btn" data-sym="&amp;">&amp;</button>
+        <button type="button" class="cl-sym-btn" data-sym="|">|</button>
+        <button type="button" class="cl-sym-btn" data-sym="LEFT" aria-label="Move cursor left">&larr;</button>
+        <button type="button" class="cl-sym-btn" data-sym="RIGHT" aria-label="Move cursor right">&rarr;</button>
+      </div>
+
+      <div class="cl-editor-shell">
+        <pre class="cl-gutter" id="cl-gutter" aria-hidden="true">1</pre>
+        <div class="cl-code-stage">
+          <pre class="cl-highlight" id="cl-highlight-pre" aria-hidden="true"><code id="cl-highlight-code"></code></pre>
+          <textarea
+            class="cl-textarea"
+            id="cl-code-input"
+            aria-label="Source code editor"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+            data-gramm="false"
+            wrap="off"
+          ></textarea>
+          <div class="cl-autocomplete" id="cl-autocomplete" hidden></div>
+        </div>
+      </div>
+
+      <div class="cl-editor-foot">
+        <span id="cl-cursor-info">Ln 1, Col 1</span>
+        <span id="cl-bracket-info"></span>
+        <span>Autocomplete: type identifier or press <code>Ctrl+Space</code></span>
+      </div>
+    </section>
+
+    <!-- Right Stack: InputPanel + OutputConsole -->
+    <div class="cl-side-stack">
+      <!-- InputPanel -->
+      <section class="cl-pane cl-stdin-pane" aria-labelledby="cl-stdin-heading">
+        <div class="cl-pane-head">
+          <h2 class="cl-pane-title" id="cl-stdin-heading">
+            <span>Standard Input (<code>stdin</code>)</span>
+            <span class="cl-file-tag" id="cl-stdin-meta">Optional</span>
+          </h2>
+          <div class="cl-editor-tools">
+            <button type="button" class="cl-mini-btn" id="cl-sample-stdin-btn">Sample Input</button>
+            <button type="button" class="cl-mini-btn" id="cl-clear-stdin-btn">Clear</button>
+          </div>
+        </div>
+        <textarea
+          class="cl-stdin-box"
+          id="cl-stdin-input"
+          aria-label="Program standard input (stdin)"
+          placeholder="Optional pre-supplied input lines read by input(), Scanner, scanf(), std::cin, or fs.readFileSync(0)…"
+          spellcheck="false"
+          autocapitalize="off"
+          autocorrect="off"
+        ></textarea>
+        <p class="cl-stdin-note">
+          Input is piped to your program as a batch stream when execution starts (not interactive mid-run prompts).
+        </p>
+      </section>
+
+      <!-- OutputConsole -->
+      <section class="cl-pane cl-console-pane" aria-labelledby="cl-console-heading">
+        <div class="cl-pane-head">
+          <h2 class="cl-pane-title" id="cl-console-heading">
+            <span>Output Console</span>
+            <span class="cl-status-pill" id="cl-status-pill" data-status="idle" aria-live="polite">Idle</span>
+          </h2>
+          <div class="cl-editor-tools">
+            <button type="button" class="cl-mini-btn only-mobile" id="cl-back-to-code-btn">&larr; Edit Code</button>
+            <button type="button" class="cl-mini-btn" id="cl-copy-output-btn">Copy Output</button>
+            <button type="button" class="cl-mini-btn" id="cl-clear-output-btn">Clear Output</button>
+          </div>
+        </div>
+
+        <div class="cl-console-tabs" role="tablist" aria-label="Execution output channels">
+          <button type="button" class="cl-tab-btn active" id="cl-tab-output" role="tab" aria-selected="true">
+            Output <span class="cl-tab-count" id="cl-count-output">0</span>
+          </button>
+          <button type="button" class="cl-tab-btn" id="cl-tab-errors" role="tab" aria-selected="false">
+            Errors <span class="cl-tab-count" id="cl-count-errors">0</span>
+          </button>
+          <button type="button" class="cl-tab-btn" id="cl-tab-compilation" role="tab" aria-selected="false">
+            Compilation <span class="cl-tab-count" id="cl-count-compilation">0</span>
+          </button>
+        </div>
+
+        <div class="cl-console-meta">
+          <span id="cl-console-runtime">—</span>
+          <span id="cl-console-metrics">Exit code: — · Time: —</span>
+        </div>
+
+        <div class="cl-console-body">
+          <div class="cl-empty-state" id="cl-empty-state">
+            <p><strong>Ready to run</strong></p>
+            <p class="tiny">Press <code>Ctrl/Cmd + Enter</code> or tap <strong>Run Code</strong> to compile and execute with the active language runtime.</p>
+          </div>
+          <pre class="cl-console-pre" id="cl-stdout-pre" hidden></pre>
+          <pre class="cl-console-pre is-error" id="cl-stderr-pre" hidden></pre>
+          <pre class="cl-console-pre is-error" id="cl-compile-pre" hidden></pre>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Saved Snippets & Recent Runs Drawer -->
+  <section class="panel cl-snippets-drawer" id="cl-snippets-drawer" hidden aria-labelledby="cl-snippets-heading">
+    <h2 id="cl-snippets-heading">Saved Snippets &amp; Recent Runs</h2>
+    <p class="muted small">
+      {% if user %}
+        Saved snippets sync to your EngineVerse account and stay accessible across desktop and Android devices.
+      {% else %}
+        Saved snippets are stored locally on this device (sign in to sync across devices).
+      {% endif %}
+    </p>
+    <h3 class="h-sub">Saved Snippets</h3>
+    <div class="cl-snippets-list" id="cl-snippets-list"></div>
+    <hr>
+    <h3 class="h-sub">Recent Executions</h3>
+    <div class="cl-snippets-list" id="cl-recent-list"></div>
+  </section>
+</div>
+
+<div class="cl-toast" id="ev-toast" role="status" aria-live="polite" hidden></div>
+
+<script id="codelab-bootstrap" type="application/json" nonce="{{ request.state.csp_nonce }}">
+{{ {
+  "registry": registry,
+  "defaultLanguage": default_language,
+  "signedIn": (True if user else False),
+  "savedSnippets": saved_snippets,
+} | tojson }}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/codelab.js" defer></script>
+{% endblock %}

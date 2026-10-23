@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Sign in — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  {% include "_auth_aside.html" %}
+<div class="form-panel panel">
+  <h1>Sign in</h1>
+  <p class="muted">{% if signin_required %}Sign in to use {{ brand.site_name }}: notes, practice, coding and your progress all live behind your account.{% else %}First-party authentication only. We never hand your credentials to a third party.{% endif %}</p>
+  {% if notice %}<div class="callout{{ ' warning' if notice_kind == 'warning' }}" role="status">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="callout warning" role="alert"><span class="label">Could not sign you in</span>{{ error }}</div>{% endif %}
+  {% if otp_channel %}
+  <form method="post" action="/login">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next or '/' }}">
+    <input type="hidden" name="identifier" value="{{ identifier or '' }}">
+    <input type="hidden" name="mfa_token" value="{{ otp_token }}">
+    <input type="hidden" name="remember" value="{{ '1' if remember else '' }}">
+    <p>We sent a 6-digit code to {{ otp_masked }}. It expires in 5 minutes and works once.</p>
+    {% if otp_revealed_code %}
+    <div class="callout warning"><span class="label">Development-only code</span>
+      Delivery is not configured on this development instance. Use <code class="mono">{{ otp_revealed_code }}</code> to finish signing in.
+    </div>
+    {% endif %}
+    <div class="field"><label for="otp">6-digit sign-in code</label>
+      <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" required maxlength="32" autofocus></div>
+    <p class="small muted">Attempts left: {{ otp_attempts_left }}.</p>
+    <button class="btn btn-primary btn-block" type="submit">Verify and sign in</button>
+  </form>
+  <form method="post" action="/login/otp/resend" class="mt">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next or '/' }}">
+    <input type="hidden" name="identifier" value="{{ identifier or '' }}">
+    <input type="hidden" name="otp_token" value="{{ otp_token }}">
+    <input type="hidden" name="mfa_token" value="{{ otp_token }}">
+    <input type="hidden" name="remember" value="{{ '1' if remember else '' }}">
+    {% if otp_choices|length > 1 %}
+    <fieldset class="field"><legend>Send a new code by</legend>
+      {% for choice in otp_choices %}
+      <label class="radio"><input type="radio" name="channel" value="{{ choice }}" {{ 'checked' if choice == otp_channel }}>
+        {{ 'Text message' if choice == 'phone' else 'Email' }}</label>
+      {% endfor %}
+    </fieldset>
+    {% else %}<input type="hidden" name="channel" value="{{ otp_channel }}">{% endif %}
+    <button class="btn btn-soft btn-block" type="submit">Resend code</button>
+  </form>
+  {% elif mfa_token %}
+  <form method="post" action="/login">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next or '/' }}">
+    <input type="hidden" name="identifier" value="{{ identifier or '' }}">
+    <input type="hidden" name="mfa_token" value="{{ mfa_token }}">
+    <input type="hidden" name="remember" value="{{ '1' if remember else '' }}">
+    <div class="field"><label for="otp">Authenticator code</label>
+      <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" required maxlength="32" autofocus></div>
+    <p class="small muted">A recovery code works here too. It can be used once.</p>
+    <button class="btn btn-primary btn-block" type="submit">Verify and sign in</button>
+  </form>
+  {% else %}
+  <form method="post" action="/login">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next or '/' }}">
+    <div class="field"><label for="identifier">Email, username or mobile number</label>
+      <input id="identifier" name="identifier" required autocomplete="username" value="{{ identifier or '' }}"
+             maxlength="254" autofocus>
+      <div class="hint">The whole address, domain included: <code>you@gmail.com</code>, your username, or a
+        number with its country code (<code>+919876543210</code>). Half-typed addresses such as
+        <code>you@gmail</code> are refused here rather than reported as an unknown account.</div>
+      {# A malformed identifier is refused by ``auth.login`` as ``bad_identifier``;
+      # the callout at the top of this panel already carries its message. #}</div>
+    <div class="field"><label for="password">Password</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password"></div>
+    <label class="checkbox"><input type="checkbox" name="remember" value="1"
+      {{ 'checked' if remember is not defined or remember }}> Keep me signed in on this device</label>
+    <p class="tiny muted">Unticked, this browser is signed in for {{ short_session_hours }} hours instead of
+      {{ long_session_days }} days.</p>
+    <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+  </form>
+  {% endif %}
+  <p class="small center mt"><a href="/forgot-password">Forgot your password?</a></p>
+  <p class="small center">New here? <a href="/register{{ '?next=' ~ (next | urlencode) if next and next != '/' else '' }}">Create a free account</a></p>
+  {% if show_demo_accounts %}<details class="mt"><summary class="small muted">Demo accounts on this development instance</summary>
+    <table class="mt"><tbody>
+      <tr><td>asha@example.com</td><td class="mono">LearnBuild#2026!</td></tr>
+      <tr><td>ravi@example.com</td><td class="mono">LearnBuild#2026!</td></tr>
+      <tr><td>priya@example.com</td><td class="mono">LearnBuild#2026!</td></tr>
+      <tr><td>faculty@engineverse.local</td><td class="mono">TeachLearn#2026!</td></tr>
+      <tr><td>admin@engineverse.local</td><td class="mono">Str0ngPassphrase#42!</td></tr>
+    </tbody></table>
+    <p class="tiny muted">These accounts are created only when ENGINEVERSE_ENV is development or test. They are not created in production.</p></details>{% endif %}
+</div>
+</div>
+{% endblock %}

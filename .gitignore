@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+coverage.xml
+
+# Local database + runtime state (keep the GitHub learner vault tracked)
+data/*
+!data/learners/
+data/learners/*
+!data/learners/registry.json
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Secrets
+.env
+.env.local
+.env.*.local
+deploy/.env
+
+# Backups and signing material. Never commit these.
+backups/
+*.dump
+*.sql.gz
+*.keystore
+*.jks
+*.p12
+*.age
+*.apk
+*.aab
+
+# Android build output and npm toolchain (neither is source)
+node_modules/
+android/.generated/
+
+# Toolchains fetched locally (never committed)
+.toolchain/
+*.jar
+sandbox-java/target/
+sandbox-java/build/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
+.scratch/
+site/
+
+# Downloaded CPython (Pyodide) runtime binaries: fetched into the Pages
+# artifact by scripts/fetch_pyodide.py, never source.
+pyodide/
+
+# OTP delivery service local state/secrets
+services/otp/.env
+services/otp/*.sqlite3

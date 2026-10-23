@@ -1,0 +1,79 @@
+# Disposable / temporary email domains refused at sign-up.
+#
+# One lower-case domain per line; lines starting with # are ignored, and any
+# line that is not a plain domain is skipped rather than trusted.
+#
+# Why the rule exists: an inbox that self-destructs in ten minutes cannot
+# receive a password reset next semester, and "I lost that address as well" is
+# a support request nobody can answer. The 6-digit code is the backstop - a
+# burner only works if the person who made it can also read what landed in it.
+#
+# This list is deliberately short. It names only services whose entire product
+# is a public or expiring inbox - no freemail provider, no university domain,
+# no "alias" product that people use on purpose. A blocklist that is wrong in
+# the other direction locks real learners out of the platform, which is far
+# worse than letting a burner through. EngineVerse subscribes to nothing, so
+# this file is the operator's knob: add what you actually see in your logs.
+#
+# Format: <service>, <service>, ... - keep it alphabetical for readability only.
+10minutemail.com
+10minutemail.de
+10minutemail.it
+10minutemail.net
+10minutemail.org
+10minutesemail.com
+15minutemail.com
+1secmail.com
+1secmail.net
+1secmail.org
+20minutemail.com
+60minutemail.com
+discard.email
+discardmail.com
+emailondeck.com
+fakeinbox.com
+getairmail.com
+getnada.com
+grr.la
+guerrillamail.com
+guerrillamail.de
+guerrillamail.net
+guerrillamail.org
+guerrillamailblock.com
+harakirimail.com
+maildrop.cc
+mailinator.biz
+mailinator.com
+mailinator.info
+mailinator.net
+mailinator.pw
+mailinator.us
+mailcatch.com
+moakt.cc
+moakt.co
+moakt.com
+nada.email
+sharklasers.com
+spam4.me
+suremail.info
+temp-mail.com
+temp-mail.io
+temp-mail.org
+tempail.com
+tempinbox.com
+tempmail.com
+tempmail.net
+tempmailer.com
+tempmailo.com
+tempr.email
+throwawaymail.com
+throwawaymail.net
+throwawaymail.org
+trash-mail.com
+trashmail.com
+trashmail.net
+trashmail.org
+trashymail.com
+yopmail.com
+yopmail.fr
+yopmail.net

@@ -1,0 +1,93 @@
+# EngineVerse web application.
+#
+#   docker build -f deploy/Dockerfile.web -t engineverse-web .
+#
+# Serves server-rendered HTML and the JSON API.
+#
+# Production compose sets ENGINEVERSE_JUDGE=disabled, so this process refuses
+# submitted code - and by default this image now ships WITHOUT the judge
+# toolchains to match. A production image that never runs learner code has
+# no use for gcc/g++/a JDK; leaving compilers in it only gifts them to
+# anything that ever gets code execution despite the controls (the
+# PHP2Shell lesson: every runtime present is a runtime that must be
+# patched). The same image can still run the development judge when built
+# with --build-arg INSTALL_JUDGE_TOOLCHAINS=1. That judge invokes
+# `java -jar`, `gcc` and `python3` as subprocesses. A subprocess cannot
+# cross a container boundary, so those toolchains are not a second
+# isolation boundary. Do not describe this image as a sandbox. See
+# docs/SECURITY.md.
+
+FROM python:3.11-slim AS build
+WORKDIR /src
+COPY requirements.txt ./
+# psycopg is installed here rather than added to requirements.txt: development
+# and CI run on SQLite, where the stdlib driver is enough, and requirements.txt
+# is deliberately minimal. But docker-compose.yml sets ENGINEVERSE_DB_URL, and
+# db._pg_connect raises DatabaseError("...no PostgreSQL driver is installed")
+# without it - so an image built straight from requirements.txt could never
+# have connected to the db service it is wired to.
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt \
+ && pip install --no-cache-dir --prefix=/install 'psycopg[binary]==3.2.6'
+
+# --- build stage: compile the Java sandbox jar -------------------------------
+# The bridge needs the jar next to the application, so it is built here rather
+# than shipped in a separate image nothing can reach.
+FROM maven:3.9-eclipse-temurin-21 AS javabuild
+WORKDIR /src
+COPY sandbox-java/pom.xml ./
+RUN mvn -B -q dependency:go-offline
+COPY sandbox-java/src ./src
+RUN mvn -B -q -DskipTests package && cp target/engineverse-sandbox.jar /engineverse-sandbox.jar
+
+FROM python:3.11-slim
+
+# A non-root user, plus - only on request - the toolchains the judge invokes:
+# gcc and g++ for C/C++ submissions, and openjdk-21-jdk-headless for Java
+# ones. Default 0 (production: JUDGE=disabled; compilers would be pure
+# attack surface). Build with --build-arg INSTALL_JUDGE_TOOLCHAINS=1 for a
+# development image that runs the local/Java judges. Nothing else is
+# installed - the smaller the image, the smaller the surface.
+#
+# The JDK rather than the JRE, because the judge compiles with javac before it
+# runs. A JRE has no compiler, so shipping one would have made Java the same kind
+# of dead option SQL was: offered in the picker, failing on Run.
+ARG INSTALL_JUDGE_TOOLCHAINS=0
+RUN apt-get update \
+ && if [ "$INSTALL_JUDGE_TOOLCHAINS" = "1" ]; then apt-get install -y --no-install-recommends gcc g++ libc6-dev openjdk-21-jdk-headless \
+ ; fi \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 10001 engineverse \
+ && useradd  --system --uid 10001 --gid engineverse --no-create-home --shell /usr/sbin/nologin engineverse \
+ && mkdir -p /app/data \
+ && chown -R engineverse:engineverse /app
+
+COPY --from=build /install /usr/local
+COPY --from=javabuild /engineverse-sandbox.jar /app/engineverse-sandbox.jar
+WORKDIR /app
+
+COPY backend ./backend
+COPY db ./db
+COPY scripts ./scripts
+COPY seed_data ./seed_data
+
+# The database lives on a volume so it survives a redeploy. In production point
+# ENGINEVERSE_DB_URL at PostgreSQL instead and this stays empty.
+VOLUME ["/app/data"]
+
+USER engineverse
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENGINEVERSE_DB_PATH=/app/data/engineverse.sqlite3 \
+    HOST=0.0.0.0 \
+    PORT=8000
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status==200 else 1)"
+
+# Do not migrate or seed here. A restart must not upsert catalogue rows over
+# CMS edits, and the runtime database role cannot apply DDL. scripts/release.py
+# is the release step; it uses the bootstrap connection.
+CMD ["sh", "-c", "exec uvicorn main:app --app-dir backend --host 0.0.0.0 --port ${PORT:-8000}"]

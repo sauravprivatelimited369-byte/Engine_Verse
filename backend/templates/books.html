@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Books — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Learn · reading</p>
+  <h1>Books worth reading</h1>
+  <p class="lead">Open-access titles link straight to the free legal copy; paid titles link to the publisher.</p>
+</section>
+<form class="panel mb" method="get"><div class="row">
+  <input name="q" value="{{ q or '' }}" placeholder="Search titles and authors" aria-label="Search books by title or author" style="max-width:340px">
+  <button class="btn btn-primary">Search</button></div></form>
+{% with narrow_noun="book", narrow_all="the whole shelf", narrow_clear="/books" %}{% include "_slugfilter.html" %}{% endwith %}
+<div class="grid g3">
+  {% for b in books %}
+    <div class="card bookcard" id="{{ b.slug }}"><span class="title">{{ b.title }}</span>
+      <span class="desc">{{ b.author }}</span>
+      <p class="small muted">{{ b.description }}</p>
+      <div class="callout" style="margin:8px 0"><span class="label">Why read it</span>{{ b.why_read }}</div>
+      <div class="tags"><span class="chip accent">{{ b.access_kind | replace('_',' ') }}</span>
+        <span class="chip">{{ b.level }}</span></div>
+      <a class="btn btn-soft btn-sm" href="{{ b.legal_url }}" target="_blank" rel="noopener noreferrer nofollow">
+        {{ 'Read free' if b.access_kind == 'open_access' else 'Publisher' }}</a></div>
+  {% else %}<div class="empty"><span class="em" aria-hidden="true">{{ icon("book", 26) }}</span>No books match.</div>{% endfor %}
+</div>
+{% include "_pager.html" %}
+{% endblock %}

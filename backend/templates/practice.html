@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Practice — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Practice · <span data-local-date>today</span></p>
+  <h1>Daily practice</h1>
+  <p class="lead">A set for this calendar day, plus a bank of {{ kinds | length }} question
+    {{ kinds | length | plural('type', 'types') }} across every subject. Five questions is enough to
+    move a day forward.</p>
+</section>
+
+{% if dpp %}
+<section class="hero-card">
+  <div class="hero-card-copy">
+    <span class="chip accent">Today's set</span>
+    <h2 data-practice-title data-practice-today>{{ dpp.set.title }}</h2>
+    <p class="muted">{{ dpp.questions | length }} {{ dpp.questions | length | plural('question') }} ·
+      {{ dpp.set.duration_minutes }} minutes</p>
+    <p class="tiny muted">The date is your calendar day. Open this page next week and the heading moves with you.</p>
+    <a class="btn btn-primary" data-practice-start href="/dpp/{{ dpp.set.date }}">Start practice {{ icon("chevron", 14) }}</a>
+  </div>
+  <div class="hero-card-art" aria-hidden="true">
+    <span class="hc-art-row"><span class="hc-art-key">Q1</span><span class="hc-art-bar" style="--w:88%"></span></span>
+    <span class="hc-art-row"><span class="hc-art-key">Q2</span><span class="hc-art-bar" style="--w:64%"></span></span>
+    <span class="hc-art-row"><span class="hc-art-key">Q3</span><span class="hc-art-bar" style="--w:76%"></span></span>
+    <span class="hc-art-row"><span class="hc-art-key">Q4</span><span class="hc-art-bar" style="--w:42%"></span></span>
+    <span class="hc-art-row"><span class="hc-art-key">Q5</span><span class="hc-art-bar" style="--w:58%"></span></span>
+  </div>
+</section>
+{% endif %}
+
+{# Per-browser streak. Hidden until pages-live.js finds study days recorded on
+   this device; the hosted app has no local store, so it stays out of the way
+   there and the server-side numbers on /streaks are the ones that count. #}
+<section class="panel mb" id="local-streak" hidden>
+  <div class="section-head compact">
+    <div>
+      <p class="ev-eyebrow">This device</p>
+      <h2>On this browser</h2>
+    </div>
+    <a class="section-link" href="/streaks">Streak details {{ icon("chevron", 13) }}</a>
+  </div>
+  <div class="grid g3 streak-tiles">
+    <div class="stat dash-stat"><div class="n" data-streak-current>–</div><div class="l">Current streak</div></div>
+    <div class="stat dash-stat"><div class="n" data-streak-longest>–</div><div class="l">Longest streak</div></div>
+    <div class="stat dash-stat"><div class="n" data-streak-total>–</div><div class="l">Study days</div></div>
+  </div>
+  <p class="small muted mt" data-streak-note>A day counts when you open a topic, a practice set, a language
+    module, or a project on this device. Sign in to keep the same streak across devices.</p>
+</section>
+
+<div class="quick-strip mb">
+  <a class="quick-strip-item" href="/practice/questions">{{ icon("list", 18) }} <span>Question bank</span> {{ icon("chevron", 13) }}</a>
+  <a class="quick-strip-item" href="/mistakes">{{ icon("eraser", 18) }} <span>Mistake notebook</span> {{ icon("chevron", 13) }}</a>
+  <a class="quick-strip-item" href="/practice/problems">{{ icon("terminal", 18) }} <span>Coding problems</span> {{ icon("chevron", 13) }}</a>
+</div>
+
+<section class="section">
+  <div class="section-head">
+    <div>
+      <p class="ev-eyebrow">The archive</p>
+      <h2>Recent sets</h2>
+    </div>
+    <a class="section-link" href="/dpp/archive">Browse all sets {{ icon("chevron", 13) }}</a>
+  </div>
+  <div class="grid g4" data-recent-sets>{% for s in sets %}
+    <a class="card" href="/dpp/{{ s.date }}"><span class="title">{{ s.title or s.date }}</span>
+      <span class="desc">{{ s.question_count }} questions · {{ s.duration_minutes }} min</span>
+      <span class="card-foot"><span class="tiny muted">{{ s.date }}</span>
+        <span class="card-arrow" aria-hidden="true">{{ icon("chevron", 14) }}</span></span></a>{% endfor %}</div>
+</section>
+{% include "_ladder.html" %}
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ profile.full_name or member.username }} — {{ brand.site_name }}{% endblock %}
+{% block content %}
+
+<section class="page-hero portfolio-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <div class="portfolio-id">
+    <div class="ring portfolio-ring" style="--p:{{ (stats.levelPct if stats else 0) }}">
+      <b>{{ (member.username or '?')[0] | upper }}</b>
+    </div>
+    <div class="portfolio-copy">
+      <p class="ev-eyebrow">Public portfolio</p>
+      <h1>{{ profile.full_name or member.username }}</h1>
+      <p class="portfolio-handle">@{{ member.username }}{% if stats %} · Level {{ stats.level }} · {{ stats.rank }}{% endif %}</p>
+      {% if profile.headline %}<p class="lead">{{ profile.headline }}</p>{% endif %}
+      <div class="chips-row">
+        {% if profile.country %}<span class="chip">{{ icon("globe", 13) }} {{ profile.country }}</span>{% endif %}
+        {% if profile.github_url %}<a class="chip" href="{{ profile.github_url }}" rel="noopener noreferrer nofollow" target="_blank">GitHub</a>{% endif %}
+        {% if profile.linkedin_url %}<a class="chip" href="{{ profile.linkedin_url }}" rel="noopener noreferrer nofollow" target="_blank">LinkedIn</a>{% endif %}
+        {% if profile.portfolio_url %}<a class="chip" href="{{ profile.portfolio_url }}" rel="noopener noreferrer nofollow" target="_blank">Website</a>{% endif %}
+      </div>
+    </div>
+    {% if is_self %}
+      <div class="portfolio-actions">
+        <a class="btn btn-soft btn-sm" href="/settings">{{ icon("cog", 14) }} Edit public profile</a>
+      </div>
+    {% endif %}
+  </div>
+  {% if profile.bio %}<p class="portfolio-bio">{{ profile.bio }}</p>{% endif %}
+</section>
+
+{% if stats %}
+<div class="grid g4 dash-stats">
+  <div class="stat dash-stat"><span class="dash-stat-ico" aria-hidden="true">{{ icon("spark", 18) }}</span>
+    <div class="n">{{ stats.level }}</div><div class="l">Level</div></div>
+  <div class="stat dash-stat"><span class="dash-stat-ico" aria-hidden="true">{{ icon("trophy", 18) }}</span>
+    <div class="n">{{ stats.xp }}</div><div class="l">XP</div></div>
+  <div class="stat dash-stat"><span class="dash-stat-ico" aria-hidden="true">{{ icon("book", 18) }}</span>
+    <div class="n">{{ stats.topicsCompleted }}</div><div class="l">Topics</div></div>
+  <div class="stat dash-stat"><span class="dash-stat-ico" aria-hidden="true">{{ icon("terminal", 18) }}</span>
+    <div class="n">{{ stats.problemsSolved }}</div><div class="l">Problems</div></div>
+</div>
+
+{% set earned = badges | selectattr("earned") | list %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <p class="ev-eyebrow">Milestones</p>
+      <h2>Badges</h2>
+      <p class="section-sub">Earned by real work on the site, never by visiting a page.
+        {% if earned %}{{ earned | length }} of {{ badges | length }} unlocked.{% endif %}</p>
+    </div>
+  </div>
+  {% if earned %}
+    <div class="badge-grid">
+      {% for b in earned %}
+        <div class="badge earned tier-{{ b.tier }}">
+          <div class="em" aria-hidden="true">{{ icon(b.icon if b.icon else "trophy", 22) }}</div>
+          <div class="nm">{{ b.name }}</div><div class="ds">{{ b.description }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <span class="em" aria-hidden="true">{{ icon("trophy", 26) }}</span>
+      <strong>No badges yet.</strong>
+      <p class="small muted" style="margin:6px 0 14px;max-width:52ch">
+        The first three are the quickest: finish a DPP, save a project, and get one accepted submission.
+      </p>
+      <div class="row" style="justify-content:center">
+        <a class="btn btn-primary btn-sm" href="/dpp">Open today's DPP</a>
+        <a class="btn btn-soft btn-sm" href="/practice/problems">Solve a problem</a>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+{% if solved %}
+<section class="section">
+  <div class="section-head"><div><p class="ev-eyebrow">Code</p><h2>Recent submissions</h2></div></div>
+  <div class="stack">
+    {% for s in solved[:8] %}
+      <div class="continue-card">
+        <span class="continue-mark" aria-hidden="true">{{ icon("terminal", 15) }}</span>
+        <span class="continue-body">
+          <span class="title">{{ s.problem_title }}</span>
+          <span class="desc">{{ s.language }} · {{ s.created_at | ago }}</span>
+        </span>
+        <span class="chip {{ 'ok' if s.is_accepted else 'bad' }}">{{ s.status | replace('_', ' ') }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% else %}
+<div class="empty">
+  <span class="em" aria-hidden="true">{{ icon("user", 26) }}</span>
+  <strong>Progress is private.</strong>
+  <p class="small muted" style="margin:6px 0 0">This member has chosen to keep their learning progress off the
+    public page. Their profile details are above.</p>
+</div>
+{% endif %}
+
+{% if projects %}
+<section class="section">
+  <div class="section-head"><div><p class="ev-eyebrow">Builds</p><h2>Saved projects</h2></div></div>
+  <div class="grid g3">
+    {% for p in projects %}
+      <a class="card" href="/projects/{{ p.slug }}">
+        <span class="title">{{ p.title }}</span>
+        <span class="desc">{{ p.summary | excerpt(110) }}</span>
+        <span class="chip accent">{{ p.difficulty }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

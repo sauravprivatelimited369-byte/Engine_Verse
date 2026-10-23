@@ -1,0 +1,80 @@
+name: Signed Android APK
+
+# Builds, signs, verifies and publishes EngineVerse.apk to GitHub Releases.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (vMAJOR.MINOR.PATCH, e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ENGINEVERSE_APP_URL: ${{ vars.ENGINEVERSE_APP_URL }}
+      ENGINEVERSE_TWA_PACKAGE: ${{ vars.ENGINEVERSE_TWA_PACKAGE }}
+      ANDROID_SIGNING_ALIAS: ${{ vars.ENGINEVERSE_TWA_ALIAS }}
+      APK_VERSION: ${{ inputs.version || 'v1.0.0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Self-check Android builders
+        run: |
+          python scripts/build_android_apk.py --self-check
+          node android/build-twa.cjs --self-check
+
+      - name: Build and verify signed EngineVerse.apk
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python scripts/build_android_apk.py \
+            --out "$RUNNER_TEMP/EngineVerse.apk" \
+            --version "${APK_VERSION:-v1.0.0}"
+
+      - name: Publish signed APK and SHA-256 checksum to GitHub Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-${APK_VERSION:-v1.0.0}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "$RUNNER_TEMP/EngineVerse.apk" \
+              "$RUNNER_TEMP/EngineVerse.apk.sha256" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$RUNNER_TEMP/EngineVerse.apk" \
+              "$RUNNER_TEMP/EngineVerse.apk.sha256" \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+              --title "EngineVerse Android ${APK_VERSION:-v1.0.0}" \
+              --notes "Signed Android APK for EngineVerse. Check EngineVerse.apk.sha256 before installing."
+          fi

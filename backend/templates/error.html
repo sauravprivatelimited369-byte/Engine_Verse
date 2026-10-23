@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ status }} — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<div class="panel center error-panel">
+  <span class="error-code" aria-hidden="true">{{ status }}</span>
+  <h1>{{ message }}</h1>
+  <p class="muted error-text">{% if status == 404 %}The page you were after has moved or never existed.
+    {% elif status == 403 %}You do not have permission to view that.
+    {% else %}Something broke on our side. It has been logged.{% endif %}</p>
+  <div class="row" style="justify-content:center">
+    <a class="btn btn-primary" href="/">Go home {{ icon("chevron", 14) }}</a>
+    <a class="btn btn-ghost" href="/search">{{ icon("search", 15) }} Search instead</a>
+  </div>
+  {% if status == 404 %}
+  <div class="error-links">
+    <p class="tiny muted">Popular starting points</p>
+    <div class="chips-row" style="justify-content:center">
+      <a class="chip" href="/explore">Explore subjects</a>
+      <a class="chip" href="/dpp">Today's DPP</a>
+      <a class="chip" href="/practice/problems">Coding problems</a>
+      <a class="chip" href="/resources">Everything on {{ brand.site_name }}</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

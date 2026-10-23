@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Learn to code — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Code · language paths</p>
+  <h1>Learn to code</h1>
+  <p class="lead">Pick a language. Every path starts at zero: <strong>why this language exists</strong>,
+    Hello World, variables, operators, <strong>if/else</strong>, <strong>loops</strong>, then real-world
+    drills — then functions, modules, testing, and the services a working engineer ships. Work
+    <strong>Foundations</strong>, <strong>Working Practice</strong>, then <strong>Advanced Engineering</strong>
+    in order. Each stage ends with a checkpoint quiz on your practice account, and each path ends with a
+    capstone brief.</p>
+  <p class="small muted" style="margin:10px 0 0;max-width:78ch">The catalogue is still being expanded:
+    {{ academy_coverage.structured }} modules have structured learning units, while
+    {{ academy_coverage.total - academy_coverage.structured }} retain legacy content. Reading is not graded
+    mastery, and these counts do not imply complete courses.</p>
+</section>
+{% include "_ladder.html" %}
+
+<section class="codelab-strip">
+  <span class="codelab-strip-mark" aria-hidden="true">{{ icon("terminal", 20) }}</span>
+  <div class="codelab-strip-copy">
+    <h2>CodeLab — online compiler</h2>
+    <p>Write, compile and run complete programs in Python, Java, C, C++, JavaScript and more — on a
+      desktop or an Android phone. Nothing to install.</p>
+  </div>
+  <div class="codelab-strip-actions">
+    <a class="btn btn-primary" href="/codelab">Open CodeLab {{ icon("chevron", 14) }}</a>
+    <a class="btn btn-ghost btn-sm" href="/codelab?lang=python">Python</a>
+    <a class="btn btn-ghost btn-sm" href="/codelab?lang=java">Java</a>
+    <a class="btn btn-ghost btn-sm" href="/codelab?lang=cpp">C++</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div>
+      <p class="ev-eyebrow">Pick one and start</p>
+      <h2>Language paths</h2>
+    </div>
+  </div>
+  <div class="grid g3">{% for lang in languages %}
+    <a class="card" href="/programming/{{ lang.slug }}">
+      <span class="title" style="color:{{ lang.color }}">{{ lang.name }}</span>
+      <span class="desc">{{ lang.blurb }}</span>
+      <div class="tags">
+        <span class="chip">{{ lang.module_count }} modules</span>
+        <span class="chip">{{ lang.stage_count }} stages</span>
+        <span class="chip">{{ lang.checkpoint_count }} checkpoint questions</span>
+        {% if lang.capstone_slug %}<span class="chip accent chip-long">Capstone: {{ lang.capstone_title }}</span>{% endif %}
+        <span class="chip {{ 'ok' if lang.runnable else 'warn' }}">
+          {{ 'Runnable with active provider' if lang.runnable else 'No active runtime' }}</span>
+      </div>
+    </a>{% endfor %}</div>
+</section>
+
+<section class="section">
+  <div class="section-head"><h2>Problems</h2><a class="small" href="/practice/problems">All problems →</a></div>
+  <div class="grid g4">{% for p in problems[:16] %}
+    <a class="card" href="/practice/problems/{{ p.slug }}"><span class="title">{{ p.title }}</span>
+      <span class="chip diff-{{ p.difficulty }}">{{ p.difficulty }}</span></a>{% endfor %}</div>
+</section>
+
+{% if submissions %}
+<section class="section"><h2>Your recent submissions</h2>
+  <div class="tablewrap"><table><thead><tr><th>Problem</th><th>Language</th><th>Status</th><th>When</th></tr></thead>
+  <tbody>{% for s in submissions %}<tr>
+    <td><a href="/practice/problems/{{ s.problem_slug }}">{{ s.problem_title }}</a></td>
+    <td>{{ s.language }}</td>
+    <td><span class="chip {{ 'ok' if s.is_accepted else 'bad' }}">{{ s.status | replace('_',' ') }}</span></td>
+    <td>{{ s.created_at | ago }}</td></tr>{% endfor %}</tbody></table></div></section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,35 @@
+{# The brand panel beside the sign-in / registration card. It explains what the
+   account unlocks and gives the page a first screen worth looking at, without
+   duplicating the form or inventing any progress figures. #}
+{% from "_icons.html" import icon %}
+<aside class="auth-aside" aria-label="What an account unlocks">
+  <span class="auth-glow auth-glow-a" aria-hidden="true"></span>
+  <span class="auth-glow auth-glow-b" aria-hidden="true"></span>
+  <div class="auth-aside-body">
+    <a class="auth-brand" href="/">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linejoin="round" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <path d="M16 3.5 5.5 9.5v13L16 28.5l10.5-6v-13z"/>
+          <path d="M11.5 20.2V12.2l4.5 4.1 4.5-4.1v8"/>
+        </svg>
+      </span>
+      <span class="logo-text">{{ brand.site_name }}</span>
+    </a>
+    <p class="ev-eyebrow">Engineer's study desk</p>
+    <h2>From “I read it”<br>to “I can build it”.</h2>
+    <p class="auth-lead">Notes, judged practice, spaced revision and real projects — with one account
+      that remembers where you stopped.</p>
+    <ul class="auth-points">
+      <li>{{ icon("check", 15) }} Daily DPPs and a streak you can actually trust</li>
+      <li>{{ icon("check", 15) }} Judged coding in the browser or on the hosted judge</li>
+      <li>{{ icon("check", 15) }} Mistake notebook, certificates and a public portfolio</li>
+    </ul>
+    <div class="auth-mini" aria-hidden="true">
+      <div class="auth-mini-row"><span class="auth-mini-ico">{{ icon("target", 16) }}</span><span>Today's DPP</span><span class="chip">~30 min</span></div>
+      <div class="auth-mini-row"><span class="auth-mini-ico">{{ icon("cards", 16) }}</span><span>Due flashcards</span><span class="chip">~10 min</span></div>
+      <div class="auth-mini-row"><span class="auth-mini-ico">{{ icon("terminal", 16) }}</span><span>One coding problem</span><span class="chip">~15 min</span></div>
+    </div>
+    <p class="auth-note">Self-hosted. First-party sign-in. No trackers, no third-party scripts.</p>
+  </div>
+</aside>

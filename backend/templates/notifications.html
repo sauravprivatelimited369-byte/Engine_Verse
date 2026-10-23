@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Notifications — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Account · activity</p>
+  <h1>Notifications</h1>
+  <p class="lead">Streak reminders, replies and milestone awards. Nothing marketing, and nothing you did not
+    opt into in Settings.</p>
+</section>
+<div class="stack">{% for n in notifications %}
+  <div class="panel tight {{ 'muted' if n.read_at }}">
+    <div class="between"><strong>{{ n.title }}</strong><span class="tiny muted">{{ n.created_at | ago }}</span></div>
+    <p class="small" style="margin:4px 0 0">{{ n.body }}</p>
+    {% if n.url %}<a class="small" href="{{ n.url }}">Open →</a>{% endif %}</div>
+{% else %}<div class="empty"><span class="em" aria-hidden="true">{{ icon("bell", 26) }}</span>Nothing here yet.</div>{% endfor %}</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Projects — {{ brand.site_name }}{% endblock %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<section class="page-hero">
+  <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <p class="ev-eyebrow">Portfolio, not promises</p>
+  <h1>Real-world projects</h1>
+  <p class="lead">Each project is a full brief: problem, architecture, database design, build steps, testing,
+    the résumé line to write and the questions an interviewer will ask about it.</p>
+</section>
+{% include "_ladder.html" %}
+
+<form class="panel mb filter-panel" method="get">
+  <div class="row">
+    <label class="inline-field"><span>Difficulty</span>
+      <select id="difficulty" name="difficulty"><option value="">Any</option>
+      {% for d in difficulties %}<option value="{{ d.difficulty }}" {{ 'selected' if active_difficulty == d.difficulty }}>{{ d.difficulty | titlecase }} ({{ d.count }})</option>{% endfor %}</select></label>
+    <label class="inline-field"><span>Branch</span>
+      <select id="branch" name="branch"><option value="">All</option>
+      {% for b in branches %}<option value="{{ b.id }}" {{ 'selected' if active_branch == b.id }}>{{ b.name }}</option>{% endfor %}</select></label>
+    <button class="btn btn-primary">{{ icon("check", 15) }} Filter</button>
+  </div>
+</form>
+
+<div class="grid g2">
+  {% for p in projects %}
+    <a class="card" href="/projects/{{ p.slug }}">
+      <span class="title">{{ p.title }}</span>
+      <span class="desc">{{ p.summary }}</span>
+      <div class="tags"><span class="chip accent">{{ p.difficulty }}</span>
+        <span class="chip">{{ p.est_hours }} h</span>
+        <span class="chip">{{ p.category }}</span>
+        {% if p.branch_name %}<span class="chip">{{ p.branch_name }}</span>{% endif %}
+        {% for tech in (p.tech | fromjson([]))[:4] %}<span class="chip">{{ tech }}</span>{% endfor %}</div>
+    </a>
+  {% else %}<div class="empty" style="grid-column:1/-1"><span class="em" aria-hidden="true">{{ icon("search", 26) }}</span>
+    <strong>No projects match that filter.</strong>
+    <p class="small muted" style="margin:6px 0 12px">Try any difficulty or all branches.</p>
+    <a class="btn btn-soft btn-sm" href="/projects">Clear the filter</a></div>{% endfor %}
+</div>
+{% endblock %}
