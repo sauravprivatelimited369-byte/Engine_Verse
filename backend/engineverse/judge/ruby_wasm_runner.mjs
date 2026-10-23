@@ -8,6 +8,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import v8 from "node:v8";
+
+// Node 22's WASI host implementation uses V8 "fast API calls" for its
+// syscalls, and TurboFan's tier-up of those calls segfaults intermittently
+// inside wasm execution on x86_64 Linux (nodejs/node#53087). Measured on this
+// host: 9 of 20 CRuby-on-WASM runs died with SIGSEGV (exit 139) before any
+// learner output, which reached CodeLab as a random "runtime crashed". The
+// Node CLI equivalent is `--no-turbo-fast-api-calls`; setting it here too
+// covers direct invocations of this script that omit the flag. Flag changes
+// apply to code compiled afterwards, and this runs before the module loads.
+v8.setFlagsFromString("--no-turbo-fast-api-calls");
 
 const require = createRequire(import.meta.url);
 
