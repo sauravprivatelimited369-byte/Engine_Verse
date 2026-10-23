@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Install the app — {{ brand.site_name }}{% endblock %}
 {% from "_icons.html" import icon %}
+{% from "_media.html" import picture %}
 {% block content %}
 <section class="page-hero">
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  {{ picture("/static/img/app-icon-192.webp", "/static/icons/icon-192.png",
+             brand.site_name ~ " app icon: the M mark inside a meridian ring", 96, 96,
+             eager=True, style="width:96px;height:96px;border-radius:22px;margin-bottom:14px") }}
   <p class="ev-eyebrow">Install · Android · iPhone</p>
   <h1>Use {{ brand.site_name }} on your phone</h1>
   <p class="lead">You can use the full website without downloading anything. On Android or iPhone, add this

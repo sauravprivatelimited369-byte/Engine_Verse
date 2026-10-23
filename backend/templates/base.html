@@ -14,7 +14,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ brand.site_name }}{% endblock %}</title>
-  <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
+  <meta name="description" content="{% block description %}{{ meta_description or brand.description }}{% endblock %}">
+  {% if robots %}<meta name="robots" content="{{ robots }}">{% endif %}
   <meta name="theme-color" content="{% if brand.theme == 'light' %}#f5f2eb{% else %}#0a1524{% endif %}">
   <script nonce="{{ request.state.csp_nonce }}">
     // Runs before first paint: a stored theme preference wins over the site
@@ -49,6 +50,7 @@
   <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/voice.css">
   {# The assistant's own sheet: launcher, panel and the /assistant page. Kept
      separate so a page that never opens it still pays only for app.css. #}
   <link rel="stylesheet" href="/static/css/assistant.css">
@@ -63,17 +65,22 @@
   <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--btn:{{ brand.accent_color | safe }};--grad:{{ brand.accent_color | safe }};--grad-3:{{ brand.accent_color | safe }}}</style>
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta property="og:title" content="{% block og_title %}{{ brand.site_name }}{% endblock %}">
-  <meta property="og:description" content="{{ brand.tagline }}">
+  <meta property="og:description" content="{{ meta_description or brand.description }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ brand.site_name }}">
   <meta property="og:image" content="{{ og_image }}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="{{ og_image_width }}">
+  <meta property="og:image:height" content="{{ og_image_height }}">
   <meta property="og:image:alt" content="{{ brand.site_name }} — {{ brand.tagline }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{% block twitter_title %}{{ brand.site_name }}{% endblock %}">
-  <meta name="twitter:description" content="{{ brand.tagline }}">
+  <meta name="twitter:description" content="{{ meta_description or brand.description }}">
   <meta name="twitter:image" content="{{ og_image }}">
   {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">
   <meta property="og:url" content="{{ canonical_url }}">{% endif %}
+  {% if organization_ld %}<script type="application/ld+json">{{ organization_ld | tojson }}</script>{% endif %}
+  {% if breadcrumb_ld %}<script type="application/ld+json">{{ breadcrumb_ld | tojson }}</script>{% endif %}
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}{{ ' is-static' if static_export and not user }}"{% if gated %} data-signin-gate{% endif %}>
@@ -219,6 +226,13 @@
 </nav>
 {% endif %}
 
+{# Non-secret runtime settings for optional ElevenLabs speech. Device voices
+   work without a backend. The API base is empty in the live app (same origin)
+   and in an unconfigured static Pages copy (which calls no voice endpoint).
+   No key, agent ID or signed URL is ever written into a page. #}
+<script type="application/json" id="ev-voice-config" nonce="{{ request.state.csp_nonce }}">
+  {"apiBase": "{{ voice_api_base }}", "staticCopy": {{ 'true' if static_export else 'false' }}}
+</script>
 {# The assistant's browser configuration, as data rather than inline script.
    In proxy mode this contains no endpoint other than the same-origin API path:
    the n8n webhook URL is server-side only. export_pages.py replaces this block
@@ -242,6 +256,7 @@
 <script src="/static/js/i18n.js" defer></script>
 <script src="/static/js/engine3d.js" defer></script>
 <script src="/static/js/app.js" defer></script>
+<script src="/static/js/voice.js" defer></script>
 <script src="/static/js/assistant.js" defer></script>
 <script src="/static/js/pages-live.js" defer></script>
 <script src="/static/js/scroll.js" defer></script>

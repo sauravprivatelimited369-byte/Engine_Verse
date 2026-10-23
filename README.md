@@ -58,6 +58,7 @@ push either way.
 | **Track**: dashboard, streak heatmap and portfolio of completed work | ✓ On this device | ✓ Across devices |
 | **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |
 | **Help**: support and feedback, privacy and terms, a 404 page | ✓ (feedback through GitHub issues) | ✓ |
+| **Listen**: device voices read notes, whole lessons, formulas, roadmaps, tutor and assistant answers; optional ElevenLabs natural voice and live agent | ✓ device voice in supported browsers; ElevenLabs needs a backend | ✓ device voice; ElevenLabs needs a key/agent |
 | **Assistant**: an n8n-backed AI study assistant, with a floating launcher and a full page | ✓ when `ENGINEVERSE_ASSISTANT_PUBLIC_URL` is configured | ✓ when `ENGINEVERSE_ASSISTANT_URL` is configured |
 | Accounts, two-factor sign-in, community posts, leaderboard, certificates | n/a | ✓ |
 
@@ -76,6 +77,29 @@ Each language runs on its real compiler or interpreter. Nothing is simulated.
   reported as **not run**.
 - **On a self-hosted site**, the server judge runs code only when the operator
   configures one. Production defaults to `ENGINEVERSE_JUDGE=disabled`.
+
+### Listening and speaking
+
+Tap **Listen** beside a note, formula, tutor answer or assistant reply, or
+**Listen to all sections** on a multi-section lesson. This uses a real voice
+installed in your browser/device, even on GitHub Pages without a backend or
+API key. Choose a voice and language in the reader's **Choose voice** menu;
+Pause, Resume and Stop work on long lessons too. Voice quality and language
+availability depend on your browser's installed voices. If your browser has no
+speech engine, the site says so instead of offering a dead button.
+
+On `/tutor`, browsers that support speech recognition also show **Ask by voice**:
+click it to dictate a question to the *notes* tutor and hear the sourced answer.
+Type a question if your browser cannot recognize speech. The microphone is
+never requested on load; your browser may process recognition with its own
+speech service. Normal typed answers are **not** read automatically.
+
+For a more natural ElevenLabs voice and a live back-and-forth voice agent, an
+operator must host the FastAPI backend and configure the ElevenLabs key, voice
+ID(s) and (for live conversation) agent ID. The browser falls back to its
+device voice if that service is down; no key belongs in GitHub Pages. Setup,
+privacy, cost controls and limitations are in
+[docs/ELEVENLABS_INTEGRATION.md](docs/ELEVENLABS_INTEGRATION.md).
 
 More detail on every feature is in [docs/FEATURES.md](docs/FEATURES.md).
 
@@ -200,6 +224,7 @@ node scripts/check_static_site.js site            # 64 checks on the exported pa
 node scripts/check_assistant.js site              # 29 checks on the assistant widget
 python scripts/check_n8n_workflows.py             # structure + embedded JS of n8n workflows
 node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
+node scripts/check_voice.js                       # voice reader/tutor behaviour, stubbed
 node scripts/check_browser_runtimes.js site       # needs the runtimes fetched above
 
 python scripts/export_android_catalog.py --check  # Android catalogue matches the seed
@@ -310,6 +335,7 @@ Don't use a public issue.
 | Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |
 | Hosting, Compose, production settings | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| ElevenLabs voice reader and spoken tutor | [docs/ELEVENLABS_INTEGRATION.md](docs/ELEVENLABS_INTEGRATION.md) |
 | Android app | [android/README.md](android/README.md) |
 | PWA and TWA for self-hosted domains | [docs/ANDROID_TWA.md](docs/ANDROID_TWA.md) |
 | Content policy and note format | [docs/CONTENT.md](docs/CONTENT.md), [docs/NOTE_TEMPLATE.md](docs/NOTE_TEMPLATE.md) |

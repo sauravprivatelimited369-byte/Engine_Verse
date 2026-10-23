@@ -83,7 +83,7 @@ FILE_SUFFIXES = (
     ".map",
 )
 ATTR_URL = re.compile(
-    r"""(?P<attr>\b(?:href|src|action)\s*=\s*)(?P<q>["'])(?P<url>/[^"']*)(?P=q)"""
+    r"""(?P<attr>\b(?:href|src|srcset|action)\s*=\s*)(?P<q>["'])(?P<url>/[^"']*)(?P=q)"""
 )
 REPO = project.repo_url()
 
@@ -177,6 +177,11 @@ def prepare_env(db_path: Path) -> dict[str, str]:
     # post to a server, the browser Submit button on problem pages, and
     # canonical URLs on the Pages origin rather than the export's loopback host.
     env["ENGINEVERSE_STATIC_EXPORT"] = "1"
+    # The public build never carries a credential. Device speech needs no
+    # server; only optional ElevenLabs speech uses a hosted FastAPI origin.
+    env["ELEVENLABS_API_KEY"] = ""
+    env["ELEVENLABS_AGENT_ID"] = ""
+    env["ENGINEVERSE_ELEVENLABS_ENABLED"] = ""
     return env
 
 
@@ -401,6 +406,7 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
     return f"""
 <section class="page-hero">
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
+  <picture><source type="image/webp" srcset="/static/img/app-icon-192.webp"><img src="/static/icons/icon-192.png" alt="Meridian app icon: the M mark inside a meridian ring" width="96" height="96" loading="eager" decoding="sync" fetchpriority="high" style="width:96px;height:96px;border-radius:22px;margin-bottom:14px"></picture>
   <p class="ev-eyebrow">Install · Android · iPhone</p>
   <h1>Use Meridian on your phone</h1>
   <p class="lead">This website works in any modern mobile browser. You can also add it to your home screen so it
@@ -1484,13 +1490,54 @@ def fill_shell(home_html: str, title: str, main: str, *, private: bool = True) -
     return text
 
 
+def write_redirect_stubs(site: Path, base: str) -> int:
+    """Pages that send retired addresses on to their replacement.
+
+    GitHub Pages cannot answer 301, so each exact redirect from
+    ``engineverse.redirects`` becomes a noindex page that refreshes to its target,
+    with a plain link for a visitor whose browser does not follow refreshes.
+    A path the export already renders is never overwritten, and the pages are
+    written after the sitemap so they are not listed in it.
+    """
+    from engineverse import redirects
+
+    written = 0
+    for old, new in redirects.EXACT.items():
+        if old.endswith(".html") or old == "/":
+            continue
+        target = output_path(site, old)
+        if target.exists():
+            continue
+        href = rewrite_url(new, base)
+        tail = new.split("?", 1)[0].strip("/")
+        canonical = project.pages_url() + (tail + "/" if tail else "")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+            "<meta name=\"robots\" content=\"noindex, follow\">\n"
+            f"<title>Moved · Meridian</title>\n"
+            f"<link rel=\"canonical\" href=\"{html.escape(canonical, quote=True)}\">\n"
+            f"<meta http-equiv=\"refresh\" content=\"0; url={html.escape(href, quote=True)}\">\n"
+            "</head>\n<body>\n"
+            f"<p>This page has moved to <a href=\"{html.escape(href, quote=True)}\">{html.escape(href)}</a>.</p>\n"
+            "</body>\n</html>\n",
+            encoding="utf-8",
+        )
+        written += 1
+    return written
+
+
 def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
-           assistant_url: str = "") -> int:
+           voice_api_url: str = "", assistant_url: str = "") -> int:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
     (site / ".nojekyll").write_text("", encoding="utf-8")
     copy_static(site, base)
+
+    # Templates read this while rendering the static copy. Empty means only
+    # device speech is available; never bake in a key or signed agent URL.
+    os.environ["ENGINEVERSE_VOICE_API_URL"] = voice_api_url
 
     from fastapi.testclient import TestClient
 
@@ -1584,6 +1631,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
         f"Sitemap: {origin}/sitemap.xml\n",
         encoding="utf-8",
     )
+    written += write_redirect_stubs(site, base)
     if failed:
         raise SystemExit("Refusing to publish. These pages did not render:\n" + "\n".join(failed))
     assert_clean(site)
@@ -1594,6 +1642,7 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     ).strip()
     (site / "deployment.json").write_text(json.dumps({
         "revision": revision, "mode": "reading-copy", "base": base, "pages": written,
+        "voiceApi": voice_api_url,
         "capabilities": [rewrite_url(path, base) for path in ("/apis", "/studio", "/workflows", "/swarm")],
         # Whether the assistant works on this copy, never the webhook itself:
         # deployment.json is public.
@@ -1647,6 +1696,25 @@ def normalise_app_url(value: str | None) -> str:
             or not all(_DNS_LABEL.fullmatch(label) for label in host.split("."))):
         raise error
     return text
+
+
+def normalise_voice_api_url(value: str | None) -> str:
+    """The public voice API origin baked into the static copy, or "".
+
+    Same rules as the hosted-app URL: an HTTPS origin (localhost HTTP while
+    developing). A path, query, credentials or fragment are refused, and the
+    rejection never echoes the input in case it contained a pasted secret.
+    """
+    text = (value or "").strip()
+    if not text:
+        return ""
+    try:
+        return normalise_app_url(text)
+    except SystemExit:
+        raise SystemExit(
+            "ENGINEVERSE_VOICE_API_URL must be a public HTTPS origin "
+            "(localhost HTTP only for development)."
+        ) from None
 
 
 def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = False,
@@ -1821,6 +1889,9 @@ def main() -> int:
                         help="full app HTTPS origin (default: $ENGINEVERSE_APP_URL)")
     parser.add_argument("--apk-url", default=None,
                         help="versioned signed GitHub Release APK URL (default: $ENGINEVERSE_APK_URL)")
+    parser.add_argument("--voice-api-url", default=None,
+                        help="public FastAPI origin that serves /api/voice "
+                             "(default: $ENGINEVERSE_VOICE_API_URL; empty uses device speech only)")
     parser.add_argument("--assistant-url", default=None,
                         help="public n8n Chat Trigger URL for the static copy "
                              "(default: $ENGINEVERSE_ASSISTANT_PUBLIC_URL)")
@@ -1842,6 +1913,10 @@ def main() -> int:
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from None
+    voice_api_url = normalise_voice_api_url(
+        args.voice_api_url if args.voice_api_url is not None
+        else os.environ.get("ENGINEVERSE_VOICE_API_URL", "")
+    )
     try:
         assistant_url = normalise_assistant_url(
             args.assistant_url if args.assistant_url is not None
@@ -1860,7 +1935,8 @@ def main() -> int:
     os.environ.update(env)
     if not args.skip_seed:
         seed(env, db_path)
-    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url, assistant_url=assistant_url)
+    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url,
+           voice_api_url=voice_api_url, assistant_url=assistant_url)
     return 0
 
 

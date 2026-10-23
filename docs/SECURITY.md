@@ -335,7 +335,7 @@ verdicts, and the exported pages are given the tables themselves inside the
 | `X-Frame-Options` | `DENY` |
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | camera, microphone and geolocation disabled |
+| `Permissions-Policy` | camera and geolocation disabled; microphone allowed on `/tutor` for opt-in browser speech recognition (and on the live site if the ElevenLabs agent is enabled), denied elsewhere |
 | `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy` | `same-origin` |
 | `Strict-Transport-Security` | sent when the request arrives over HTTPS |
 | `Cache-Control` | Signed-in pages are `private, no-store`; anonymous HTML is `private, max-age=0` because it carries a browser-bound CSRF token |

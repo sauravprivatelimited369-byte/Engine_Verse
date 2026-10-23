@@ -106,6 +106,20 @@ services:
       ENGINEVERSE_ASSISTANT_TIMEOUT_MS: ${ENGINEVERSE_ASSISTANT_TIMEOUT_MS:-25000}
       ENGINEVERSE_ASSISTANT_SESSION_LIMIT: ${ENGINEVERSE_ASSISTANT_SESSION_LIMIT:-20}
       ENGINEVERSE_JAVA_SANDBOX_JAR: /app/engineverse-sandbox.jar
+      # Optional ElevenLabs voice reader and spoken tutor. Empty/0 keeps the
+      # feature off; no request is made and no credential is needed. The API key
+      # is a server-side secret and is never sent to a browser.
+      ENGINEVERSE_ELEVENLABS_ENABLED: ${ENGINEVERSE_ELEVENLABS_ENABLED:-0}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_TTS_VOICE_ID_EN: ${ELEVENLABS_TTS_VOICE_ID_EN:-}
+      ELEVENLABS_TTS_VOICE_ID_HI: ${ELEVENLABS_TTS_VOICE_ID_HI:-}
+      ELEVENLABS_TTS_VOICE_NAME_EN: ${ELEVENLABS_TTS_VOICE_NAME_EN:-}
+      ELEVENLABS_TTS_VOICE_NAME_HI: ${ELEVENLABS_TTS_VOICE_NAME_HI:-}
+      ELEVENLABS_TTS_MODEL_ID: ${ELEVENLABS_TTS_MODEL_ID:-eleven_multilingual_v2}
+      ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID:-}
+      ENGINEVERSE_VOICE_MAX_CHARS: ${ENGINEVERSE_VOICE_MAX_CHARS:-1200}
+      ENGINEVERSE_VOICE_TIMEOUT_SECONDS: ${ENGINEVERSE_VOICE_TIMEOUT_SECONDS:-30}
+      ENGINEVERSE_VOICE_ORIGINS: ${ENGINEVERSE_VOICE_ORIGINS:-}
     ports:
       # Bound to loopback. Put a TLS reverse proxy in front and publish that,
       # not this port, on a public interface. See docs/DEPLOYMENT.md.

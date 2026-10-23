@@ -6,10 +6,9 @@ FastAPI app factory. Mounts:
 * ``/api``   JSON endpoints (``api/``)
 * ``/static`` vanilla CSS/JS, icons, PWA manifest and service worker
 
-Every response carries a hardened set of security headers. No third-party
-origin is ever contacted by the browser, so the CSP can stay strict: no
-inline script beyond the one nonce'd bootstrap, no external fonts, no
-analytics.
+Every response carries a hardened set of security headers. The optional
+ElevenLabs agent uses one explicitly allowed WebSocket origin when enabled;
+the ordinary pages stay same-origin with no external fonts or analytics.
 """
 from __future__ import annotations
 
@@ -21,6 +20,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -30,7 +30,8 @@ for _path in (_ROOT, os.path.dirname(_ROOT)):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
-from engineverse import auth, brand, db  # noqa: E402
+from engineverse import auth, brand, db, navigation  # noqa: E402
+from engineverse import redirects  # noqa: E402
 from engineverse.config import get_settings  # noqa: E402
 from engineverse.security import csrf, ratelimit  # noqa: E402
 from engineverse.security.clientip import client_ip  # noqa: E402
@@ -38,6 +39,7 @@ from engineverse.security import rbac  # noqa: E402
 from engineverse.security.audit import record  # noqa: E402
 from web import api as api_router  # noqa: E402
 from web import auth_pages, pages  # noqa: E402
+from web import voice_api  # noqa: E402
 from web.deps import STATIC_DIR  # noqa: E402
 
 
@@ -54,8 +56,8 @@ _CSP_TEMPLATE = (
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
     "font-src 'self'; "
-    "connect-src 'self'; "
-    "media-src 'self'; "
+    "connect-src {connect}; "
+    "media-src 'self' blob:; "
     "object-src 'none'; "
     "frame-src 'none'; "
     "base-uri 'self'; "
@@ -63,6 +65,24 @@ _CSP_TEMPLATE = (
     "frame-ancestors 'none'; "
     "upgrade-insecure-requests"
 )
+
+
+def _csp_connect_sources() -> str:
+    """``connect-src`` for this deployment.
+
+    The voice reader fetches audio from this origin; the voice tutor opens a
+    WebSocket straight to ElevenLabs using a short-lived signed URL, which the
+    browser must be allowed to reach. That host is named explicitly and only
+    when the feature is switched on - the rest of the site stays sealed.
+    """
+    settings = get_settings()
+    sources = ["'self'"]
+    if settings.elevenlabs_enabled:
+        sources.append("wss://api.elevenlabs.io")
+        for origin in settings.allowed_voice_origins:
+            if origin not in sources:
+                sources.append(origin)
+    return " ".join(sources)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -73,7 +93,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         request.state.csp_nonce = nonce
         response = await call_next(request)
         settings = get_settings()
-        csp = _CSP_TEMPLATE.format(nonce=nonce)
+        csp = _CSP_TEMPLATE.format(nonce=nonce, connect=_csp_connect_sources())
         if settings.frame_preview:
             csp = (
                 csp.replace("frame-ancestors 'none'; ", "")
@@ -87,11 +107,61 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+        # On /tutor, browser speech recognition can ask the *notes* tutor a
+        # question even with no ElevenLabs account. Permission is still
+        # requested only by an explicit click. All other pages keep the mic
+        # closed when the live voice agent is not configured.
+        microphone = "microphone=(self)" if settings.elevenlabs_enabled or request.url.path.rstrip("/") == "/tutor" else "microphone=()"
+        response.headers["Permissions-Policy"] = (
+            f"camera=(), {microphone}, geolocation=(), payment=()"
+        )
         response.headers["X-XSS-Protection"] = "0"
         if settings.is_https:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         return response
+
+
+class PermanentRedirectMiddleware:
+    """Answers retired and non-canonical GET/HEAD addresses with a 301.
+
+    Pure ASGI, not BaseHTTPMiddleware: a redirect needs no body and no session, so
+    it should cost nothing and run before the sign-in gate, which would otherwise
+    bounce a signed-out visitor from a retired URL to /login first. The rules live
+    in ``engineverse.redirects``. Only the path is rewritten; the query string is
+    carried over unchanged.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http" or scope.get("method") not in ("GET", "HEAD"):
+            await self.app(scope, receive, send)
+            return
+        path = scope.get("path", "")
+        if path.startswith(("/api/", "/static/")):
+            await self.app(scope, receive, send)
+            return
+        target = redirects.target_for(path)
+        if target is None:
+            await self.app(scope, receive, send)
+            return
+        query = scope.get("query_string", b"").decode("latin-1")
+        location = target
+        if query:
+            location += ("&" if "?" in target else "?") + query
+        await send({
+            "type": "http.response.start",
+            "status": 301,
+            "headers": [
+                (b"location", location.encode("latin-1", "replace")),
+                (b"content-length", b"0"),
+                (b"cache-control", b"public, max-age=3600"),
+                (b"x-content-type-options", b"nosniff"),
+                (b"referrer-policy", b"strict-origin-when-cross-origin"),
+            ],
+        })
+        await send({"type": "http.response.body", "body": b""})
 
 
 class _RequestTooLarge(Exception):
@@ -195,6 +265,13 @@ class CsrfMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.method in csrf.SAFE_METHODS:
             return await call_next(request)
+        # The voice API is public and cookie-free by design: the static Pages
+        # copy has no session, so a session-bound token is not available there.
+        # It is still not a forgeable endpoint - it refuses anything that is
+        # not application/json (which a cross-site form cannot send) and its
+        # requests carry no ambient authority, so CSRF has nothing to protect.
+        if request.url.path.startswith("/api/voice/"):
+            return await call_next(request)
         session = getattr(request.state, "ev_session_id", None)
         if session is None:
             viewer = _peek_session(request)
@@ -266,7 +343,9 @@ PUBLIC_EXACT = frozenset({
     "/api/sync/status",
     "/api/sync/snapshot",
 })
-PUBLIC_PREFIXES = ("/static/", "/certificates/")
+# The voice API is open on purpose: the public Pages copy has no account and
+# the reader must work there. It is rate-limited and bounded instead of gated.
+PUBLIC_PREFIXES = ("/static/", "/certificates/", "/api/voice/")
 
 
 def is_public_path(path: str) -> bool:
@@ -366,6 +445,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             limit = ("judge", count, window)
         elif request.method == "POST" and path in ("/api/studio/query", "/api/workflows/run"):
             limit = ("catalogue-lab", 60, 60)
+        elif path.startswith("/api/voice/session"):
+            count, window = ratelimit.LIMITS["voice_session"]
+            limit = ("voice-session", count, window)
+        elif path.startswith("/api/voice/"):
+            count, window = ratelimit.LIMITS["voice"]
+            limit = ("voice", count, window)
         elif path.startswith(("/api/tutor/", "/api/assistant/")) or path == "/api/swarm/simulate":
             # Reads the configured ceiling rather than a literal, so the "ai"
             # entry in LIMITS - defined but previously unused - is what applies.
@@ -459,11 +544,27 @@ def create_app() -> FastAPI:
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestBoundsMiddleware)
+    # Added last, so this is the outermost layer: a preflight is answered
+    # before the sign-in gate and CSRF middleware see it. Only the exact
+    # deployment origins are allowed, and credentials are off because these
+    # endpoints never read a cookie.
+    # Between the bounds check and CORS: a retired URL is redirected before the
+    # rate limiter, the sign-in gate and CSRF see it.
+    app.add_middleware(PermanentRedirectMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_voice_origins,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type"],
+        allow_credentials=False,
+        max_age=600,
+    )
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(pages.router)
     app.include_router(auth_pages.router)
     app.include_router(api_router.router, prefix="/api")
+    app.include_router(voice_api.router, prefix="/api")
 
     @app.exception_handler(404)
     async def not_found(request: Request, _exc):
@@ -647,13 +748,20 @@ def create_app() -> FastAPI:
             # Every page is behind sign-in, so there is nothing for a crawler
             # to index except the sign-in form itself.
             body = "User-agent: *\nAllow: /login\nAllow: /register\nDisallow: /\n"
-            return Response(body, media_type="text/plain")
+            return Response(body, media_type="text/plain; charset=utf-8")
         sitemap_url = get_settings().site_url.rstrip("/") + "/sitemap.xml"
-        body = (
-            "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /settings\n"
-            f"Sitemap: {sitemap_url}\n"
-        )
-        return Response(body, media_type="text/plain")
+        # Private and per-account pages are not crawled at all. The list is the
+        # navigation table's own NON_INDEXABLE set, so robots.txt and the sitemap
+        # cannot disagree about which pages are private.
+        private = sorted(navigation.NON_INDEXABLE)
+        lines = [
+            "User-agent: *",
+            "Allow: /",
+            "Disallow: /api/",
+        ]
+        lines += [f"Disallow: {path}" for path in private]
+        lines.append(f"Sitemap: {sitemap_url}")
+        return Response("\n".join(lines) + "\n", media_type="text/plain; charset=utf-8")
 
     return app
 

@@ -238,6 +238,9 @@
             explain.append(more);
           }
           explain.classList.add("on");
+          // Optional voice reader (static/js/voice.js). Never required for
+          // grading; a missing voice module leaves the card unchanged.
+          try { window.EV?.voice?.enhance?.(explain, "Explanation"); } catch (_) { /* optional */ }
         }
         const badge = $(".verdict-inline", card);
         if (badge) {
@@ -801,6 +804,13 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
         .map((para) => `<p>${inline(para).replace(/\n/g, "<br>")}</p>`)
         .join("");
       answerEl.hidden = !data.answer;
+      // Optional voice reader (static/js/voice.js). The reader is not required
+      // for the answer to be usable; without it nothing changes here.
+      try {
+        window.EV?.voice?.enhance?.(answerEl, "Tutor answer");
+        // Only a question explicitly asked by voice is read automatically.
+        window.EV?.voice?.tutorAnswered?.(data.answer ? answerEl : data.message ? messageEl : null);
+      } catch (_) { /* optional */ }
 
       const sources = data.sources || [];
       if (sources.length) {
@@ -825,6 +835,7 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
         render(await api("/api/tutor/ask", { method: "POST", body: { question } }));
       } catch (err) {
         toast(err.message, "bad");
+        window.EV?.voice?.tutorFailed?.();
       } finally {
         sendBtn.disabled = false;
         sendBtn.textContent = previous;
