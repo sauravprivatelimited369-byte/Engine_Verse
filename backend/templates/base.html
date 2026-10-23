@@ -15,7 +15,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ brand.site_name }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
-  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f4f1ea{% else %}#0a1120{% endif %}">
+  <meta name="theme-color" content="{% if brand.theme == 'light' %}#faf8f4{% else %}#101720{% endif %}">
   <script nonce="{{ request.state.csp_nonce }}">
     // Runs before first paint: a stored theme preference wins over the site
     // default. Sign-in state is never guessed from browser storage: on the
@@ -38,7 +38,7 @@
           theme = saved;
         }
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "light" ? "#faf6f0" : "#0b0908");
+        if (meta) meta.setAttribute("content", theme === "light" ? "#faf8f4" : "#101720");
       } catch (e) { /* storage blocked - fall back to the server default */ }
     })();
   </script>
@@ -71,7 +71,7 @@
     <a class="logo" href="{{ '/login' if gated else '/' }}" aria-label="{{ brand.site_name }} home">
       <span class="logo-mark" aria-hidden="true">
         <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true" focusable="false">
-          <path fill="#fbbf24" d="M22.5 3.3 L23.5 5.7 L26 6.7 L23.5 7.7 L22.5 10.1 L21.5 7.7 L19 6.7 L21.5 5.7 Z"/>
+          <path fill="var(--accent-2, #5b93f5)" d="M22.5 3.3 L23.5 5.7 L26 6.7 L23.5 7.7 L22.5 10.1 L21.5 7.7 L19 6.7 L21.5 5.7 Z"/>
           <path fill="currentColor" d="M5.5 12.3 H18 Q21.8 13.4 25.3 14.7 Q21.8 15.8 18 16.4 H16.3 V18.9 L17.9 20.3 V21.9 H20.5 V24.8 H8 V21.9 H10.6 V20.3 L12.3 18.9 V16.4 H5.5 Z"/>
         </svg>
       </span>

@@ -127,7 +127,7 @@ LANGUAGE_SPECS: tuple[dict[str, Any], ...] = (
             "    raw = sys.stdin.read().strip()\n"
             "    name = raw.splitlines()[0] if raw else \"Engineer\"\n"
             "    squares = [n * n for n in range(1, 6)]\n"
-            "    print(f\"Hello, {name}! Welcome to Forge CodeLab.\")\n"
+            "    print(f\"Hello, {name}! Welcome to EngineVerse CodeLab.\")\n"
             "    print(f\"First 5 squares: {squares} (sum = {sum(squares)})\")\n\n\n"
             "if __name__ == \"__main__\":\n"
             "    main()\n"
@@ -811,7 +811,7 @@ LANGUAGE_SPECS: tuple[dict[str, Any], ...] = (
             "# CodeLab — Ruby (CRuby)\n"
             "name = $stdin.read.strip\n"
             "name = \"Engineer\" if name.empty?\n"
-            "puts \"Hello, #{name}! Welcome to Forge CodeLab.\"\n"
+            "puts \"Hello, #{name}! Welcome to EngineVerse CodeLab.\"\n"
             "squares = (1..5).map { |n| n * n }\n"
             "puts \"First 5 squares: #{squares.inspect} (sum = #{squares.sum})\"\n"
         ),

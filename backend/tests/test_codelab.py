@@ -43,12 +43,29 @@ def _post_execute(client, payload: dict, *, timeout_ms: int | None = None):
 
 
 class TestCodeLabNavigationAndUI:
-    def test_codelab_tab_exists_in_topbar_mobile_footer_and_manifest(self, client):
+    def test_codelab_is_reachable_from_the_code_group_mobile_footer_and_manifest(self, client):
+        """CodeLab is one menu deep, not a bar slot of its own.
+
+        The top bar has a fixed budget (test_the_rendered_top_bar_is_grouped_not_flat
+        caps it at seven entries) and the Adaptive Lab took the spare slot, so
+        CodeLab moved into the Code group. What this test actually protects is
+        that CodeLab stays findable without knowing its URL: it is the first
+        entry in the Code menu, the mobile bar still claims /codelab for Code,
+        it is still a PWA shortcut and it is still precached by the service
+        worker. A bar slot was never the guarantee.
+        """
         nav_items = navigation.primary_nav(signed_in=True)
         labels = [item.label for item in nav_items]
-        assert "CodeLab" in labels
-        codelab_item = next(item for item in nav_items if item.label == "CodeLab")
-        assert codelab_item.href == "/codelab"
+        assert "Code" in labels
+        code = next(item for item in nav_items if item.label == "Code")
+        listed = {child.path: child.label for child in code.children}
+        assert listed.get("/codelab") == "CodeLab — Online Compiler"
+        # /codelab now belongs to the Code group, so the breadcrumb reads
+        # Home / Code / CodeLab and the mobile bar highlights Code.
+        assert navigation.section_for("/codelab").key == "code"
+        assert navigation.active_mobile("/codelab") == "Code"
+        crumbs = [crumb.label for crumb in navigation.breadcrumb_trail("/codelab")]
+        assert crumbs[-1] == "CodeLab — Online Compiler"
 
         page = client.get("/codelab")
         assert page.status_code == 200

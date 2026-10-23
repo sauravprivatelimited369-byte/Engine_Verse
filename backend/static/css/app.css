@@ -1,11 +1,13 @@
 /* ===========================================================================
-   EngineVerse — neumorphic design system.
+   EngineVerse — the stylesheet.
    Hand-written. No framework, no icon font, no CDN.
 
-   Volume comes from a shared clay colour plus a pair of shadows (light from
-   the top-left, dark to the bottom-right). Raised controls are convex.
-   Fields, tracks and pressed states are concave. Text contrast does not
-   depend on the shadow — a shadow is not a border.
+   Read this file in two parts. Everything above the WORKSHOP banner near the
+   bottom is the component library: layout, tables, forms, cards, the notes
+   reader, the compiler. The WORKSHOP layer at the end is the design system,
+   and it has the final word on every colour, border, radius and shadow — the
+   neumorphic and glass tokens it replaced are still referenced by name above,
+   but their values now come from there. See docs/BRAND.md.
    =========================================================================== */
 
 /* Self-hosted variable fonts. No CDN, no third-party origin: both families are
@@ -49,13 +51,14 @@
 }
 
 /* ===========================================================================
-   Design tokens — "Obsidian Forge" (FORGE rebrand, see docs/BRAND.md)
-   Tempered smoked glass over warm charcoal, lit by one ember accent family
-   (ember -> spark gold -> heat rose). Glass is forged in fire, so the frosted
-   surfaces are the brand, not decoration: dark mode is the forge at night,
-   light mode is the same glass in a daylight workshop. Corners are machined
-   (small radii) rather than pillowy. The accent stops are replaced at render
-   time from site_config; these values are the stylesheet defaults.
+   Design tokens — superseded defaults.
+
+   These were the "Obsidian Forge" ember-and-glass values. They are kept
+   because the component rules below read these token *names*, but every value
+   that matters is redefined by the WORKSHOP layer at the end of this file,
+   which is the design system now (docs/BRAND.md). Editing colours here has no
+   visible effect; edit the WORKSHOP block. The accent stops are replaced at
+   render time from site_config in either case.
    =========================================================================== */
 :root {
   color-scheme: dark;
@@ -3812,490 +3815,404 @@ body:has(.topbar.open)::after {
 [hidden] { display: none !important; }
 
 /* ===========================================================================
-   GLASSMORPHISM DESIGN SYSTEM (site-wide, 2026 redesign)
-   Frosted glass over a calm, tinted canvas: translucent surfaces, a 1px
-   top highlight, soft diffuse shadow and backdrop blur. Restraint is the
-   point — one blue accent, deep-navy ink, no neon, no gradient headlines.
-   This layer re-skins the tokens and shared surfaces so every page
-   (notes, practice, dashboard, planner…) inherits the same glass identity.
+   WORKSHOP — the design system, final word on every surface.
+
+   Replaces the two glass layers that preceded it (kept in git history at the
+   rollback-p0 tag). A study workspace reads like a workbook, not a product
+   landing page, so the rules here are deliberately boring:
+
+   * warm off-white canvas, deep-navy ink, ONE blue accent;
+   * solid surfaces, a 1px neutral border, at most a whisper of shadow;
+   * no backdrop blur, no gradient backgrounds, no gradient headline text,
+     no glow, no decorative blobs, no floating chips;
+   * corners are small and varied on purpose (4 / 6 / 10px) instead of one
+     pillowy radius applied to everything;
+   * spacing comes from an 8px scale: 4, 8, 12, 16, 24, 32, 48, 64.
+
+   The token names are the ones the 3,800 lines above already read, so this
+   layer re-skins the whole site by changing values rather than selectors.
    =========================================================================== */
+
 :root {
-  --bg: #0a1120;
-  --bg-2: #0d1628;
-  --surface: #111c33;
-  --panel: #111c33;
-  --panel-2: #0d1729;
-  --well: rgba(255, 255, 255, .05);
-  --text: #eef2fb;
-  --text-2: #c2cee6;
-  --muted: #93a5c4;
-  --accent: #4f7cff;
-  --accent-2: #7aa5ff;
-  --accent-3: #4f7cff;
-  --grad: linear-gradient(135deg, var(--accent), var(--accent));
-  --grad-3: linear-gradient(120deg, var(--accent), var(--accent));
-  --glass: rgba(17, 28, 51, .58);
-  --glass-strong: rgba(15, 25, 46, .82);
-  --glass-edge: rgba(255, 255, 255, .14);
-  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .14);
-  --glass-shadow: 0 1px 2px rgba(2, 6, 17, .28), 0 20px 44px -24px rgba(2, 6, 17, .75);
-  --neu: var(--glass-shadow);
-  --neu-sm: 0 1px 2px rgba(2, 6, 17, .22), 0 10px 26px -18px rgba(2, 6, 17, .65);
-  --neu-lg: 0 2px 6px rgba(2, 6, 17, .3), 0 32px 70px -32px rgba(2, 6, 17, .85);
-  --r-sm: 10px; --r: 14px; --r-lg: 18px; --radius: 18px;
-}
-[data-theme="light"] {
-  --bg: #f4f1ea;
-  --bg-2: #ece7db;
+  color-scheme: light;
+
+  /* Canvas and ink ------------------------------------------------------- */
+  --bg: #faf8f4;
+  --bg-2: #f3efe7;
   --surface: #ffffff;
   --panel: #ffffff;
-  --panel-2: #faf8f3;
-  --well: rgba(16, 28, 54, .045);
-  --text: #101c33;
-  --text-2: #3c4c68;
-  --muted: #61708c;
-  --glass: rgba(255, 255, 255, .62);
-  --glass-strong: rgba(255, 255, 255, .86);
-  --glass-edge: rgba(16, 28, 54, .12);
-  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .75);
-  --glass-shadow: 0 1px 2px rgba(16, 28, 54, .06), 0 20px 44px -26px rgba(16, 28, 54, .35);
-  --neu: var(--glass-shadow);
-  --neu-sm: 0 1px 2px rgba(16, 28, 54, .05), 0 10px 26px -20px rgba(16, 28, 54, .3);
-  --neu-lg: 0 2px 4px rgba(16, 28, 54, .06), 0 32px 70px -34px rgba(16, 28, 54, .4);
+  --panel-2: #fbf9f5;
+  --well: #f4f1ea;
+  --text: #16202c;
+  --text-2: #3d4a5c;
+  --muted: #667183;
+
+  /* One accent, used for links, focus rings, the primary button and the one
+     thing on a page that matters most. Nothing else is coloured. */
+  --accent: #1f5fd6;
+  --accent-2: #2f74e8;
+  --accent-3: #1f5fd6;
+  --accent-ink: #1a4fb0;
+
+  /* Status colours, all held at AA against --bg and --surface. */
+  --ok: #146c37;
+  --warn: #7a4d05;
+  --bad: #a82418;
+  --gold: #7a4d05;
+  --ok-ink: #146c37;
+  --warn-ink: #7a4d05;
+  --bad-ink: #a82418;
+  --gold-ink: #7a4d05;
+
+  --btn: #1f5fd6;
+
+  /* Hairlines. A border, not a shadow, is what separates two surfaces.
+     --edge and --line are decorative separators; --field-edge is the outline of
+     something you can operate, which WCAG 1.4.11 holds to 3:1 against the
+     canvas - rgba(22,32,44,.52) over #faf8f4 measures 3.4:1. */
+  --edge: rgba(22, 32, 44, .14);
+  --line: rgba(22, 32, 44, .13);
+  --line-2: rgba(22, 32, 44, .26);
+  --field-edge: rgba(22, 32, 44, .52);
+
+  /* Shadows: one short contact shadow, nothing that lifts a card off the page. */
+  --neu: 0 1px 2px rgba(22, 32, 44, .07);
+  --neu-sm: 0 1px 1px rgba(22, 32, 44, .06);
+  --neu-lg: 0 1px 2px rgba(22, 32, 44, .07), 0 4px 12px -8px rgba(22, 32, 44, .18);
+  --neu-in: inset 0 1px 2px rgba(22, 32, 44, .07);
+  --neu-in-sm: inset 0 1px 1px rgba(22, 32, 44, .05);
+  --shade: rgba(22, 32, 44, .1);
+  --light: #ffffff;
+  --shadow: var(--neu);
+  --shadow-lg: var(--neu-lg);
+
+  /* The glass vocabulary is kept because templates still reference it, but
+     every value is now opaque: a "glass" surface is a plain white panel. */
+  --glass: #ffffff;
+  --glass-strong: #ffffff;
+  --glass-tint: rgba(255, 255, 255, 0);
+  --glass-edge: var(--edge);
+  --glass-hi: none;
+  --glass-blur: none;
+  --glass-shadow: var(--neu);
+  --ember-shadow: none;
+
+  /* No gradient anywhere: a "gradient" token resolves to a flat colour. */
+  --grad: var(--accent);
+  --grad-3: var(--accent);
+  --grad-text: none;
+  --hl: linear-gradient(180deg, transparent 78%, rgba(31, 95, 214, .22) 78%);
+
+  /* Radii: small, and deliberately not all the same. */
+  --r-sm: 4px;
+  --r: 6px;
+  --r-lg: 10px;
+  --radius: 8px;
+
+  /* Spacing scale, named so templates can stop inventing values. */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-6: 24px; --s-8: 32px; --s-12: 48px; --s-16: 64px;
 }
-/* The canvas the glass floats on: two very soft tints, fixed, no animation. */
+
+/* The night workshop: the same layout, flat navy instead of paper. Still no
+   glass — a reader who asks for dark mode gets a dark workbook, not a disco. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101720;
+  --bg-2: #0c121a;
+  --surface: #17202b;
+  --panel: #17202b;
+  --panel-2: #131b24;
+  --well: #101822;
+  --text: #eaeff6;
+  --text-2: #c1cbd9;
+  --muted: #93a0b2;
+  --accent: #5b93f5;
+  --accent-2: #7aa5ff;
+  --accent-3: #5b93f5;
+  --accent-ink: #9dbdfb;
+  --ok: #4bb277; --warn: #d9a441; --bad: #e8776b; --gold: #d9a441;
+  --ok-ink: #4bb277; --warn-ink: #d9a441; --bad-ink: #e8776b; --gold-ink: #d9a441;
+  --btn: #2a6ae0;
+  --edge: rgba(234, 239, 246, .16);
+  --line: rgba(234, 239, 246, .14);
+  --line-2: rgba(234, 239, 246, .3);
+  --field-edge: rgba(234, 239, 246, .62);
+  --neu: 0 1px 2px rgba(0, 0, 0, .35);
+  --neu-sm: 0 1px 1px rgba(0, 0, 0, .3);
+  --neu-lg: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 12px -8px rgba(0, 0, 0, .5);
+  --neu-in: inset 0 1px 2px rgba(0, 0, 0, .35);
+  --neu-in-sm: inset 0 1px 1px rgba(0, 0, 0, .3);
+  --shade: rgba(0, 0, 0, .3);
+  --light: rgba(255, 255, 255, .04);
+  --glass: #17202b;
+  --glass-strong: #17202b;
+  --hl: linear-gradient(180deg, transparent 78%, rgba(91, 147, 245, .28) 78%);
+}
+
+/* ------------------------------------------------------------- the canvas */
 body {
-  background:
-    radial-gradient(900px 480px at 85% -80px, color-mix(in srgb, var(--accent) 10%, transparent), transparent 65%),
-    radial-gradient(760px 420px at -120px 30%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 60%),
-    linear-gradient(180deg, var(--bg), var(--bg-2));
-  background-attachment: fixed;
-}
-/* Shared glass surface: translucent fill + blur + highlight edge. */
-.topbar-inner, .navmenu, .menu-pop, .card, a.card, .tile, a.tile, .panel,
-.hero-panel, .plan-shell, .cta-panel, .preview, .finale, .form-panel,
-.mobilenav, .bottomnav, .footer-cta-band, .modal, .sheet, .well-card {
-  background: var(--glass);
-  border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--glass-shadow);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .topbar-inner, .navmenu, .menu-pop, .card, a.card, .tile, a.tile, .panel,
-  .hero-panel, .plan-shell, .cta-panel, .preview, .finale, .form-panel,
-  .mobilenav, .bottomnav, .footer-cta-band, .modal, .sheet, .well-card {
-    background: var(--glass-strong);
-  }
-}
-.topbar { background: transparent; }
-input, select, textarea, .searchbox {
-  background: var(--glass);
-  border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-hi);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  backdrop-filter: blur(12px) saturate(140%);
-}
-.chip, .btn-ghost, .btn-soft, .iconbtn, .logo-mark, .hp-ico, .plan-icon, .pillar-mark {
-  background: var(--glass);
-  border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-hi);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
-  backdrop-filter: blur(10px) saturate(140%);
-}
-.btn-primary { background: var(--btn); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--accent) 65%, transparent); }
-.card:hover, a.card:hover, .tile:hover, a.tile:hover { transform: translateY(-2px); }
-a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 3px;
+  background: var(--bg);
+  background-image: none;
+  background-attachment: scroll;
 }
 
-/* ------------------------------------------------------------- homepage */
-.home .section { margin: 48px 0; }
+/* No surface on this site is translucent. backdrop-filter is the single
+   strongest "generated template" tell and it also costs frames on a phone. */
+*, *::before, *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* --------------------------------------------------------------- surfaces */
+.topbar-inner, .navmenu, .menu-pop, .suggest, .mobilenav, .bottomnav,
+.card, a.card, .tile, a.tile, .panel, .preview, .form-panel, .sheet,
+.hero-panel, .plan-shell, .cta-panel, .footer-cta-band, .modal, .well-card,
+.finale, .stat, .tablewrap, .hero-stats, .how-step, .manifesto, .footer,
+.lab-blueprint, .lab-step, .academy-card {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  box-shadow: var(--neu-sm);
+}
+.topbar-inner { border-radius: var(--r-lg); }
+.topbar { background: var(--bg); }
+.topbar.is-scrolled .topbar-inner { box-shadow: var(--neu); }
+.bottomnav { border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; }
+.panel { border-radius: var(--r-lg); }
+.card, a.card { border-radius: var(--r-lg); }
+.tile, a.tile { border-radius: var(--r); }
+.stat { border-radius: var(--r); }
+a.card:hover, .card:hover, a.tile:hover, .tile:hover {
+  transform: none;
+  border-color: var(--line-2);
+  box-shadow: var(--neu);
+}
+.panel .card, .panel .stat, .hero .stat, .preview .stat, .meta span,
+.subject-card .meta span, details:not(.panel) {
+  background: var(--well);
+  border: 1px solid var(--edge);
+  box-shadow: none;
+}
+.callout, .prose blockquote {
+  background: var(--well);
+  border: 1px solid var(--edge);
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------ controls */
+.btn { border-radius: var(--r); }
+.btn-lg { border-radius: var(--r); }
+.btn-sm { border-radius: var(--r-sm); }
+.btn-primary {
+  background: var(--btn);
+  border: 1px solid var(--btn);
+  color: #fff;
+  box-shadow: none;
+}
+.btn-primary:hover { filter: none; background: color-mix(in srgb, var(--btn) 88%, #000); border-color: color-mix(in srgb, var(--btn) 88%, #000); box-shadow: none; }
+.btn-ghost, .btn-soft { background: var(--surface); border: 1px solid var(--field-edge); color: var(--text); box-shadow: none; }
+.btn-ghost:hover, .btn-soft:hover { background: var(--well); }
+.skip { background: var(--btn); }
+.chip, a.chip {
+  background: var(--well); border: 1px solid var(--edge); box-shadow: none;
+  border-radius: 999px; font-weight: 650;
+}
+.chip.accent, a.chip.accent { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 34%, var(--edge)); color: var(--accent-ink); }
+input, textarea, select, .searchbox {
+  background: var(--surface);
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r);
+  box-shadow: none;
+  color: var(--text);
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.iconbtn, .streak, .xpchip { background: var(--surface); border: 1px solid var(--edge); box-shadow: none; }
+.logo-mark {
+  border-radius: var(--r-sm);
+  background: var(--text);
+  border: 1px solid var(--text);
+  color: var(--bg);
+  box-shadow: none;
+}
+.xpchip .lvl { background: var(--accent); color: #fff; }
+
+/* Code slabs stay dark in both themes: a code block is a different material
+   from the page, and a navy slab is readable on paper. */
+.prose pre, #code-editor, .console, .lab-code {
+  background: #16202c;
+  color: #e8edf5;
+  border: 1px solid #16202c;
+  border-radius: var(--r);
+}
+
+/* ------------------------------------------------- decorative layer: gone */
+.hero-glow, .hero-grid-lines, .finale-glow, .hero-float, .hp-dots,
+.live-dot, .footer-glow, .path-tile::after { display: none !important; }
+.home-hero::before, .home-hero::after, .page-hero::before, .page-hero::after { display: none !important; }
+.home-hero, .page-hero, .dash-hero, .plan-shell, .manifesto, .footer,
+.footer-cta-band, .hero-stats, .hero-panel, .hero-badge, .finale {
+  background: var(--surface);
+  background-image: none;
+}
+.hero-title .grad, .manifesto .manifesto-big .grad, .grad {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: inherit;
+  filter: none;
+}
+
+/* ================================================================ HOMEPAGE */
 .home-hero {
-  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
-  gap: clamp(24px, 4vw, 48px); align-items: center;
-  margin: 8px 0 16px; padding: clamp(8px, 2vw, 24px) 0 8px;
-  background: none; border: 0; box-shadow: none; overflow: visible;
+  display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr);
+  gap: var(--s-12); align-items: start;
+  margin: var(--s-6) 0 var(--s-8);
+  padding: var(--s-8);
+  border: 1px solid var(--edge); border-radius: var(--r-lg);
 }
-.hero-glow, .hero-grid-lines, .finale-glow, .hero-float, .hp-dots, .live-dot { display: none !important; }
+.hero-badge {
+  display: inline-block; margin: 0 0 var(--s-3);
+  font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-2); background: none; border: 0; box-shadow: none;
+}
 .hero-title {
-  font-family: var(--display); font-size: clamp(2.1rem, 4.4vw, 3.3rem);
-  font-weight: 650; line-height: 1.08; letter-spacing: -.035em; margin: 0 0 14px;
+  font-family: var(--display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700; line-height: 1.1; letter-spacing: -.03em;
+  margin: 0 0 var(--s-4);
 }
-.hero-title .grad { background: none; -webkit-text-fill-color: currentColor; color: var(--accent-ink); filter: none; }
-.ev-eyebrow {
-  font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--accent-ink); margin: 0 0 10px;
-}
-.hero-panel { border-radius: var(--r-lg); padding: 16px; }
-.hp-head { padding: 2px 2px 12px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
-.hp-today { background: var(--well); }
-.hp-row { background: var(--glass); border: 1px solid var(--glass-edge); box-shadow: var(--glass-hi); }
-.hp-ico-b, .hp-ico-c, .hp-ico-d { color: var(--accent-ink); background: var(--glass); border-color: var(--glass-edge); }
-.plan-shell, .cta-panel { background: var(--glass); border-radius: var(--r-lg); }
-.plan-board { background: var(--glass); }
-.plan-bar > span { background: var(--accent); }
-.path-tile::after { display: none; }
-.finale { border-radius: var(--r-lg); background: var(--glass); }
-.footer { background: transparent; }
-.footer-cta-band { border-radius: var(--r-lg); }
+.hero-lead { font-size: 1.02rem; color: var(--text-2); max-width: 56ch; margin: 0 0 var(--s-6); }
+.hero-actions { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-bottom: var(--s-6); }
+.hero-proof { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.hero-proof li { display: flex; gap: var(--s-2); align-items: baseline; font-size: .9rem; color: var(--text-2); }
+.hero-proof svg { color: var(--ok); flex: none; transform: translateY(2px); }
+.hero-fineprint { margin-top: var(--s-4); font-size: .84rem; color: var(--muted); }
+.hero-fineprint summary { cursor: pointer; color: var(--text-2); font-weight: 650; }
 
-/* Learn → Practise → Review */
-.how-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+/* The number strip is a ruled row, not six cards. */
+.hero-stats {
+  display: flex; flex-wrap: wrap; gap: 0; margin: 0 0 var(--s-12);
+  padding: 0; border: 1px solid var(--edge); border-radius: var(--r);
+  background: var(--surface); box-shadow: none; overflow: hidden;
+}
+.hero-stat { flex: 1 1 120px; padding: var(--s-4); border-right: 1px solid var(--edge); }
+.hero-stat:last-child { border-right: 0; }
+.hero-stat .n { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; color: var(--text); }
+.hero-stat .l { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+.home .section { margin: var(--s-16) 0; }
+.home .section:first-of-type { margin-top: var(--s-8); }
+.ev-eyebrow {
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 var(--s-2);
+}
+
+/* Learn -> Experiment -> Practise -> Review: numbered, ruled, no illustration. */
+.how-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid var(--edge); }
 .how-step {
-  padding: 20px; border-radius: var(--r-lg);
-  background: var(--glass); border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--glass-shadow);
-  -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+  padding: var(--s-4) var(--s-4) var(--s-6) 0;
+  border-bottom: 1px solid var(--edge);
+  background: none; box-shadow: none;
 }
 .how-num {
-  display: inline-grid; place-items: center; width: 30px; height: 30px; margin-bottom: 12px;
-  border-radius: 50%; font-family: var(--display); font-weight: 650; font-size: .85rem;
-  color: var(--accent-ink); background: var(--glass); border: 1px solid var(--glass-edge);
+  display: block; font-family: var(--mono); font-size: .8rem; font-weight: 600;
+  color: var(--accent-ink); margin-bottom: var(--s-2);
 }
-.how-step h3 { margin: 0 0 6px; }
-.how-step p { color: var(--text-2); font-size: .92rem; margin: 0 0 12px; }
-.how-step a { font-size: .86rem; font-weight: 620; display: inline-flex; gap: 4px; align-items: center; }
+.how-step h3 { margin: 0 0 var(--s-2); font-size: 1rem; }
+.how-step p { color: var(--text-2); font-size: .88rem; margin: 0 0 var(--s-3); }
+.how-step a { font-size: .84rem; font-weight: 650; display: inline-flex; gap: 4px; align-items: center; }
 
-/* Feature rows: distinct from cards — a ruled list, not a card grid. */
-.feature-list { border-top: 1px solid var(--line); }
+/* Feature rows: a ruled list, one line each, with an honest status chip. */
+.feature-list { border-top: 1px solid var(--edge); }
 .feature-row {
-  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 16px; align-items: center;
-  padding: 20px 4px; border-bottom: 1px solid var(--line);
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: var(--s-4); align-items: start;
+  padding: var(--s-4) 0; border-bottom: 1px solid var(--edge);
 }
-.feature-row h3 { margin: 0 0 4px; }
-.feature-row p { margin: 0; color: var(--text-2); font-size: .92rem; max-width: 65ch; }
-.feature-row > a { font-size: .86rem; font-weight: 620; white-space: nowrap; display: inline-flex; gap: 4px; align-items: center; }
+.feature-row h3 { margin: 0 0 var(--s-1); font-size: 1rem; }
+.feature-row p { margin: 0; color: var(--text-2); font-size: .9rem; max-width: 68ch; }
+.feature-row > a { font-size: .84rem; font-weight: 650; white-space: nowrap; display: inline-flex; gap: 4px; align-items: center; padding-top: 2px; }
+.pillar-mark { color: var(--accent-ink); background: none; border: 0; box-shadow: none; padding-top: 2px; }
 
-@media (max-width: 1024px) { .home-hero { grid-template-columns: 1fr; } }
-@media (max-width: 760px) {
-  .how-grid { grid-template-columns: 1fr; }
-  .feature-row { grid-template-columns: 44px minmax(0, 1fr); }
-  .feature-row > a { grid-column: 2; }
-  .home .section { margin: 36px 0; }
+/* Status chips: every feature on this site carries one of these three. */
+.status-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; margin-left: var(--s-2);
+  border: 1px solid var(--edge); border-radius: 999px;
+  font-family: var(--sans); font-size: .68rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  vertical-align: 2px; color: var(--text-2); background: var(--well);
 }
+.status-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.status-chip[data-status="live"] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--edge)); background: color-mix(in srgb, var(--ok) 8%, var(--surface)); }
+.status-chip[data-status="demo"] { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--edge)); background: color-mix(in srgb, var(--warn) 9%, var(--surface)); }
+.status-chip[data-status="next"] { color: var(--muted); }
+
+/* Workspace preview: a real table of real catalogue rows. */
+.ws-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.ws-table caption { text-align: left; font-size: .78rem; color: var(--muted); padding-bottom: var(--s-2); }
+.ws-table th {
+  text-align: left; font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+  padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--line-2);
+}
+.ws-table td { padding: var(--s-3); border-bottom: 1px solid var(--edge); vertical-align: top; }
+.ws-table tbody tr:hover { background: var(--well); }
+.ws-table .num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.ws-table .row-link { font-weight: 650; }
+.tablewrap { overflow-x: auto; background: none; border: 0; box-shadow: none; }
+
+/* Why EngineVerse: two columns of prose, no panel. */
+.manifesto {
+  display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  gap: var(--s-12); align-items: start;
+  padding: var(--s-8) 0; border-top: 2px solid var(--text); border-bottom: 1px solid var(--edge);
+  background: none; box-shadow: none;
+}
+.manifesto .manifesto-big {
+  margin: 0; font-family: var(--display); font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+  font-weight: 700; letter-spacing: -.025em; line-height: 1.25;
+}
+.manifesto p { color: var(--text-2); margin: 0 0 var(--s-3); }
+.manifesto p:last-child { margin-bottom: 0; }
+
+/* ---------------------------------------------------------- responsive */
+@media (max-width: 1024px) {
+  .home-hero { grid-template-columns: 1fr; gap: var(--s-8); }
+  .how-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 760px) {
+  .home-hero { padding: var(--s-4); margin: var(--s-4) 0; }
+  .home .section { margin: var(--s-12) 0; }
+  .how-grid { grid-template-columns: 1fr; }
+  .how-step { padding-right: 0; }
+  .feature-row { grid-template-columns: 24px minmax(0, 1fr); }
+  .feature-row > a { grid-column: 2; }
+  .manifesto { grid-template-columns: 1fr; gap: var(--s-4); padding: var(--s-4) 0; }
+  .hero-stat { flex: 1 1 45%; }
+  .ws-table th:nth-child(4), .ws-table td:nth-child(4) { display: none; }
+}
+@media (max-width: 400px) {
+  .wrap { padding: 0 14px; }
+  .hero-actions .btn { width: 100%; justify-content: center; }
+}
+
+/* ------------------------------------------------- accessibility guards */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
 }
-
-/* ===========================================================================
-   FORGE — tempered-glass layer (final word on surfaces; docs/BRAND.md)
-
-   Every shared surface becomes smoked/frosted glass: a diagonal light sheen
-   over a translucent tint of the surface colour, a bright machined edge
-   (--glass-edge) and a top highlight (--glass-hi). Backdrop blur is spent
-   only where it earns its cost — the floating chrome (top bar, menus, bottom
-   nav) and the big homepage chambers. Repeating small cards use the tint
-   without blur: they sit on the glowing graph-paper canvas, so they still
-   read as glass, and a low-end phone never has to blur forty rectangles.
-   Where backdrop-filter is unavailable, surfaces fall back to solid colours
-   with identical contrast. Nothing here may make text harder to read.
-   =========================================================================== */
-
-/* ------------------------------------------------------------- wordmark */
-.logo { letter-spacing: 0; }
-.logo-text {
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 1.04rem;
-  letter-spacing: .055em;
-  text-transform: uppercase;
-}
-.logo-dot { color: var(--accent); }
-.logo-mark {
-  border-radius: 10px;
-  color: #fff7ed;
-  background: linear-gradient(145deg, #261b11, #0b0908 70%);
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14),
-              0 8px 20px -10px color-mix(in srgb, var(--accent) 55%, transparent);
-}
-.logo-footer .logo-text { font-size: 1.04rem; }
-
-/* ---------------------------------------------------- frosted chrome */
-.topbar-inner {
-  border-radius: 16px;
-  background: linear-gradient(160deg, var(--glass-tint), transparent 55%), var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu-sm);
-}
-.topbar.is-scrolled .topbar-inner {
-  background: linear-gradient(160deg, var(--glass-tint), transparent 55%), var(--glass-strong);
-  box-shadow: var(--glass-hi), var(--neu);
-}
-.navmenu, .menu-pop, .suggest {
-  border-radius: 16px;
-  background: linear-gradient(165deg, var(--glass-tint), transparent 52%), var(--glass-strong);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu-lg);
-}
-.mobilenav {
-  border-radius: 18px;
-  background: linear-gradient(165deg, var(--glass-tint), transparent 52%), var(--glass-strong);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu-lg);
-}
-.bottomnav {
-  background: linear-gradient(180deg, var(--glass-tint), transparent), var(--glass-strong);
-  border-top-color: var(--glass-edge);
-}
-.topbar-inner, .navmenu, .menu-pop, .suggest, .mobilenav, .bottomnav,
-.home-hero, .hero-panel, .plan-shell, .footer-cta-band, .hero-stats, .hero-badge {
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .topbar-inner, .navmenu, .menu-pop, .suggest, .mobilenav, .bottomnav,
-  .home-hero, .hero-panel, .plan-shell, .footer-cta-band, .hero-stats,
-  .panel, .card, a.card, .tile, a.tile, .stat, .footer, .preview {
-    background: var(--surface);
-  }
-}
-
-/* ------------------------------------------------------- glass surfaces */
-.panel, .preview, .cta-panel, .tablewrap {
-  background: linear-gradient(155deg, var(--glass-tint), transparent 48%), var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu);
-}
-.panel { border-radius: 18px; }
-.panel.tight { border-radius: 16px; }
-.card, a.card, .tile, a.tile, .stat {
-  background: linear-gradient(160deg, var(--glass-tint), transparent 54%), var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu-sm);
-}
-.card, a.card { border-radius: 16px; }
-.tile, a.tile, .path-tile { border-radius: 16px; }
-.stat { border-radius: 14px; }
-a.card:hover, .card:hover, a.tile:hover {
-  border-color: color-mix(in srgb, var(--accent) 38%, var(--glass-edge));
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 7%, var(--glass-tint)), transparent 56%), var(--glass);
-  box-shadow: var(--glass-hi), var(--neu), var(--ember-shadow);
-}
-.panel .card, .panel .stat, .hero .stat, .preview .stat {
-  background: color-mix(in srgb, var(--well) 74%, transparent);
-  box-shadow: var(--neu-in-sm);
-}
-.meta span, .subject-card .meta span {
-  background: color-mix(in srgb, var(--well) 74%, transparent);
-  border-color: var(--glass-edge);
-}
-.callout, .prose blockquote {
-  background: linear-gradient(160deg, var(--glass-tint), transparent 60%), var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi);
-}
-details:not(.panel) {
-  background: color-mix(in srgb, var(--well) 74%, transparent);
-  border: 1px solid var(--glass-edge);
-  box-shadow: none;
-}
-
-/* ------------------------------------------------------------- controls */
-.btn { border-radius: 10px; }
-.btn-lg { border-radius: 12px; }
-.btn-sm { border-radius: 9px; }
-.btn-primary {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--accent) 70%, #1a0d04),
-    color-mix(in srgb, var(--accent-3) 70%, #1a0d04) 135%);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), var(--ember-shadow);
-}
-.btn-primary:hover {
-  filter: brightness(1.09) saturate(1.04);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), var(--ember-shadow), var(--neu-sm);
-}
-.btn-ghost {
-  background: var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi);
-}
-.btn-ghost:hover { background: var(--glass-strong); }
-.skip { background: var(--btn); }
-.chip, a.chip, .hero-badge {
-  background: var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi);
-}
-input, textarea {
-  background-color: color-mix(in srgb, var(--well) 78%, transparent);
-  border-color: var(--glass-edge);
-  border-radius: 10px;
-}
-select {
-  background-color: color-mix(in srgb, var(--well) 78%, transparent);
-  border-color: var(--glass-edge);
-  border-radius: 10px;
-}
-.searchbox {
-  background: color-mix(in srgb, var(--well) 72%, transparent);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi);
-}
-.iconbtn, .streak, .xpchip {
-  background: var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi);
-}
-.xpchip .lvl { background: linear-gradient(145deg, var(--accent), var(--accent-3)); }
-.diff-expert { color: color-mix(in srgb, var(--accent-3) 62%, var(--text)); }
-
-/* ------------------------------------------------------------- code slabs */
-.prose pre, #code-editor, .console, .lab-code {
-  background: #120e0b;
-  color: #f3e7d3;
-  border: 1px solid rgba(255, 237, 213, .09);
-  border-radius: 14px;
-}
-
-/* ------------------------------------------------------------------ hero */
-.home-hero {
-  border-radius: 22px;
-  background:
-    radial-gradient(820px 440px at 4% -6%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 65%),
-    radial-gradient(700px 420px at 104% 18%, color-mix(in srgb, var(--accent-3) 11%, transparent), transparent 65%),
-    linear-gradient(160deg, var(--glass-tint), transparent 52%),
-    var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu-lg);
-}
-/* Machined corner ticks: the chamber is a plate, not a bubble. */
-.home-hero::before, .home-hero::after {
-  content: ""; position: absolute; width: 24px; height: 24px; z-index: 3;
-  pointer-events: none; opacity: .85;
-}
-.home-hero::before {
-  top: 12px; left: 12px;
-  border-top: 2px solid var(--accent); border-left: 2px solid var(--accent);
-}
-.home-hero::after {
-  right: 12px; bottom: 12px;
-  border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
-}
-.hero-title { font-weight: 700; letter-spacing: -.048em; }
-.hero-title .grad {
-  background: var(--grad-text);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: drop-shadow(0 8px 24px color-mix(in srgb, var(--accent) 26%, transparent));
-}
-.hero-panel {
-  border-radius: 18px;
-  background: linear-gradient(165deg, var(--glass-tint), transparent 52%), var(--glass-strong);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu-lg), var(--ember-shadow);
-}
-.hp-row {
-  background: color-mix(in srgb, var(--surface) 56%, transparent);
-  border-color: var(--glass-edge);
-  border-radius: 12px;
-}
-.hp-today {
-  background:
-    radial-gradient(300px 130px at 10% 0%, color-mix(in srgb, var(--accent) 2%, transparent), transparent 70%),
-    color-mix(in srgb, var(--well) 78%, transparent);
-  border-color: var(--glass-edge);
-}
-.hero-stats { border-radius: 16px; border-color: var(--glass-edge); box-shadow: var(--glass-hi), var(--neu-sm); }
-.plan-shell {
-  border-radius: 22px;
-  background:
-    radial-gradient(620px 300px at 96% -12%, color-mix(in srgb, var(--accent-3) 10%, transparent), transparent 65%),
-    radial-gradient(540px 280px at -2% -4%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 65%),
-    linear-gradient(160deg, var(--glass-tint), transparent 52%),
-    var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu);
-}
-.plan-board {
-  background: color-mix(in srgb, var(--panel-2) 78%, transparent);
-  border-color: var(--glass-edge);
-  border-radius: 16px;
-}
-.how-step { border-radius: 16px; }
-.plan-verb {
-  display: block; margin-bottom: 3px;
-  font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--accent-ink);
-}
-
-/* ----------------------------------------------------- why FORGE (home) */
-.manifesto {
-  position: relative; overflow: hidden;
-  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
-  gap: clamp(20px, 4vw, 48px); align-items: center;
-  padding: clamp(22px, 3.6vw, 40px);
-  border-radius: 22px;
-  background:
-    radial-gradient(560px 280px at 100% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 65%),
-    linear-gradient(160deg, var(--glass-tint), transparent 52%),
-    var(--glass);
-  border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-}
-.manifesto .manifesto-big {
-  margin: 0; font-family: var(--display);
-  font-size: clamp(1.5rem, 3.2vw, 2.3rem); font-weight: 700;
-  letter-spacing: -.04em; line-height: 1.16;
-}
-.manifesto .manifesto-big .grad {
-  background: var(--grad-text);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: transparent;
-}
-.manifesto p { color: var(--text-2); margin: 0 0 12px; }
-.manifesto p:last-child { margin-bottom: 0; }
-@media (max-width: 820px) { .manifesto { grid-template-columns: 1fr; } }
-
-/* ---------------------------------------------------------------- footer */
-.footer {
-  border-radius: 20px;
-  background: linear-gradient(165deg, var(--glass-tint), transparent 46%), var(--glass);
-  border-color: var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu);
-}
-.footer-cta-band {
-  border-radius: 16px;
-  background: linear-gradient(160deg, var(--glass-tint), transparent 52%), var(--glass-strong);
-  border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-hi), var(--neu-sm);
-}
-
-/* ------------------------------------------- accessibility & print guards */
-@media (prefers-reduced-transparency: reduce) {
-  .topbar-inner, .navmenu, .menu-pop, .suggest, .mobilenav, .bottomnav,
-  .home-hero, .hero-panel, .plan-shell, .footer-cta-band, .hero-stats,
-  .panel, .card, a.card, .tile, a.tile, .stat, .footer, .manifesto {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background: var(--surface);
-  }
-}
 @media (forced-colors: active) {
   .panel, .card, a.card, .tile, a.tile, .stat, .topbar-inner, .navmenu,
   .menu-pop, .home-hero, .hero-panel, .plan-shell, .footer {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background: Canvas;
-    border: 1px solid CanvasText;
-    box-shadow: none;
-  }
-  .hero-title .grad, .manifesto .manifesto-big .grad {
-    -webkit-text-fill-color: CanvasText;
-    color: CanvasText;
-    background: none;
+    background: Canvas; border: 1px solid CanvasText; box-shadow: none;
   }
 }
 @media print {
   .panel, .card, .tile, .stat, .home-hero, .hero-panel, .plan-shell, .manifesto {
-    background: #fff !important;
-    box-shadow: none !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
+    background: #fff !important; box-shadow: none !important;
   }
 }

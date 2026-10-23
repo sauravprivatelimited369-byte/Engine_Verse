@@ -1,6 +1,6 @@
 # Architecture
 
-Forge is one deployable unit: a Python web application over a SQL data
+EngineVerse is one deployable unit: a Python web application over a SQL data
 layer, with a separate JVM process for executing learner code. There is no
 message broker, no search service, no CDN and no SaaS dependency — everything
 runs on hardware you control.
@@ -352,7 +352,7 @@ would overflow. See `db/postgres/README.md`.
 
 ## Sessions and the signed-in tab bar
 
-Forge is served two ways, and both have to answer "am I signed in?" before
+EngineVerse is served two ways, and both have to answer "am I signed in?" before
 the first paint:
 
 * **The FastAPI app** issues one opaque session cookie (`ev_session`), stored as

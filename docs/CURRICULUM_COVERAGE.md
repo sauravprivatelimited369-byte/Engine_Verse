@@ -1,7 +1,7 @@
 # Curriculum coverage
 
 This is a count of rows in the database this script was pointed at. It is not a
-statement that Forge covers an engineering degree, a university syllabus,
+statement that EngineVerse covers an engineering degree, a university syllabus,
 or a placement season. Subjects that are absent are simply absent — this report
 does not list planned or imagined ones.
 

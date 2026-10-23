@@ -1,4 +1,4 @@
-/* Forge service worker (codename: engineverse).
+/* EngineVerse service worker (codename: engineverse).
  * Cache-first for immutable WebAssembly compiler toolchains and static assets,
  * network-first with cache fallback for app scripts/styles and pages,
  * never caches authenticated or mutating requests.
@@ -15,11 +15,16 @@
 // pre-cache worker entrypoints for instant offline compiler boot.
 // v12: the 2026 visual layer, self-hosted Inter/Sora variable fonts, scroll.js
 // (topbar auto-hide + study-plan progress) and the new home/dashboard markup.
-// v13: the FORGE rebrand — Obsidian Forge glass theme, new mark, ember accents.
-const VERSION = "forge-v13";
+// v13: the FORGE rebrand — Obsidian EngineVerse glass theme, new mark, ember accents.
+// v14: the WORKSHOP design system (paper canvas, navy ink, one blue accent, no
+// glass) and the Adaptive Lab. The version bump is what forces returning
+// visitors to drop the cached glass stylesheet rather than keep serving it.
+const VERSION = "engineverse-v14";
 const SHELL = [
   "/static/css/app.css",
   "/static/css/codelab.css",
+  "/static/css/lab.css",
+  "/static/js/lab.js",
   "/static/js/app.js",
   "/static/js/codelab.js",
   "/static/js/pages-live.js",

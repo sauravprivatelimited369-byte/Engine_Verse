@@ -1,11 +1,67 @@
 # Changelog
 
-Notable changes to Forge (formerly EngineVerse). The format follows
+Notable changes to EngineVerse (formerly Forge). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are not yet
 tagged, so everything below is listed under **Unreleased** until the first
 release.
 
 ## Unreleased
+
+### Added
+
+- **The Adaptive Lab (`/lab`) — the flagship feature.** A DC circuit the
+  learner drives themselves (voltage 1-24 V, resistance 1-100 Ω, live
+  `I = V / R` and `P = V x I`, an SVG circuit whose labels read from the same
+  solved state as the numbers), three predict-then-verify challenges that lock
+  the prediction before the reveal, and a personalised challenge mode over a
+  16-question bank tagged by difficulty (5 easy / 7 medium / 4 hard) and by
+  concept (formula, units, series, parallel, power). Correct answers move the
+  learner up a level; wrong answers drop a level *and* stay on the concept that
+  was missed. A rule-based mistake detector (no model, no API) names the actual
+  arithmetic slip — "you multiplied voltage by resistance", "you divided the
+  wrong way round", "that is the right number in milliamps" — with a generic
+  working-out fallback. Progress goes to `localStorage` and is labelled
+  "saved on this device"; blocked storage degrades to a session with a warning
+  instead of throwing. The curriculum links are resolved from the real
+  catalogue at request time, so the page cannot link to a notes page that does
+  not exist.
+- **`scripts/check_lab.js` and `scripts/check_lab_page.js`**, wired into
+  `pages.yml`: 222 assertions on the physics, the mistake rules, the sequencing
+  and the storage, plus 108 that boot the exported pages with the shipped
+  `lab.js` under jsdom and drive them.
+- **Status chips on every feature** — `Working now`, `Demo data` or
+  `Coming next` — so nothing on the site claims more than it is.
+
+### Changed
+
+- **The product is EngineVerse**, matching the repository, the Android package
+  and the Pages URL, with the tagline "Don't just learn engineering.
+  Experiment with it." Replaces the previous FORGE identity. URLs, storage
+  keys, the `engineverse` package and the `ENGINEVERSE_*` settings are
+  unchanged; the Android app still carries the old label and launcher mark
+  because its build is a separate workflow.
+- **The design system is "WORKSHOP", not glass.** Warm off-white canvas
+  (`#faf8f4`), deep-navy ink (`#16202c`), one blue accent (`#1f5fd6`), hairline
+  borders, one short contact shadow, and small deliberately uneven radii.
+  `backdrop-filter` is disabled site-wide; gradient headline text, decorative
+  glows, animated backgrounds and floating chips are gone. Dark mode is a
+  designed flat-navy palette rather than an inverted guess. Every text pair is
+  WCAG AA and every interactive boundary clears 1.4.11's 3:1.
+- **The homepage hero is the product, not a collage.** "Learn. Experiment.
+  Practise.", two CTAs that both go somewhere real, and a live Adaptive Lab
+  simulator on the right instead of floating glass cards. Below it: a real
+  catalogue table (subject, item, type, time, status chip), the
+  Learn -> Experiment -> Practise -> Review loop, four features with status
+  chips, and an honest "Why EngineVerse?" that says plainly this is a focused
+  prototype rather than a competitor to large tutorial platforms.
+- **The Adaptive Lab takes CodeLab's top-bar slot.** The bar has a fixed budget
+  of seven entries; CodeLab moves into the Code menu and keeps the mobile bar,
+  the PWA shortcut and the service-worker precache.
+- The mark is flat — navy tile, off-white anvil, one blue spark — and the PWA
+  icons are rasterised from it. The service-worker cache version bumped to
+  `engineverse-v14` so returning visitors drop the old stylesheet.
+- Light is the default theme. Readers on a dark OS still get the night palette
+  from the pre-paint script.
 
 ### Changed
 
@@ -14,13 +70,13 @@ release.
   runner-up names): new name and tagline everywhere a learner looks, a new
   anvil-and-spark mark (favicon, PWA icons, Android launcher/splash, store
   listing — regenerate with `scripts/gen_brand_icons.py`), and a new
-  "Obsidian Forge" tempered-glass design system across the website, the
+  "Obsidian EngineVerse" tempered-glass design system across the website, the
   GitHub Pages copy and the Android app: smoked/frosted glass over warm
   charcoal (dark) or warm paper (light), one ember accent family
   (`#f97316` / `#fbbf24` / `#f43f5e`), machined corners, and a rebuilt
   homepage ("Where engineers are forged", the Heat → Strike → Temper cycle,
-  and a short "Why Forge?" manifesto). The Android release asset is now
-  `Forge.apk`. Deliberately unchanged, so nothing breaks: all URLs and the
+  and a short "Why EngineVerse?" manifesto). The Android release asset is now
+  `EngineVerse.apk`. Deliberately unchanged, so nothing breaks: all URLs and the
   Pages base path, the `engineverse` package and `ENGINEVERSE_*` settings,
   stored-progress formats and storage keys (old exports still import), the
   Android application id, and acceptance of legacy `EngineVerse.apk` links.

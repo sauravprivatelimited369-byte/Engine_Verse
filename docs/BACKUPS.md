@@ -42,7 +42,7 @@ is not a backup of learner rows.
 
 GitHub is **not** the live learner database. Never commit `.dump`, `.sqlite`,
 account rows, password hashes, `.env` or the age private identity to the public
-Forge repository. If you want an off-site copy under your own GitHub
+EngineVerse repository. If you want an off-site copy under your own GitHub
 account, `deploy/github-backups.yml` opts into a *separate private repository*
 containing only **age-encrypted** PostgreSQL snapshots as Release assets.
 There is no plaintext dump file: `pg_dump | age` streams into an encrypted

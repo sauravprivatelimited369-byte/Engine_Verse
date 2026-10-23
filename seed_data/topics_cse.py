@@ -116,7 +116,7 @@ TOPICS = [
         ],
         mistakes=[
             "Losing the rest of the list by overwriting `next` before saving it.",
-            "Forgetting to handle the empty-list and single-node cases.",
+            "EngineVersetting to handle the empty-list and single-node cases.",
             "Returning the original head instead of the new head after reversal.",
         ],
         exam=[
@@ -197,7 +197,7 @@ TOPICS = [
             "Huffman coding for compression; decision trees in machine learning.",
         ],
         mistakes=[
-            "Forgetting the null base case, causing infinite recursion.",
+            "EngineVersetting the null base case, causing infinite recursion.",
             "Assuming the tree is balanced when computing complexity.",
             "Mutating the tree during traversal and then following stale pointers.",
         ],
@@ -248,7 +248,7 @@ TOPICS = [
         ],
         mistakes=[
             "Validating a BST by comparing a node only with its parent instead of all ancestors.",
-            "Forgetting the two-children deletion case.",
+            "EngineVersetting the two-children deletion case.",
             "Assuming O(log n) without checking whether the input can be adversarially sorted.",
         ],
         exam=[
@@ -299,7 +299,7 @@ TOPICS = [
         ],
         mistakes=[
             "Using a mutable object as a key - its hash changes and the entry becomes unreachable.",
-            "Forgetting that iteration order is unspecified (unless you use an ordered map).",
+            "EngineVersetting that iteration order is unspecified (unless you use an ordered map).",
             "Assuming O(1) is guaranteed rather than expected.",
         ],
         exam=[
@@ -341,7 +341,7 @@ TOPICS = [
         mistakes=[
             "Modifying a value already inside a heap without re-heapifying.",
             "Assuming the heap is sorted - only the root is guaranteed extreme.",
-            "Forgetting that Python's heapq is a min-heap; negate values for max behaviour.",
+            "EngineVersetting that Python's heapq is a min-heap; negate values for max behaviour.",
         ],
         exam=[
             "Build a max-heap from a given array, showing the array after each sift-down.",
@@ -389,7 +389,7 @@ TOPICS = [
             "Circuit netlists, transportation planning and recommendation graphs.",
         ],
         mistakes=[
-            "Forgetting the visited set, causing infinite loops on cycles.",
+            "EngineVersetting the visited set, causing infinite loops on cycles.",
             "Using DFS when a shortest path is required - DFS gives a path, not the shortest.",
             "Choosing an adjacency matrix for a sparse graph and blowing up memory.",
         ],
@@ -514,7 +514,7 @@ TOPICS = [
         ],
         mistakes=[
             "Missing base case causing infinite recursion and a stack overflow.",
-            "Forgetting to undo the choice in backtracking.",
+            "EngineVersetting to undo the choice in backtracking.",
             "Copying large structures at every level instead of mutating and reverting.",
         ],
         exam=[
@@ -609,7 +609,7 @@ TOPICS = [
             "Database query schedulers and thread pool executors.",
         ],
         mistakes=[
-            "Forgetting arrival times and assuming everything is present at t=0.",
+            "EngineVersetting arrival times and assuming everything is present at t=0.",
             "Confusing waiting time with turnaround time.",
             "Choosing a time quantum smaller than the context-switch cost.",
         ],
@@ -704,7 +704,7 @@ TOPICS = [
         ],
         mistakes=[
             "Confusing internal fragmentation (paging) with external fragmentation (segmentation).",
-            "Forgetting that the page table itself lives in memory, doubling access cost without a TLB.",
+            "EngineVersetting that the page table itself lives in memory, doubling access cost without a TLB.",
             "Assuming virtual memory is free - page faults are milliseconds, a million times slower than RAM.",
         ],
         exam=[
@@ -944,7 +944,7 @@ TOPICS = [
         mistakes=[
             "Using COUNT(*) when NULLs should be excluded.",
             "Filtering with WHERE on an aggregate instead of HAVING.",
-            "Forgetting that LEFT JOIN turns into an inner join if you filter the right table in WHERE.",
+            "EngineVersetting that LEFT JOIN turns into an inner join if you filter the right table in WHERE.",
         ],
         exam=[
             "Write a query to find the second highest salary without using LIMIT/OFFSET.",
@@ -1077,7 +1077,7 @@ TOPICS = [
             "Address planning before a migration - very hard to change afterwards.",
         ],
         mistakes=[
-            "Forgetting to subtract the network and broadcast addresses when counting hosts.",
+            "EngineVersetting to subtract the network and broadcast addresses when counting hosts.",
             "Overlapping subnets after a merger - a classic acquisition disaster.",
             "Using a /31 where the equipment does not support point-to-point /31 links.",
         ],
@@ -1429,7 +1429,7 @@ TOPICS = [
         ],
         mistakes=[
             "Ignoring the exponential nature and treating a diode as a resistor.",
-            "Forgetting temperature dependence - a diode drop falls about 2 mV per degree Celsius.",
+            "EngineVersetting temperature dependence - a diode drop falls about 2 mV per degree Celsius.",
             "Assuming ideal behaviour in reverse bias and missing leakage current.",
         ],
         exam=[

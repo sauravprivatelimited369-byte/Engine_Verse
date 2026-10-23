@@ -82,7 +82,7 @@
     "offline_limited": "Offline access is limited to previously cached public pages; submissions and sign-in need a connection.",
     "android_apk": "Android: signed APK",
     "alternative_apk": "An alternative Android wrapper for this same HTTPS website is available as a signed GitHub Release.",
-    "download_apk": "Download Forge.apk",
+    "download_apk": "Download EngineVerse.apk",
     "apk_checksum": "Check the release, its SHA-256 checksum and signing certificate before installing.",
     "apk_unofficial": "Android may ask you to allow installs from this source. Only install the APK from the official release; never from a forwarded copy. Updates require a new signed release.",
     "no_apk": "No signed APK has been published and configured for this site yet. Do not install an APK from an unofficial source. Use the web app above in the meantime.",

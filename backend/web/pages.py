@@ -661,7 +661,7 @@ async def compiler_page(request: Request, lang: str | None = None):
         page_title="Code compiler",
         page_intro=(
             "Pick a language, write a complete program, give it input, run it. "
-            "Every language Forge teaches is here; what can execute depends on this host's judge."
+            "Every language EngineVerse teaches is here; what can execute depends on this host's judge."
         ),
     )
 
@@ -1135,6 +1135,48 @@ def swarm_context(*, prompt: str = "Explain arrays and memory locality", topic_s
 @router.get("/swarm")
 async def swarm_page(request: Request):
     return render(request, "swarm.html", **swarm_context())
+
+# --- Adaptive Lab -----------------------------------------------------------
+# The lab itself is pure client-side (backend/static/js/lab.js). The only thing
+# the server contributes is the curriculum link: the lab claims to cover a
+# syllabus topic, so it must point at a notes page that actually exists in this
+# catalogue rather than at a hard-coded URL. A slug that is missing from the
+# catalogue renders as "Coming next" in the template instead of a dead link.
+LAB_CURRICULUM = (
+    # (subject slug, topic slug used as the worked example, label)
+    ("basic-electrical", "", "Basic Electrical Engineering"),
+    ("basic-electronics", "diode-bias-and-series-current", "Basic Electronics"),
+)
+
+
+def lab_context() -> dict[str, Any]:
+    """The real catalogue pages the Adaptive Lab is allowed to link to."""
+    links: list[dict[str, str]] = []
+    for subject_slug, topic_slug, label in LAB_CURRICULUM:
+        subject = db.query_one("SELECT slug, name, code FROM subjects WHERE slug = ?", subject_slug)
+        if subject is None:
+            continue
+        links.append({"slug": subject["slug"], "name": subject["name"],
+                      "code": subject["code"] or "", "label": label})
+    topic = None
+    for _subject_slug, topic_slug, _label in LAB_CURRICULUM:
+        if not topic_slug:
+            continue
+        row = db.query_one(
+            "SELECT slug, title FROM topics WHERE slug = ? AND status = 'published'", topic_slug,
+        )
+        if row is not None:
+            topic = {"slug": row["slug"], "title": row["title"]}
+            break
+    has_ohms_law = db.query_one("SELECT slug FROM formulas WHERE slug = 'ohms-law'") is not None
+    return {"lab_links": links, "lab_topic": topic, "lab_has_ohms_law": has_ohms_law}
+
+
+@router.get("/lab")
+async def lab_page(request: Request):
+    """The Adaptive Lab: predict, verify, and get feedback on the actual mistake."""
+    return render(request, "lab.html", **lab_context())
+
 
 
 @router.get("/tutor")

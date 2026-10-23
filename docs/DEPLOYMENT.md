@@ -20,7 +20,7 @@ With `ENGINEVERSE_ENV=production` the process will not start unless:
   startup refuses the deployment, because a new account (or every sign-in) would
   be asked for a code that nothing can deliver
 - an `ENGINEVERSE_SMS_URL` used in production is HTTPS (the SMS gateway is
-  operator-run, not a hosted Forge service)
+  operator-run, not a hosted EngineVerse service)
 - `ENGINEVERSE_EMAIL_DELIVERABILITY` is `auto`, `off`, `fallback` or `mx`. It
   decides how far the address check goes at sign-up: syntax, near-miss freemail
   domains and temporary inboxes are always refused, and only `fallback`/`mx` add
@@ -77,7 +77,7 @@ Two stronger options exist:
 
   ```dotenv
   ENGINEVERSE_SMTP_URL=smtps://engineverse%40example.com:xxxx%2Dxxxx%2Dxxxx%2Dxxxx@smtp.gmail.com:465/?starttls=0
-  ENGINEVERSE_MAIL_FROM=Forge <engineverse@example.com>
+  ENGINEVERSE_MAIL_FROM=EngineVerse <engineverse@example.com>
   ```
 
   Keep the app password in the deployment secret store, not in Git or a ticket.
@@ -86,7 +86,7 @@ Two stronger options exist:
   It receives a POST with JSON `{"to":"+...","body":"..."}`. If the URL
   contains `userinfo` password, it becomes an `Authorization: Bearer` header
   and is stripped from the request URL. Production refuses a plain-HTTP SMS
-  URL. The gateway must protect its own logs and rate limits; Forge does
+  URL. The gateway must protect its own logs and rate limits; EngineVerse does
   not know carrier delivery status.
 
 A local development instance with no transport may reveal a code once when demo
@@ -115,7 +115,7 @@ cp .env.example .env
 ```
 
 If `python` is not on `PATH`, use `py -3` instead. Git Bash paths look like
-`/c/Users/you/Forge`. Do not convert them to `C:\...` inside a bash
+`/c/Users/you/EngineVerse`. Do not convert them to `C:\...` inside a bash
 script. Docker Desktop must be running before `docker compose`.
 
 Development seed, which creates the demo accounts and prints their passwords:

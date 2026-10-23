@@ -133,7 +133,7 @@ the wrong moment.
   requests bind the subject to the session id. Anonymous pages use a random
   per-browser HttpOnly, SameSite=Strict cookie (`__Host-ev_csrf` over HTTPS,
   `ev_csrf` for local HTTP) as the subject, so a token copied from an attacker's
-  own browser cannot be replayed in a victim's browser. Forgery requires
+  own browser cannot be replayed in a victim's browser. EngineVersery requires
   `ENGINEVERSE_SECRET`; cross-browser replay also requires the victim's cookie.
 - Every mutation requires a valid token, including login, registration, and
   reset flows. Tokens are accepted from the `x-csrf-token` header (JavaScript)
@@ -530,7 +530,7 @@ that serves web requests (PHP-FPM, mod_php, php-cgi, FrankenPHP, LiteSpeed).
 Fixed versions are 8.5.12, 8.4.27, 8.3.36 and 8.2.35, and exploitation was
 reported in the wild within days.
 
-**Forge was not vulnerable, and is not.** The site is Python (FastAPI)
+**EngineVerse was not vulnerable, and is not.** The site is Python (FastAPI)
 end to end; the repository contains no `.php` file, no PHP interpreter is
 installed by any image or script, and no PHP SAPI has ever served a request
 here. A test (`test_php2shell_hardening.py`) asserts the tree stays that way.
@@ -551,7 +551,7 @@ judge:
    PHP as runnable. Teaching *about* PHP or Kotlin in lesson text is
    unaffected; only executing them is governed. Operators running a stock
    Judge0 should still patch or rebuild that host (Judge0 images bundle a
-   PHP CLI) - Forge simply no longer sends it PHP.
+   PHP CLI) - EngineVerse simply no longer sends it PHP.
 2. **The Java bridge leaked the server's environment.** It copied
    `os.environ` and removed three variable names, handing the sandbox JVM -
    which compiles submissions in-process - the Judge0 key, the AI key, the

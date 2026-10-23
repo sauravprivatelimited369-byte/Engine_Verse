@@ -316,6 +316,24 @@ PRACTICE = Section(
     ),
 )
 
+# --- Lab: "can I see it behave before I trust the formula?" -----------------
+
+LAB = Section(
+    key="lab",
+    label="Lab",
+    blurb="Interactive engineering labs: change a value, predict the result, then check it.",
+    landing="/lab",
+    icon="circuit",
+    destinations=(
+        Destination(
+            "Adaptive Lab", "/lab",
+            "A DC circuit you can drive yourself: predict the current, get told which step "
+            "went wrong, and get the next question matched to that mistake.",
+            match=("/lab",), icon="circuit",
+        ),
+    ),
+)
+
 # --- Code: "can I build something that runs?" -------------------------------
 
 CODE = Section(
@@ -329,6 +347,12 @@ CODE = Section(
             "Language paths", "/programming",
             "Staged modules with checkpoints, from first syntax to advanced engineering.",
             match=("/programming",), icon="terminal",
+        ),
+        Destination(
+            "CodeLab — Online Compiler", "/codelab",
+            "Write, run and share code in ten languages. In the browser on the Pages copy, on the "
+            "server judge when one is configured.",
+            match=("/codelab",), icon="code",
         ),
         Destination(
             "Coding problems", "/practice/problems",
@@ -487,7 +511,7 @@ COMMUNITY = Section(
             icon="trophy",
         ),
         Destination(
-            "About Forge", "/about",
+            "About EngineVerse", "/about",
             "What this platform is, what it is not, and how it is built.",
             icon="info",
         ),
@@ -505,7 +529,7 @@ GUIDE = Section(
     in_footer=False,
     destinations=(
         Destination(
-            "Everything on Forge", "/resources",
+            "Everything on EngineVerse", "/resources",
             "The complete index of every page and tool here, grouped, with live counts.",
             match=("/resources",), icon="grid",
         ),
@@ -522,12 +546,12 @@ GUIDE = Section(
     ),
 )
 
-SECTIONS: tuple[Section, ...] = (STREAM, LEARN, PRACTICE, CODE, CODELAB, REVISE, PROGRESS, COMMUNITY, GUIDE)
+SECTIONS: tuple[Section, ...] = (STREAM, LEARN, PRACTICE, LAB, CODE, CODELAB, REVISE, PROGRESS, COMMUNITY, GUIDE)
 
 #: Order the entries appear in the desktop bar. "My stream" first because it
 #: answers "where is my course?", then the study/build verbs, then everything the
 #: bar has no room for folded under "More".
-TOPBAR_ORDER: tuple[str, ...] = ("stream", "learn", "practice", "code", "codelab", "revise", "more")
+TOPBAR_ORDER: tuple[str, ...] = ("stream", "learn", "practice", "lab", "code", "revise", "more")
 
 #: Sections folded into the "More" menu rather than getting a bar slot.
 MORE_SECTIONS: tuple[str, ...] = ("progress", "community", "guide")
@@ -577,7 +601,7 @@ EXTRA_FOOTER_SECTIONS: tuple[Section, ...] = (
         icon="download",
         destinations=(
             Destination("Install the app", "/install",
-                        "Add Forge to your home screen and use it like an app.",
+                        "Add EngineVerse to your home screen and use it like an app.",
                         icon="download"),
             Destination("Offline help", "/offline",
                         "What still works when the connection does not.", minor=True),

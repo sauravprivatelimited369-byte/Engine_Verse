@@ -116,6 +116,16 @@ jobs:
           node scripts/check_static_site.js site
           node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
 
+      - name: Check the Adaptive Lab and its page in the built site
+        # check_lab.js is the answer key for the physics and the mistake rules;
+        # check_lab_page.js boots the exported pages with the shipped lab.js
+        # under jsdom and drives them - slider, wrong prediction, adaptive
+        # sequencing, and progress surviving a reload.
+        if: env.ENGINEVERSE_APP_URL == ''
+        run: |
+          node scripts/check_lab.js
+          node scripts/check_lab_page.js site
+
       - name: Refuse leaked demo passwords or tokens
         run: |
           if grep -R -n -E 'LearnBuild#2026!|TeachLearn#2026!|Str0ngPassphrase#42!|gh[pousr]_[A-Za-z0-9]{30,}' site; then

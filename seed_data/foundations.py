@@ -85,7 +85,7 @@ TOPICS = [
         "applications": ["ALU subtraction", "sensor offsets stored in a byte", "assembly immediates"],
         "mistakes": [
             "Reading the top bit as +2^{n-1} after you have agreed the word is signed.",
-            "Forgetting the add-one step and stopping at the one's complement.",
+            "EngineVersetting the add-one step and stopping at the one's complement.",
             "Calling 1000 in 4 bits positive eight.",
         ],
         "exam": [
@@ -203,7 +203,7 @@ TOPICS = [
         "mistakes": [
             "Leaving a symbol without an arrow and still calling the machine a DFA.",
             "Allowing two arrows on the same symbol.",
-            "Forgetting that the empty string is accepted only when q0 is in F.",
+            "EngineVersetting that the empty string is accepted only when q0 is in F.",
         ],
         "exam": [
             "Draw a DFA for strings over {0, 1} that end in 01.",
@@ -499,7 +499,7 @@ TOPICS = [
         "mistakes": [
             "Adding the foresight instead of subtracting it.",
             "Using a staff reading taken before the instrument was leveled.",
-            "Forgetting the arithmetic check after a page of readings.",
+            "EngineVersetting the arithmetic check after a page of readings.",
         ],
         "exam": [
             "Compute a reduced level from one backsight and one foresight.",

@@ -320,7 +320,7 @@ SUBJECT_SOURCES: dict[str, list[str]] = {
 CATALOGUES: list[tuple[str, str, str]] = [
     ("MIT OpenCourseWare search: {subject}", "https://ocw.mit.edu/search/?q={q}",
      "Free lecture notes, assignments and exams from MIT, searched for {subject}. Nothing here is curated "
-     "by Forge: it is the live MIT catalogue, which is why it finds courses that are current rather "
+     "by EngineVerse: it is the live MIT catalogue, which is why it finds courses that are current rather "
      "than courses that were popular when this page was written."),
     ("Wikipedia and Wikibooks: {subject}", "https://en.wikipedia.org/wiki/Special:Search?search={q}",
      "A starting point, not a substitute for the notes. Use it for the vocabulary and the history, then go "

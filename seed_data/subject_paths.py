@@ -1171,7 +1171,7 @@ def questions_for_topics(topics: list[dict]) -> list[dict]:
             "correct": correct,
             "explanation": explanation,
             "tags": list(dict.fromkeys([*topic.get("tags", []), "concept-check"])),
-            "source": "Forge authored learning check",
+            "source": "EngineVerse authored learning check",
         })
     return questions
 

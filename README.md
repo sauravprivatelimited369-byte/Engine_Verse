@@ -1,14 +1,25 @@
-# Forge
+# EngineVerse
 
 [![CI](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml)
 [![Android app](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Forge is a free, open-source study platform for engineering students. It
-offers structured notes for 93 subjects, judged coding practice, daily problem
-sets, flashcards, a study planner, a multi-language code playground, and
-links to internships and scholarships. You can use it in three ways:
+**Don't just learn engineering. Experiment with it.**
+
+EngineVerse is a free, open-source study workspace for engineering students.
+Learning resources are easy to find across the web; what gets scattered is the
+workflow. EngineVerse keeps the next step one click away — study a concept,
+experiment with it in an interactive lab, practise it, and review your progress
+in the same place. It is a focused prototype built around that loop, not an
+attempt to out-volume the large tutorial platforms.
+
+Inside: structured notes for 93 subjects and 406 topics, the [Adaptive
+Lab](#adaptive-lab), 534 practice questions, 105 judged coding problems,
+flashcards, a study planner, a multi-language code playground, and links to
+internships and scholarships. Every feature carries a status chip — **Working
+now**, **Demo data** or **Coming next** — and nothing on the site claims a user
+count, a rating or a testimonial. You can use it in three ways:
 
 | | What it is | Accounts | Where your progress lives |
 |---|---|---|---|
@@ -22,7 +33,7 @@ Source: GitHub Actions). The Pages workflow builds and tests the site on every
 push either way.
 
 > The seeded catalogue is broad starter material, not a complete degree
-> syllabus. Topics not yet expert-reviewed are labelled as drafts. Forge
+> syllabus. Topics not yet expert-reviewed are labelled as drafts. EngineVerse
 > is not an accredited institution, and its certificates are not qualifications.
 
 <p>
@@ -30,7 +41,7 @@ push either way.
   <img src="docs/images/screenshot-planner.png" alt="The study planner: a task form with subject, due date and priority, and a 25-minute focus timer" width="49%">
 </p>
 
-<sub>Screenshots of the static build, taken in headless Chromium at 1366×900 and 1280×800. They predate the FORGE "Obsidian Forge" glass theme — see [docs/BRAND.md](docs/BRAND.md) for the current identity; refreshed captures are welcome.</sub>
+<sub>Screenshots of the static build, taken in headless Chromium at 1366×900 and 1280×800. They predate the FORGE "Obsidian EngineVerse" glass theme — see [docs/BRAND.md](docs/BRAND.md) for the current identity; refreshed captures are welcome.</sub>
 
 ## Contents
 
@@ -50,6 +61,7 @@ push either way.
 | Area | Pages copy | Full website |
 |---|---|---|
 | **Learn**: 45 branches, 93 subjects, 406 topics with notes at four depths, diagrams, interactive 3D models, formula sheets, videos and books | ✓ | ✓ |
+| **Experiment**: the Adaptive Lab — a live DC circuit, predict-then-verify challenges and practice that adapts to the mistake you made | ✓ | ✓ |
 | **Practise**: 534 questions, daily problem sets, a mistake notebook and revision flashcards | ✓ (progress in the browser) | ✓ (progress in your account) |
 | **Code**: 105 judged problems in 14 sheets, 10 language paths and the CodeLab compiler | ✓ Runs in your browser through WebAssembly | ✓ Server judge, when the operator configures one |
 | **Plan**: study planner with tasks, exam countdowns and a focus timer | ✓ | ✓ |
@@ -57,6 +69,35 @@ push either way.
 | **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |
 | **Help**: support and feedback, privacy and terms, a 404 page | ✓ (feedback through GitHub issues) | ✓ |
 | Accounts, two-factor sign-in, community posts, leaderboard, certificates | n/a | ✓ |
+
+### Adaptive Lab
+
+`/lab` is the differentiator: the step between reading a formula and answering a
+question about it.
+
+1. **Learn** — Ohm's law in two lines with a worked example, linked to the real
+   catalogue pages that cover it.
+2. **Experiment** — a DC circuit you drive yourself. Voltage 1-24 V, resistance
+   1-100 Ω; current and power recalculate live and the SVG diagram reads from
+   the same solved state as the numbers, so the picture cannot contradict the
+   maths.
+3. **Predict** — three challenges ask for a number *before* the answer is
+   revealed. The field locks on submit, so a prediction cannot be edited after
+   the fact.
+4. **Verify** — the simulator reveals the true value and a rule-based mistake
+   detector says what went wrong: "you multiplied voltage by resistance", "you
+   divided the wrong way round", "that is the right number in milliamps". No
+   model and no API is involved — it is a table of arithmetic slips with a
+   working-out fallback.
+5. **Improve** — a 16-question bank tagged by difficulty and concept. Correct
+   answers move you up a level; wrong answers drop a level *and* stay on the
+   concept you missed. Progress and the "what to learn next" recommendation are
+   kept in `localStorage`, described everywhere as **saved on this device**.
+
+Both halves are covered by checks that run in CI: `scripts/check_lab.js` (222
+assertions on the physics, the rules, the sequencing and the storage) and
+`scripts/check_lab_page.js` (108 that boot the exported pages with the shipped
+`lab.js` under jsdom and drive them the way a visitor would).
 
 ### Code playground
 
@@ -261,7 +302,7 @@ Don't use a public issue.
 | Topic | Document |
 |---|---|
 | Every feature in depth | [docs/FEATURES.md](docs/FEATURES.md) |
-| Name, logo and the Obsidian Forge design system | [docs/BRAND.md](docs/BRAND.md) |
+| Name, logo and the Obsidian EngineVerse design system | [docs/BRAND.md](docs/BRAND.md) |
 | Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |
 | Hosting, Compose, production settings | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |

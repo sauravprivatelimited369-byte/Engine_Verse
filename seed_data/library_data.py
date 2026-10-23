@@ -205,7 +205,7 @@ RESOURCES = [
     ("Khan Academy", "https://www.khanacademy.org/", "course", "course", None, "beginner",
      "Free lessons across mathematics, physics and chemistry with mastery tracking."),
     ("LeetCode Problem Patterns", "https://leetcode.com/problemset/", "tool", "tool",
-     "data-structures-algorithms", "intermediate", "The industry-standard interview practice set. Forge "
+     "data-structures-algorithms", "intermediate", "The industry-standard interview practice set. EngineVerse "
      "covers the same patterns offline with full editorials."),
     ("GATE Previous Year Papers", "https://gate.iitm.ac.in/", "documentation", "exam", None, "advanced",
      "Official information and archives for the Graduate Aptitude Test in Engineering."),
@@ -1414,7 +1414,7 @@ PROJECTS = [
 LANGUAGES = [
     ("python", "Python", "py", "#3776ab",
      "The best first language and the language of data, automation and machine learning. Readable syntax, a "
-     "massive standard library, and it is what Forge itself is built with.", "python"),
+     "massive standard library, and it is what EngineVerse itself is built with.", "python"),
     ("java", "Java", "java", "#f89820",
      "Statically typed, strongly object oriented and the backbone of enterprise systems, Android and large "
      "codebases. Learning Java teaches you types and design properly.", "java"),
@@ -1454,7 +1454,7 @@ LANGUAGE_MODULES = {
          "for you, which prevents an entire category of bugs.\n\n"
          "Use `type(x)` to inspect and `isinstance(x, int)` to test. Prefer `isinstance` in conditionals because "
          "it respects inheritance.",
-         "name = 'Forge'\nyear = 2026\nratio = 3.14\nactive = True\n\nprint(type(name), type(year), type(ratio))\nprint(name.upper(), year + 1, round(ratio, 1))\nprint(int('42') * 2)",
+         "name = 'EngineVerse'\nyear = 2026\nratio = 3.14\nactive = True\n\nprint(type(name), type(year), type(ratio))\nprint(name.upper(), year + 1, round(ratio, 1))\nprint(int('42') * 2)",
          "Bind a variable to your name and another to your graduation year. Print a sentence that uses both, with "
          "the year converted to a string."),
         ("python-control-flow", "Control Flow", "Conditionals, loops and the statements that control them.",
@@ -1542,7 +1542,7 @@ LANGUAGE_MODULES = {
          "Primitives (`int`, `long`, `double`, `boolean`, `char`) are values; everything else is an object accessed "
          "by reference. `int` is 32-bit and wraps on overflow - use `Math.addExact` or `long` when that matters.\n\n"
          "Execution starts at `public static void main(String[] args)`. Everything else is reachable from there.",
-         "public class Main {\n    public static void main(String[] args) {\n        String name = \"Forge\";\n        int year = 2026;\n        double ratio = 3.14159;\n        boolean active = true;\n\n        System.out.printf(\"%s in %d, ratio %.2f, active %b%n\", name, year, ratio, active);\n        System.out.println(\"max int: \" + Integer.MAX_VALUE);\n    }\n}",
+         "public class Main {\n    public static void main(String[] args) {\n        String name = \"EngineVerse\";\n        int year = 2026;\n        double ratio = 3.14159;\n        boolean active = true;\n\n        System.out.printf(\"%s in %d, ratio %.2f, active %b%n\", name, year, ratio, active);\n        System.out.println(\"max int: \" + Integer.MAX_VALUE);\n    }\n}",
          "Declare variables for your name, marks and grade, then print them in one formatted line."),
         ("java-control-flow", "Control Flow and Arrays", "Conditionals, loops and fixed-size arrays.",
          "Java has `if/else`, `switch` (with the modern arrow syntax and exhaustiveness checking on enums), "
@@ -1585,7 +1585,7 @@ LANGUAGE_MODULES = {
          "Use `===` for comparison. `==` performs type coercion and produces results nobody wants: "
          "`0 == ''` is true.\n\n"
          "Functions are values. Arrow functions are concise and do not rebind `this`.",
-         "const name = 'Forge';\nlet year = 2026;\n\nconst greet = (who) => `Hello, ${who}!`;\nconst add = (a, b) => a + b;\n\nconsole.log(greet(name), year, add(2, 3));\nconsole.log(0 === '', 0 == '');  // false, true - always use ===\n\nconst marks = [72, 85, 91];\nconsole.log(marks.map(m => m * 2).filter(m => m > 150));",
+         "const name = 'EngineVerse';\nlet year = 2026;\n\nconst greet = (who) => `Hello, ${who}!`;\nconst add = (a, b) => a + b;\n\nconsole.log(greet(name), year, add(2, 3));\nconsole.log(0 === '', 0 == '');  // false, true - always use ===\n\nconst marks = [72, 85, 91];\nconsole.log(marks.map(m => m * 2).filter(m => m > 150));",
          "Write an arrow function `grade(score)` returning A/B/C/F and test it in the console."),
         ("js-dom", "The DOM and Events", "Making pages interactive.",
          "The DOM is the browser's object model of your HTML. `document.querySelector` finds elements; you change "
@@ -1612,7 +1612,7 @@ LANGUAGE_MODULES = {
          "`std::cout` with `<<` writes to standard output; `std::cin` with `>>` reads. Prefer `std::string` over "
          "`char*` in modern code.\n\n"
          "Compile with warnings on: `g++ -Wall -Wextra -std=c++20 main.cpp`.",
-         "#include <iostream>\n#include <string>\n#include <vector>\n#include <numeric>\n\nint main() {\n    std::string name = \"Forge\";\n    std::vector<int> marks = {72, 85, 91, 68};\n\n    int total = std::accumulate(marks.begin(), marks.end(), 0);\n    double average = static_cast<double>(total) / marks.size();\n\n    std::cout << name << \": average \" << average\n              << \" over \" << marks.size() << \" assessments\" << std::endl;\n    return 0;\n}",
+         "#include <iostream>\n#include <string>\n#include <vector>\n#include <numeric>\n\nint main() {\n    std::string name = \"EngineVerse\";\n    std::vector<int> marks = {72, 85, 91, 68};\n\n    int total = std::accumulate(marks.begin(), marks.end(), 0);\n    double average = static_cast<double>(total) / marks.size();\n\n    std::cout << name << \": average \" << average\n              << \" over \" << marks.size() << \" assessments\" << std::endl;\n    return 0;\n}",
          "Read five integers from standard input and print their sum and average."),
         ("cpp-memory", "Pointers and Memory", "References, pointers and RAII.",
          "A pointer holds an address; a reference is an alias that cannot be reseated or null. Prefer references "
@@ -1665,23 +1665,28 @@ LANGUAGE_MODULES = {
 # =============================================================================
 
 SITE_CONFIG = {
-    "site_name": "Forge",
-    "tagline": "Where engineers are made.",
+    "site_name": "EngineVerse",
+    "tagline": "Don't just learn engineering. Experiment with it.",
     "description": (
-        "Forge is a structured learning platform for engineering students and working professionals. "
-        "Interactive notes with derivations, daily practice problems, a coding judge, guided real-world projects, "
-        "spaced-repetition revision and a placement preparation path - across every engineering branch."
+        "EngineVerse is a study workspace for engineering students: curriculum notes, interactive engineering labs, practice sheets and progress tracking in one workflow, so the next step is always one click away."
     ),
     "support_email": "support@forge.local",
-    "theme": "dark",
+    # Light by default: the WORKSHOP design system (app.css) is a warm paper
+    # workbook. Readers on a dark OS still get the night palette automatically
+    # via the pre-paint script in base.html.
+    "theme": "light",
     "free_tier_note": (
-        "All core learning content on this instance - notes, practice problems, coding problems, projects, "
-        "flashcards and formulas - is free to read and practise. Forge is a self-hosted project with no "
-        "paid plan to buy here; its certificates are records of completion, not accredited qualifications."
+        "All core learning content on this instance - notes, labs, practice problems, coding problems, projects "
+        "and flashcards - is free to read and practise. EngineVerse is a self-hosted open-source project with no "
+        "paid plan to buy here; its certificates are records of completion, not accredited qualifications. It is a "
+        "focused study workspace, not a replacement for large tutorial platforms."
     ),
-    "accent_color": "#f97316",
-    "accent_color_2": "#fbbf24",
-    "accent_color_3": "#f43f5e",
+    # One blue accent for the whole site. accent_color_3 is deliberately the
+    # same value: base.html derives --grad from accent -> accent_3, so keeping
+    # them equal makes every "gradient" in the old templates a flat colour.
+    "accent_color": "#1f5fd6",
+    "accent_color_2": "#2f74e8",
+    "accent_color_3": "#1f5fd6",
     "announcement": "",
     "maintenance_mode": "0",
     "registration_open": "1",

@@ -122,7 +122,7 @@ char` — negative char values are UB in ctype). Anagram over `a-z`:
 `int count[26]`. In-place reverse/rotate with swaps. Parsing: walk with
 a pointer, `strtol` with endptr checks (never `atoi` — no errors).
 
-**Common mistakes.** Forgetting +1 for NUL; `strncpy` without manual
+**Common mistakes.** EngineVersetting +1 for NUL; `strncpy` without manual
 termination; `sizeof(ptr)` instead of buffer size after decay; ctype
 with plain char; `strcat` loops (quadratic); comparing with `==`
 (pointer comparison — use strcmp).
@@ -685,7 +685,7 @@ insert/search/prefix in `O(L)` key length. Autocomplete, word break
 pruning, IP routing. Malloc per node is fine for interviews; pools for
 production. Mention it when "prefix" appears — interviewers light up.
 
-**Common mistakes.** Forgetting free (leak every node); use-after-free
+**Common mistakes.** EngineVersetting free (leak every node); use-after-free
 in delete-restructure; recursion depth on skewed trees (balance or
 iterate); heap index arithmetic off-by-one (0- vs 1-based — pick one,
 prove parent/child); BST delete's two-child case (successor swap, then

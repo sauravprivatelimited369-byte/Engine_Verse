@@ -116,7 +116,7 @@ and f-strings for building output. `in` on strings is substring search
 (`O(n·m)` worst case, fast in practice). For heavy parsing, `re` exists
 but is rarely needed in interviews — explicit loops are clearer.
 
-**Common mistakes.** Forgetting strings are immutable (`s[0] = 'x'`
+**Common mistakes.** EngineVersetting strings are immutable (`s[0] = 'x'`
 raises — build a list of chars instead); comparing with `is` instead of
 `==`; using `+=` in a loop; off-by-one window edges (draw indices 0..3
 on paper before coding).
@@ -569,7 +569,7 @@ break ties when items are not comparable). Recursion depth is tree
 height — fine balanced, dangerous skewed; iterative DFS with an
 explicit stack is the robust alternative.
 
-**Common mistakes.** Forgetting the `None` base case; confusing depth
+**Common mistakes.** EngineVersetting the `None` base case; confusing depth
 (edges) with levels (nodes); mutating during traversal; heap tuple
 comparison exploding on ties; rebuilding a heap per query instead of
 maintaining one (`O(n log n)` vs `O(n log k)`).

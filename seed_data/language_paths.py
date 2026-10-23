@@ -298,7 +298,7 @@ EXTRA_MODULES = {
             "or a branch with no students, disappears from an inner join. That is often what you "
             "want, and sometimes a bug. Know which one you asked for.\n\n"
             "`LEFT JOIN` keeps every row of the left table. Where the right table has no match, "
-            "its columns are NULL. Forgetting that NULL and then filtering with `WHERE branch.name = ...` "
+            "its columns are NULL. EngineVersetting that NULL and then filtering with `WHERE branch.name = ...` "
             "turns the left join back into an inner join.",
             "SELECT students.name, branches.name AS branch\n"
             "FROM students\n"

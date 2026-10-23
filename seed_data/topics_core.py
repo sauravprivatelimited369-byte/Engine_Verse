@@ -86,7 +86,7 @@ TOPICS = [
         mistakes=[
             "Applying Bernoulli across two different streamlines, or through a pump or turbine, without adding the work term.",
             "Ignoring friction in a long pipe and getting an optimistic answer - add the head loss.",
-            "Forgetting that the equation needs absolute or gauge pressure used consistently at both sections.",
+            "EngineVersetting that the equation needs absolute or gauge pressure used consistently at both sections.",
             "Using it for gases at high speed where compressibility matters.",
         ],
         exam=[
@@ -145,7 +145,7 @@ TOPICS = [
         ],
         mistakes=[
             "Using gauge pressure in one term and absolute in another.",
-            "Forgetting that pressure acts on the projected area when computing forces on curved surfaces.",
+            "EngineVersetting that pressure acts on the projected area when computing forces on curved surfaces.",
             "Confusing the centre of pressure with the centroid - the centre of pressure is always deeper.",
         ],
         exam=[
@@ -276,7 +276,7 @@ TOPICS = [
             "HVAC load calculation and refrigeration cycle analysis.",
         ],
         mistakes=[
-            "Forgetting flow work and using internal energy instead of enthalpy for open systems.",
+            "EngineVersetting flow work and using internal energy instead of enthalpy for open systems.",
             "Sign convention errors on work done by versus on the system.",
             "Ignoring kinetic energy in nozzles, where it is the dominant term.",
         ],
@@ -375,7 +375,7 @@ TOPICS = [
         ],
         mistakes=[
             "Forming groups that are not powers of two.",
-            "Forgetting the wrap-around adjacency.",
+            "EngineVersetting the wrap-around adjacency.",
             "Leaving a minterm uncovered, or adding a redundant group.",
         ],
         exam=[
@@ -480,7 +480,7 @@ TOPICS = [
         mistakes=[
             "Omitting the displacement current term in a time-varying problem.",
             "Applying integral forms without checking the symmetry assumptions.",
-            "Forgetting boundary conditions at material interfaces.",
+            "EngineVersetting boundary conditions at material interfaces.",
         ],
         exam=[
             "Write Maxwell's equations in both differential and integral form and explain each physically.",
@@ -523,7 +523,7 @@ TOPICS = [
         mistakes=[
             "Inconsistent sign conventions leading to equations that look wrong but are actually fine.",
             "Writing KVL around a loop that is not independent, giving a redundant equation.",
-            "Forgetting that KCL applies to a closed surface, not just a point.",
+            "EngineVersetting that KCL applies to a closed surface, not just a point.",
         ],
         exam=[
             "State Kirchhoff's laws and solve a two-loop network by mesh analysis.",
@@ -616,7 +616,7 @@ TOPICS = [
         ],
         mistakes=[
             "Mixing line-to-line and phase voltage bases.",
-            "Forgetting to convert impedances when changing the MVA base.",
+            "EngineVersetting to convert impedances when changing the MVA base.",
             "Applying single-phase formulas to three-phase quantities.",
         ],
         exam=[
@@ -748,7 +748,7 @@ TOPICS = [
         ],
         mistakes=[
             "Balancing total mass across a reacting system and calling it a species balance.",
-            "Forgetting the accumulation term in an unsteady process.",
+            "EngineVersetting the accumulation term in an unsteady process.",
             "Not closing the recycle loop, so the answer depends on an arbitrary first guess.",
         ],
         exam=[
@@ -790,7 +790,7 @@ TOPICS = [
             "Vehicle loading and stability assessment.",
         ],
         mistakes=[
-            "Forgetting a reaction at a support, or adding one that the support cannot provide.",
+            "EngineVersetting a reaction at a support, or adding one that the support cannot provide.",
             "Mixing up clockwise and anticlockwise moment signs.",
             "Drawing the FBD of the whole structure when only one member is needed.",
         ],

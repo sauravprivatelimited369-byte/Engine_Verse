@@ -1,4 +1,4 @@
-/* Forge study planner.
+/* EngineVerse study planner.
  *
  * Fully client-side. Tasks, exam countdowns and focus-timer settings are kept in
  * localStorage under one versioned key and never sent anywhere. The same file
@@ -462,7 +462,7 @@
   var dataStatus = $("[data-planner-data-status]");
   $("[data-planner-export]").addEventListener("click", function () {
     if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
-      dataStatus.textContent = "Saving files is not available inside the Forge Android app. Use \u201cOpen in browser\u201d (top right) to save this file.";
+      dataStatus.textContent = "Saving files is not available inside the EngineVerse Android app. Use \u201cOpen in browser\u201d (top right) to save this file.";
       return;
     }
     var payload = { format: FORMAT, version: 1, exported_at: new Date().toISOString(),
@@ -484,7 +484,7 @@
     reader.onload = function () {
       var raw;
       try { raw = JSON.parse(String(reader.result)); } catch (err) { dataStatus.textContent = "That file is not valid JSON."; return; }
-      if (!raw || raw.format !== FORMAT) { dataStatus.textContent = "That file is not an Forge planner export."; return; }
+      if (!raw || raw.format !== FORMAT) { dataStatus.textContent = "That file is not an EngineVerse planner export."; return; }
       var incoming = sanitize(raw);
       if (!window.confirm("Replace your current planner (" + state.tasks.length + " tasks, " + state.exams.length +
         " exams) with the imported one (" + incoming.tasks.length + " tasks, " + incoming.exams.length + " exams)?")) return;

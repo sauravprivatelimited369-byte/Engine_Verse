@@ -21,15 +21,13 @@ from . import db
 from .security.ids import now_ms
 
 DEFAULTS = {
-    "site_name": "Forge",
-    "tagline": "Where engineers are made.",
-    "description": (
-        "Forge is a structured learning platform for engineering students and working professionals."
-    ),
+    "site_name": "EngineVerse",
+    "tagline": "Don't just learn engineering. Experiment with it.",
+    "description": "EngineVerse is a study workspace for engineering students: curriculum notes, interactive engineering labs, practice sheets and progress tracking in one workflow, so the next step is always one click away.",
     "support_email": "support@forge.local",
     "free_tier_note": (
         "All core learning content on this instance is free to read and practise. "
-        "Forge is a self-hosted project with no paid plan to buy here; "
+        "EngineVerse is a self-hosted project with no paid plan to buy here; "
         "its certificates are records of completion, not accredited qualifications."
     ),
     "announcement": "",

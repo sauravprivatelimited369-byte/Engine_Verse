@@ -2,30 +2,35 @@
 {% block title %}{{ brand.site_name }} — {{ brand.tagline }}{% endblock %}
 {% from "_icons.html" import icon %}
 {% block content %}
-{# Homepage: FORGE. Editorial, content-first, tempered glass. Every number
-   below comes from the catalogue (site.*) and every row links to a real page.
-   No testimonials, user counts or invented progress. The forge metaphor maps
-   to the real workflow (docs/BRAND.md): heat = learn, strike = practise,
-   temper = review. #}
+{# Homepage. Editorial and content-first, in the WORKSHOP design system
+   (app.css): paper canvas, navy ink, one blue accent, no glass and no glow.
+
+   Two rules hold for everything below. Every number comes from the catalogue
+   (site.*) or from a real query, and every row links to a page that exists.
+   No testimonials, no user counts, no invented progress - and any feature that
+   is a plan rather than a product carries a "Coming next" chip.
+
+   The hero's right-hand panel is the real Adaptive Lab simulator from
+   backend/static/js/lab.js, loaded at the bottom of this file. #}
 <div class="home">
 
+  {# The hero has to answer "what is this?" in ten seconds and prove it in the
+     same breath: the right-hand panel is the real Adaptive Lab simulator, not a
+     picture of one. lab.js is loaded at the bottom of the page. #}
   <section class="home-hero" aria-labelledby="ev-hero-title">
-    <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
-    <span class="hero-glow hero-glow-b" aria-hidden="true"></span>
-    <span class="hero-grid-lines" aria-hidden="true"></span>
     <div class="hero-copy">
-      <p class="hero-badge">{{ site.branches }} branches · {{ site.subjects }} subjects · free, no card, no trial timer</p>
-      <h1 class="hero-title" id="ev-hero-title">Where engineers<br>are <span class="grad">forged.</span></h1>
-      <p class="hero-lead">{{ brand.site_name }} turns scattered study into a system: structured notes, daily practice,
-        judged code and a progress record that proves you did the work — across every branch of engineering.</p>
+      <p class="hero-badge">A study workspace for engineering students</p>
+      <h1 class="hero-title" id="ev-hero-title">Learn. Experiment.<br>Practise.</h1>
+      <p class="hero-lead">{{ brand.site_name }} brings study notes, interactive labs, practice sheets and learning
+        progress into one student-friendly workspace, so you spend less time searching and more time understanding.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary btn-lg" href="/dpp">Start today's practice {{ icon("chevron", 15) }}</a>
-        <a class="btn btn-ghost btn-lg" href="/explore">Browse the notes</a>
-        <a class="hero-install" href="/install">{{ icon("download", 15) }} Get the Android app</a>
+        <a class="btn btn-primary btn-lg" href="/lab">Try the Adaptive Lab {{ icon("chevron", 15) }}</a>
+        <a class="btn btn-ghost btn-lg" href="/explore">Explore notes</a>
       </div>
       <ul class="hero-proof" aria-label="What you get">
-        <li>{{ icon("check", 14) }} Read and practise in the browser — no download, no setup</li>
-        <li>{{ icon("check", 14) }} Judged coding problems with real test cases</li>
+        <li>{{ icon("check", 14) }} {{ site.subjects }} subjects and {{ site.topics }} topics of notes, tagged to a syllabus</li>
+        <li>{{ icon("check", 14) }} An interactive lab you can drive yourself, with feedback on the mistake you made</li>
+        <li>{{ icon("check", 14) }} {{ site.questions }} practice questions and {{ site.problems }} judged coding problems</li>
         {% if static_export %}
         <li>{{ icon("check", 14) }} Progress stays in this browser; export or import it as JSON any time</li>
         {% else %}
@@ -33,53 +38,41 @@
         {% endif %}
       </ul>
       <details class="hero-fineprint">
-        <summary>What runs where?</summary>
-        <p>On this public copy, code runs in your browser (WebAssembly) and progress is kept on this device.
-          A hosted {{ brand.site_name }} server adds accounts and a server-side judge. See <a href="/install">what works where</a>.</p>
+        <summary>What runs where, and what is still being built?</summary>
+        <p>On this public copy, the lab and the code judge run in your browser and progress is kept on this device.
+          Every feature on this page carries a status chip — <strong>Working now</strong>, <strong>Demo data</strong>
+          or <strong>Coming next</strong> — so nothing here pretends to be more than it is.
+          See <a href="/about">about the project</a> and <a href="/install">what works where</a>.</p>
       </details>
     </div>
 
-    <aside class="hero-panel" aria-label="Your bench for today — every row opens a real page">
+    {# A real preview: the same component the Adaptive Lab uses. Sliders are
+       keyboard-operable, the readouts update live, and the diagram is drawn
+       from the same solved state as the numbers. #}
+    <aside class="hero-panel" aria-label="Live preview of the Adaptive Lab">
       <div class="hp-head">
-        <span class="hp-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="hp-title">Your bench today</span>
-        <span class="tiny muted hp-live"><span data-local-date>Today</span> · about 65 minutes</span>
+        <span class="hp-title">Adaptive Lab — live preview</span>
+        <span class="status-chip" data-status="live">Working now</span>
       </div>
-      <div class="hp-list">
-        <a class="hp-row" href="/dpp">
-          <span class="hp-ico">{{ icon("target", 17) }}</span>
-          <span class="hp-text"><strong>Today's practice set (DPP)</strong><span>Mixed set for <span data-local-date>today</span> · ~30 min</span></span>
-          <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
-        </a>
-        <a class="hp-row" href="/revision">
-          <span class="hp-ico hp-ico-b">{{ icon("cards", 17) }}</span>
-          <span class="hp-text"><strong>Due flashcards</strong><span>Spaced repetition · ~10 min</span></span>
-          <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
-        </a>
-        {% if sample_problems %}
-        <a class="hp-row" href="/practice/problems/{{ sample_problems[0].slug }}">
-          <span class="hp-ico hp-ico-c">{{ icon("terminal", 17) }}</span>
-          <span class="hp-text"><strong>{{ sample_problems[0].title }}</strong><span>Judged coding · {{ sample_problems[0].difficulty }}</span></span>
-          <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
-        </a>
-        {% endif %}
-        {% if featured_topics %}
-        <a class="hp-row" href="/topics/{{ featured_topics[0].slug }}">
-          <span class="hp-ico hp-ico-d">{{ icon("book", 17) }}</span>
-          <span class="hp-text"><strong>{{ featured_topics[0].title }}</strong><span>Notes · {{ featured_topics[0].est_minutes }} min read · {{ featured_topics[0].subject }}</span></span>
-          <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
-        </a>
-        {% endif %}
-        <a class="hp-row" href="/dashboard">
-          <span class="hp-ico">{{ icon("chart", 17) }}</span>
-          <span class="hp-text"><strong>My progress</strong><span>{{ 'Saved on this device' if static_export else 'Streak, XP and completed topics' }}</span></span>
-          <span class="hp-go" aria-hidden="true">{{ icon("chevron", 14) }}</span>
-        </a>
+      <div data-ev-lab="mini">
+        <div data-lab-figure></div>
+        <div class="lab-control">
+          <label for="home-lab-volts">Supply voltage <output data-lab-v for="home-lab-volts">12 V</output></label>
+          <input type="range" id="home-lab-volts" data-lab-volts min="1" max="24" step="1" value="12">
+        </div>
+        <div class="lab-control">
+          <label for="home-lab-ohms">Resistance <output data-lab-r for="home-lab-ohms">6 Ω</output></label>
+          <input type="range" id="home-lab-ohms" data-lab-ohms min="1" max="100" step="1" value="6">
+        </div>
+        <dl class="lab-readouts">
+          <div class="lab-readout"><dt>Current I</dt><dd data-lab-i>2 A</dd></div>
+          <div class="lab-readout"><dt>Power P</dt><dd data-lab-p>24 W</dd></div>
+        </dl>
+        <div class="lab-bar" role="progressbar" aria-label="Current" aria-valuemin="0" aria-valuemax="4000"
+             aria-valuenow="2000" aria-valuetext="2 A"><span data-lab-bar style="width:50%"></span></div>
       </div>
-      <p class="hp-foot">{{ icon("flame", 13, true) }} Every row opens a real page. Nothing here is a mock-up.</p>
+      <p class="hp-foot">Ohm's law, computed in your browser. <a href="/lab">Open the full lab {{ icon("chevron", 13) }}</a></p>
     </aside>
-    <span class="hero-float hero-float-a" aria-hidden="true">{{ icon("check", 13) }} Code judged in your browser</span>
-    <span class="hero-float hero-float-b" aria-hidden="true">{{ icon("flame", 13, true) }} A fresh set every day</span>
   </section>
 
   <section class="hero-stats" aria-label="What is inside {{ brand.site_name }}">
@@ -91,13 +84,75 @@
     <div class="hero-stat"><div class="n">{{ site.projects }}</div><div class="l">Projects</div></div>
   </section>
 
+  {# Every row is a real catalogue entry and a real link. The table is a table,
+     not a grid of identical cards, because a workspace looks like a workspace. #}
+  <section class="section" aria-labelledby="ev-workspace-title">
+    <div class="section-head"><div>
+      <p class="ev-eyebrow">Learning workspace</p>
+      <h2 id="ev-workspace-title">What is actually in here</h2>
+      <p class="section-sub">A slice of the real catalogue. Every row opens the page it names — nothing below is a
+        mock-up, and each one says whether it works today.</p>
+    </div><a class="section-link" href="/resources">Everything on {{ brand.site_name }} {{ icon("chevron", 13) }}</a></div>
+    <div class="tablewrap">
+      <table class="ws-table">
+        <caption>{{ site.subjects }} subjects · {{ site.topics }} topics · {{ site.questions }} questions ·
+          {{ site.problems }} coding problems</caption>
+        <thead>
+          <tr><th scope="col">Subject</th><th scope="col">Item</th><th scope="col">Type</th>
+            <th scope="col" class="num">Time</th><th scope="col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Basic Electrical Engineering</td>
+            <td><a class="row-link" href="/lab">Adaptive Lab — DC circuits and Ohm's law</a></td>
+            <td>Interactive lab</td>
+            <td class="num">~10 min</td>
+            <td><span class="status-chip" data-status="live">Working now</span></td>
+          </tr>
+          {% for topic in featured_topics[:5] %}
+          <tr>
+            <td>{{ topic.subject }}</td>
+            <td><a class="row-link" href="/topics/{{ topic.slug }}">{{ topic.title }}</a></td>
+            <td>Notes · {{ topic.difficulty }}</td>
+            <td class="num">{{ topic.est_minutes }} min</td>
+            <td><span class="status-chip" data-status="live">Working now</span></td>
+          </tr>
+          {% endfor %}
+          {% for problem in sample_problems[:2] %}
+          <tr>
+            <td>Coding practice</td>
+            <td><a class="row-link" href="/practice/problems/{{ problem.slug }}">{{ problem.title }}</a></td>
+            <td>Judged problem · {{ problem.difficulty }}</td>
+            <td class="num">~20 min</td>
+            <td><span class="status-chip" data-status="live">Working now</span></td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <td>All subjects</td>
+            <td><a class="row-link" href="/dpp">Today's daily practice set</a></td>
+            <td>Mixed question set</td>
+            <td class="num">~30 min</td>
+            <td><span class="status-chip" data-status="live">Working now</span></td>
+          </tr>
+          <tr>
+            <td>All subjects</td>
+            <td><a class="row-link" href="/revision">Spaced-repetition flashcards</a></td>
+            <td>Revision</td>
+            <td class="num">~10 min</td>
+            <td><span class="status-chip" data-status="live">Working now</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="section plan-section" id="ev-today-plan" aria-labelledby="ev-plan-title">
     <div class="plan-shell">
       <div class="plan-head">
         <div>
           <p class="ev-eyebrow">Today's plan · <span data-local-date>today</span> · about 65 minutes</p>
-          <h2 id="ev-plan-title">Four strikes. One solid study day.</h2>
-          <p class="section-sub">Strike, temper, test, shape — in that order. Tick each step off as you finish it. Short on time? Step one alone still counts.</p>
+          <h2 id="ev-plan-title">A study day, in four steps</h2>
+          <p class="section-sub">Tick each step off as you finish it. Short on time? Step one alone still counts.</p>
         </div>
         <div class="plan-progress" data-plan-progress-box>
           <div class="plan-progress-meta">
@@ -113,7 +168,7 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">01</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("target", 20) }}</span>
-          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Strike</span><h3>Solve today's DPP</h3>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Practise</span><h3>Solve today's DPP</h3>
             <p>A fresh mixed set for today's date — the fastest way to keep concepts warm across subjects.</p></div>
           <div class="plan-side"><span class="chip">~30 min</span>
             <a class="plan-go" href="/dpp">Start the set {{ icon("chevron", 13) }}</a>
@@ -122,7 +177,7 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">02</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("cards", 20) }}</span>
-          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Temper</span><h3>Revise due flashcards</h3>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Review</span><h3>Revise due flashcards</h3>
             <p>Spaced repetition shows each card just before you would forget it — tempering memory until it holds. Ten minutes here saves hours later.</p></div>
           <div class="plan-side"><span class="chip">~10 min</span>
             <a class="plan-go" href="/revision">Review cards {{ icon("chevron", 13) }}</a>
@@ -131,7 +186,7 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">03</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("terminal", 20) }}</span>
-          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Test the edge</span><h3>Code one problem</h3>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Build</span><h3>Code one problem</h3>
             <p>{% if sample_problems %}Try “{{ sample_problems[0].title }}” ({{ sample_problems[0].difficulty }}) in the judged practice area.{% else %}One judged problem in the practice area, run and tested right in your browser.{% endif %}</p></div>
           <div class="plan-side"><span class="chip">~15 min</span>
             <a class="plan-go" href="{% if sample_problems %}/practice/problems/{{ sample_problems[0].slug }}{% else %}/practice{% endif %}">Open problem {{ icon("chevron", 13) }}</a>
@@ -140,7 +195,7 @@
         <li class="plan-row" data-plan-card>
           <span class="plan-step" aria-hidden="true">04</span>
           <span class="plan-icon" aria-hidden="true">{{ icon("book", 20) }}</span>
-          <div class="plan-body"><span class="plan-verb" aria-hidden="true">New steel</span><h3>Learn one new topic</h3>
+          <div class="plan-body"><span class="plan-verb" aria-hidden="true">Learn</span><h3>Learn one new topic</h3>
             <p>{% if featured_topics %}Start with “{{ featured_topics[0].title }}” — {{ featured_topics[0].est_minutes }} minutes, with notes and a worked example.{% else %}Pick any topic from the catalogue and read it end to end.{% endif %}</p></div>
           <div class="plan-side"><span class="chip">{% if featured_topics %}~{{ featured_topics[0].est_minutes }} min{% else %}~15 min{% endif %}</span>
             <a class="plan-go" href="{% if featured_topics %}/topics/{{ featured_topics[0].slug }}{% else %}/explore{% endif %}">Read the topic {{ icon("chevron", 13) }}</a>
@@ -153,27 +208,35 @@
 
   <section class="section" aria-labelledby="ev-how-title">
     <div class="section-head"><div>
-      <p class="ev-eyebrow">The Forge cycle</p>
-      <h2 id="ev-how-title">Heat → Strike → Temper</h2>
-      <p class="section-sub">How steel is shaped — and how a concept actually sticks. The same loop for every topic, so you always know what to do next.</p>
+      <p class="ev-eyebrow">One loop, every topic</p>
+      <h2 id="ev-how-title">Learn → Experiment → Practise → Review</h2>
+      <p class="section-sub">The same four steps whatever you are studying, so the next thing to do is never a
+        guess.</p>
     </div></div>
     <ol class="how-grid">
       <li class="how-step">
-        <span class="how-num" aria-hidden="true">1</span>
-        <h3>Heat — learn it properly</h3>
-        <p>Read the notes: definition, intuition, a diagram and a worked example — written to be finished, not skimmed.</p>
+        <span class="how-num" aria-hidden="true">01</span>
+        <h3>Learn</h3>
+        <p>Read the notes: definition, intuition, a diagram and a worked example — written to be finished, not
+          skimmed.</p>
         <a href="/explore">Browse the notes {{ icon("chevron", 13) }}</a>
       </li>
       <li class="how-step">
-        <span class="how-num" aria-hidden="true">2</span>
-        <h3>Strike — practise under pressure</h3>
-        <p>Answer questions and run judged coding problems. Wrong answers are kept in your mistake notebook, not lost.</p>
+        <span class="how-num" aria-hidden="true">02</span>
+        <h3>Experiment</h3>
+        <p>Change the values and watch the concept respond. Predict the result before the lab reveals it.</p>
+        <a href="/lab">Open the Adaptive Lab {{ icon("chevron", 13) }}</a>
+      </li>
+      <li class="how-step">
+        <span class="how-num" aria-hidden="true">03</span>
+        <h3>Practise</h3>
+        <p>Answer questions and run judged coding problems. Wrong answers are kept in a notebook, not lost.</p>
         <a href="/practice">Open practice {{ icon("chevron", 13) }}</a>
       </li>
       <li class="how-step">
-        <span class="how-num" aria-hidden="true">3</span>
-        <h3>Temper — review until it holds</h3>
-        <p>Flashcards return on a spaced-repetition schedule, and your progress page shows what is actually sticking.</p>
+        <span class="how-num" aria-hidden="true">04</span>
+        <h3>Review</h3>
+        <p>Flashcards return on a spaced schedule and your progress page shows what is actually sticking.</p>
         <a href="/revision">Review due cards {{ icon("chevron", 13) }}</a>
       </li>
     </ol>
@@ -182,15 +245,18 @@
   <section class="section" aria-labelledby="ev-why-title">
     <div class="manifesto">
       <div>
-        <p class="ev-eyebrow">Why “{{ brand.site_name }}”?</p>
-        <h2 class="manifesto-big" id="ev-why-title">Engineers aren't born.<br>They're <span class="grad">forged</span> — one honest hour at a time.</h2>
+        <p class="ev-eyebrow">Why {{ brand.site_name }}?</p>
+        <h2 class="manifesto-big" id="ev-why-title">Not another tutorial library.<br>A place to work.</h2>
       </div>
       <div>
-        <p>A forge takes raw metal and, through heat and repeated strikes, turns it into a tool that holds an edge.
-          That is exactly what studying is. Nobody crams their way to competence the night before — you heat a concept,
-          strike it with practice, and temper it with review until it holds.</p>
-        <p>{{ brand.site_name }} is built around that cycle and nothing else: no motivational wallpaper, no inflated
-          promises. It is free, open-source and tracker-free, and every count on this page comes from the real catalogue.</p>
+        <p>Learning resources are easy to find across the web, but a student's workflow becomes scattered: notes in
+          one tab, a simulator in another, past papers in a folder, progress nowhere at all.</p>
+        <p>{{ brand.site_name }} brings the next steps together — study a concept, experiment with it, practise it,
+          and review your progress in one place. That is the whole claim. We are a focused prototype built around
+          one curriculum's workflow, not a replacement for large tutorial platforms, and we do not try to out-volume
+          them.</p>
+        <p>Every count on this page comes from the real catalogue, and every feature carries a status chip. Where
+          something is a plan rather than a product, it says <strong>Coming next</strong>.</p>
         <p><a href="/about">More about the project {{ icon("chevron", 13) }}</a></p>
       </div>
     </div>
@@ -320,25 +386,60 @@
 
   <section class="section" aria-labelledby="ev-features-title">
     <div class="section-head"><div>
-      <p class="ev-eyebrow">What's inside</p>
-      <h2 id="ev-features-title">Three tools, one workshop</h2>
+      <p class="ev-eyebrow">What is inside</p>
+      <h2 id="ev-features-title">Four tools, one workflow</h2>
+      <p class="section-sub">Each one does a different job, and each one says plainly whether it works today.</p>
     </div></div>
     <div class="feature-list">
       <article class="feature-row">
         <span class="pillar-mark" aria-hidden="true">{{ icon("book", 20) }}</span>
-        <div><h3>Notes</h3><p>The raw material, refined: structured notes for every subject — definition, intuition, diagram, derivation and a worked example, at four depths.</p></div>
+        <div>
+          <h3>Notes <span class="status-chip" data-status="live">Working now</span></h3>
+          <p>{{ site.subjects }} subjects and {{ site.topics }} topics: definition, intuition, diagram, derivation and
+            a worked example, at four depths, tagged to a syllabus so you can study to a paper rather than to a
+            keyword.</p>
+        </div>
         <a href="/explore">Browse notes {{ icon("chevron", 13) }}</a>
       </article>
       <article class="feature-row">
+        <span class="pillar-mark" aria-hidden="true">{{ icon("circuit", 20) }}</span>
+        <div>
+          <h3>Adaptive Lab <span class="status-chip" data-status="live">Working now</span></h3>
+          <p>Drive a real DC circuit, predict the current before it is revealed, and get feedback that names the
+            step you got wrong — "you multiplied voltage by resistance", not "incorrect". Answer correctly and the
+            next question is harder; answer wrongly and you get an easier one on the same concept.</p>
+        </div>
+        <a href="/lab">Open the lab {{ icon("chevron", 13) }}</a>
+      </article>
+      <article class="feature-row">
         <span class="pillar-mark" aria-hidden="true">{{ icon("target", 20) }}</span>
-        <div><h3>Practice sheets</h3><p>The hammer work: daily problem sets, question banks and judged coding sheets. Mistakes are saved to a notebook so you can revisit them.</p></div>
-        <a href="/practice">Open practice sheets {{ icon("chevron", 13) }}</a>
+        <div>
+          <h3>Practice sheets <span class="status-chip" data-status="live">Working now</span></h3>
+          <p>{{ site.questions }} questions, a fresh daily set, and {{ site.problems }} judged coding problems with
+            real test cases. Mistakes are saved to a notebook so you can revisit them.</p>
+        </div>
+        <a href="/practice">Open practice {{ icon("chevron", 13) }}</a>
       </article>
       <article class="feature-row">
         <span class="pillar-mark" aria-hidden="true">{{ icon("chart", 20) }}</span>
-        <div><h3>Progress{% if not static_export %} &amp; leaderboard{% endif %}</h3>
-          <p>{% if static_export %}The inspection record: your streak, XP and completed topics, saved on this device and exportable as JSON. The leaderboard runs on the hosted app, which needs accounts.{% else %}The inspection record: your streak, XP and completed topics — plus a leaderboard on this hosted instance so you can see where you stand.{% endif %}</p></div>
-        <a href="/dashboard">{{ 'My progress' if static_export else 'Progress & leaderboard' }} {{ icon("chevron", 13) }}</a>
+        <div>
+          <h3>Progress
+            {% if static_export %}
+            <span class="status-chip" data-status="live">Working now — saved on this device</span>
+            {% else %}
+            <span class="status-chip" data-status="live">Working now</span>
+            {% endif %}
+          </h3>
+          {% if static_export %}
+          <p>Your streak, XP and completed topics, saved on this device and exportable as JSON. It does not sync
+            between devices and clearing site data removes it. The leaderboard needs accounts, so on this public
+            copy it is <strong>coming next</strong> rather than shown with invented numbers.</p>
+          {% else %}
+          <p>Your streak, XP and completed topics, saved to this server so it follows you between devices — plus a
+            leaderboard ranked on XP genuinely earned.</p>
+          {% endif %}
+        </div>
+        <a href="/dashboard">{{ 'My progress' if static_export else 'Progress and leaderboard' }} {{ icon("chevron", 13) }}</a>
       </article>
     </div>
   </section>
@@ -377,3 +478,4 @@
 
 </div>
 {% endblock %}
+{% block scripts %}<script src="/static/js/lab.js" defer></script>{% endblock %}

@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Forge CodeLab — Online Compiler
+   EngineVerse CodeLab — Online Compiler
    Modular client architecture:
      1. LanguageRegistry   — single source of truth for executable languages
      2. ExecutionService   — real backend /api/execute client (+ static worker fallback)
@@ -155,7 +155,7 @@
           spec.runtimeLabel = BROWSER_ENGINES[id];
         } else {
           spec.available = false;
-          spec.runtimeLabel = `${spec.name} requires a live Forge server runtime`;
+          spec.runtimeLabel = `${spec.name} requires a live EngineVerse server runtime`;
         }
       }
       const runnableCount = this.executableLanguages().length;

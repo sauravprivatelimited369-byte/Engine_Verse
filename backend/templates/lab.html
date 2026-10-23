@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Adaptive Lab — {{ brand.site_name }}{% endblock %}
+{% block description %}Drive a real DC circuit, predict the current before it is revealed, and get feedback that names the step you got wrong. Runs entirely in your browser.{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/css/lab.css">{% endblock %}
+{% block content %}
+{# ==========================================================================
+   The Adaptive Lab — the differentiator.
+
+   Learn -> Experiment -> Predict -> Verify -> Improve, in one page, with no
+   server call anywhere. Every number comes from lab.js (Ohm's law) and every
+   piece of feedback from the rule table in that file. Progress goes to
+   localStorage and is labelled "saved on this device" wherever it appears.
+
+   The curriculum links below are resolved by pages.py:lab_context() against
+   the real catalogue, so this page can never link to a notes page that does
+   not exist - a missing subject simply does not render a link.
+   ========================================================================== #}
+<div class="lab-page">
+
+  <header class="section" style="margin-top:24px">
+    <p class="ev-eyebrow">Adaptive Lab · Basic Electrical Engineering</p>
+    <h1>Learn. Experiment. Practise.</h1>
+    <p class="hero-lead">Read the rule, then break it on purpose. Move the supply, guess the current before the
+      answer is shown, and get told which step went wrong — not just whether you were right.</p>
+    <p class="chips-row" style="margin:0">
+      <span class="status-chip" data-status="live">Working now</span>
+      <span class="chip">Runs in your browser</span>
+      <span class="chip">No account needed</span>
+      <span class="chip">Ohm's law · DC circuits</span>
+    </p>
+  </header>
+
+  <ol class="lab-loop" aria-label="The learning loop this page follows">
+    <li><b>01 Learn</b> The rule, in two lines</li>
+    <li><b>02 Experiment</b> Drive the circuit yourself</li>
+    <li><b>03 Predict</b> Commit to a number first</li>
+    <li><b>04 Verify</b> See the real value and why</li>
+    <li><b>05 Improve</b> Next question matches the mistake</li>
+  </ol>
+
+  <div class="lab-layout">
+    <div class="lab-main">
+
+      {# ------------------------------------------------------------ 01 LEARN #}
+      <section class="lab-panel" aria-labelledby="ev-lab-learn">
+        <h2 id="ev-lab-learn">1 · The rule: Ohm's law</h2>
+        <p class="lead">Current is proportional to voltage and inversely proportional to resistance.</p>
+        <div class="lab-learn">
+          <p><span class="lab-formula">I = V / R</span> &nbsp;—&nbsp; current (A) = voltage (V) ÷ resistance (Ω)</p>
+          <p><span class="lab-formula">P = V × I</span> &nbsp;—&nbsp; power (W) = voltage (V) × current (A)</p>
+          <p><strong>Worked example.</strong> 12 V across 6 Ω gives <span class="lab-formula">12 / 6 = 2 A</span>.
+            Swap in a 12 Ω resistor and the same supply gives <span class="lab-formula">12 / 12 = 1 A</span>:
+            double the resistance, halve the current.</p>
+        </div>
+        {% if lab_links or lab_topic or lab_has_ohms_law %}
+        <p class="lab-syllabus" style="margin-top:16px"><strong>Where this sits in the syllabus.</strong>
+          This lab covers the DC-circuit content of
+          {% for link in lab_links %}<a href="/subjects/{{ link.slug }}">{{ link.name }}{% if link.code %} ({{ link.code }}){% endif %}</a>{% if not loop.last %} and {% endif %}{% endfor %}{% if not lab_links %}the first-year electrical subjects{% endif %}.</p>
+        <ul class="lab-links">
+          {% if lab_topic %}
+          <li>{{ icon("book", 15) }} <a href="/topics/{{ lab_topic.slug }}">{{ lab_topic.title }}</a> — the notes that apply this rule to a real diode circuit</li>
+          {% endif %}
+          {% if lab_has_ohms_law %}
+          <li>{{ icon("sigma", 15) }} <a href="/formulas">Formula centre</a> — Ohm's law with its variables and where it applies</li>
+          {% endif %}
+          <li>{{ icon("target", 15) }} <a href="/practice/questions">Question bank</a> — written questions on the same material</li>
+        </ul>
+        {% endif %}
+      </section>
+
+      {# ------------------------------------------------------- 02 EXPERIMENT #}
+      <section class="lab-panel" aria-labelledby="ev-lab-sim">
+        <h2 id="ev-lab-sim">2 · Experiment: drive the circuit</h2>
+        <p class="lead">Move either slider. Current and power recalculate instantly — the diagram reads from the same
+          numbers as the table, so they cannot disagree.</p>
+
+        <div class="ev-challenge-grid">
+          <div data-ev-lab="mini" data-lab-root>
+            <div data-lab-figure></div>
+            <div class="lab-bar" role="progressbar" aria-label="Current" aria-valuemin="0" aria-valuemax="4000"
+                 aria-valuenow="2000" aria-valuetext="2 A"><span data-lab-bar style="width:50%"></span></div>
+          </div>
+
+          <div>
+            <div class="lab-control">
+              <label for="lab-volts">Supply voltage <output data-lab-v for="lab-volts">12 V</output></label>
+              <input type="range" id="lab-volts" data-lab-volts min="1" max="24" step="1" value="12"
+                     aria-describedby="lab-volts-help">
+              <p class="ev-hint" id="lab-volts-help">1 V to 24 V. Keyboard: focus the slider and use the arrow keys.</p>
+            </div>
+            <div class="lab-control">
+              <label for="lab-ohms">Resistance <output data-lab-r for="lab-ohms">6 Ω</output></label>
+              <input type="range" id="lab-ohms" data-lab-ohms min="1" max="100" step="1" value="6"
+                     aria-describedby="lab-ohms-help">
+              <p class="ev-hint" id="lab-ohms-help">1 Ω to 100 Ω.</p>
+            </div>
+            <dl class="lab-readouts">
+              <div class="lab-readout"><dt>Current I</dt><dd data-lab-i>2 A</dd></div>
+              <div class="lab-readout"><dt>Power P</dt><dd data-lab-p>24 W</dd></div>
+            </dl>
+            <p class="ev-hint">Try it: set 12 V and 6 Ω for 2 A, then raise the resistance to 12 Ω and watch the
+              current fall to 1 A.</p>
+          </div>
+        </div>
+      </section>
+
+      {# --------------------------------------------------------- 03 PREDICT #}
+      <section class="lab-panel" aria-labelledby="ev-lab-predict">
+        <h2 id="ev-lab-predict">3 · Predict, then verify</h2>
+        <p class="lead">Write your answer down before you check it — the field locks the moment you submit, so a
+          prediction cannot be edited after the reveal.</p>
+
+        <div id="ev-predict">
+          <p class="sr-only-live" id="ev-predict-live" role="status" aria-live="polite"></p>
+
+          <article class="ev-challenge" data-challenge="c1">
+            <span class="ev-challenge-num">Prediction 1 of 3</span>
+            <h3>12 V across 6 Ω</h3>
+            <div class="ev-challenge-grid">
+              <div data-challenge-figure></div>
+              <div>
+                <p class="ev-feedback-line">A 12 V battery is connected across a 6 Ω resistor. Predict the current
+                  before you reveal it.</p>
+                <div class="ev-predict-field">
+                  <span>
+                    <label for="ev-c1-answer">Your prediction</label>
+                    <input type="text" inputmode="decimal" id="ev-c1-answer" placeholder="e.g. 2"
+                           aria-describedby="ev-c1-unit">
+                  </span>
+                  <span class="ev-answer-unit" id="ev-c1-unit">A or mA</span>
+                  <button type="button" class="btn btn-primary" data-challenge-submit>Check prediction</button>
+                </div>
+                <p class="ev-hint">Hint: <span class="lab-formula">I = V / R</span></p>
+                <div class="ev-reveal" data-challenge-reveal hidden>
+                  <h4>The simulator says</h4>
+                  <div data-challenge-revealed></div>
+                  <span class="ev-verdict" data-challenge-verdict></span>
+                  <div data-challenge-feedback></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="ev-challenge" data-challenge="c2">
+            <span class="ev-challenge-num">Prediction 2 of 3</span>
+            <h3>12 V across 4 Ω</h3>
+            <div class="ev-challenge-grid">
+              <div data-challenge-figure></div>
+              <div>
+                <p class="ev-feedback-line">Same battery, but the resistor is swapped for 4 Ω. Predict the new
+                  current.</p>
+                <div class="ev-predict-field">
+                  <span>
+                    <label for="ev-c2-answer">Your prediction</label>
+                    <input type="text" inputmode="decimal" id="ev-c2-answer" placeholder="e.g. 3"
+                           aria-describedby="ev-c2-unit">
+                  </span>
+                  <span class="ev-answer-unit" id="ev-c2-unit">A or mA</span>
+                  <button type="button" class="btn btn-primary" data-challenge-submit>Check prediction</button>
+                </div>
+                <p class="ev-hint">Hint: lower resistance, higher current.</p>
+                <div class="ev-reveal" data-challenge-reveal hidden>
+                  <h4>The simulator says</h4>
+                  <div data-challenge-revealed></div>
+                  <span class="ev-verdict" data-challenge-verdict></span>
+                  <div data-challenge-feedback></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="ev-challenge" data-challenge="c3">
+            <span class="ev-challenge-num">Prediction 3 of 3</span>
+            <h3>24 V across 1.2 kΩ</h3>
+            <div class="ev-challenge-grid">
+              <div data-challenge-figure></div>
+              <div>
+                <p class="ev-feedback-line">Now 24 V across 1.2 kΩ. Predict the current, in milliamps.</p>
+                <div class="ev-predict-field">
+                  <span>
+                    <label for="ev-c3-answer">Your prediction</label>
+                    <input type="text" inputmode="decimal" id="ev-c3-answer" placeholder="e.g. 20"
+                           aria-describedby="ev-c3-unit">
+                  </span>
+                  <span class="ev-answer-unit" id="ev-c3-unit">mA</span>
+                  <button type="button" class="btn btn-primary" data-challenge-submit>Check prediction</button>
+                </div>
+                <p class="ev-hint">Hint: 1.2 kΩ = 1200 Ω. Watch the units — this one is designed to catch them.</p>
+                <div class="ev-reveal" data-challenge-reveal hidden>
+                  <h4>The simulator says</h4>
+                  <div data-challenge-revealed></div>
+                  <span class="ev-verdict" data-challenge-verdict></span>
+                  <div data-challenge-feedback></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <p class="ev-recommend" data-predict-tally style="margin-top:16px">No predictions locked in yet.</p>
+        </div>
+      </section>
+
+      {# --------------------------------------------------------- 04 IMPROVE #}
+      <section class="lab-panel" aria-labelledby="ev-lab-adaptive">
+        <h2 id="ev-lab-adaptive">4 · Personalised challenge mode</h2>
+        <p class="lead">Answer correctly and the next question is harder. Answer wrongly and you get the explanation
+          plus an easier question on the same concept — chosen from the mistake you actually made, not at random.</p>
+
+        <div id="ev-adaptive">
+          <p class="sr-only-live" id="ev-adaptive-live" role="status" aria-live="polite"></p>
+          <p class="ev-storage-note" data-adaptive-storage></p>
+
+          <div class="ev-adaptive-actions" data-adaptive-start-panel>
+            <button type="button" class="btn btn-primary" data-adaptive-start>Start a session</button>
+            <span class="ev-hint" style="padding-bottom:9px">About 8 questions · easy → hard</span>
+          </div>
+
+          <div data-adaptive-panel hidden>
+            <p class="ev-adaptive-meta" data-adaptive-meta></p>
+            <div class="ev-adaptive-grid">
+              <div data-adaptive-figure></div>
+              <div>
+                <p class="ev-adaptive-prompt" data-adaptive-question></p>
+                <div class="ev-answer-field">
+                  <span>
+                    <label for="ev-adaptive-input">Your answer</label>
+                    <input type="text" inputmode="decimal" id="ev-adaptive-input" data-adaptive-input
+                           placeholder="e.g. 2" aria-describedby="ev-adaptive-unit">
+                  </span>
+                  <span class="ev-answer-unit" id="ev-adaptive-unit" data-adaptive-unit></span>
+                </div>
+                <div class="ev-adaptive-actions">
+                  <button type="button" class="btn btn-primary" data-adaptive-submit>Check answer</button>
+                  <button type="button" class="btn btn-ghost" data-adaptive-next hidden>Next question</button>
+                  <button type="button" class="btn btn-ghost" data-adaptive-finish>Finish session</button>
+                </div>
+                <div data-adaptive-feedback style="margin-top:16px"></div>
+                <div class="ev-summary" data-adaptive-summary hidden></div>
+                <div class="ev-adaptive-actions">
+                  <button type="button" class="btn btn-ghost" data-adaptive-retry hidden>Retry a session</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    {# ------------------------------------------------------------- sidebar #}
+    <aside class="lab-aside" aria-label="Your progress in this lab">
+      <div class="lab-panel" id="ev-lab-progress">
+        <h3>Your progress</h3>
+        <div class="ev-progress">
+          <div class="ev-progress-row"><span>Attempts</span><span data-progress-count="attempts">0</span></div>
+          <div class="ev-progress-row"><span>Correct</span><span data-progress-count="correct">0</span></div>
+          <div class="ev-progress-row"><span>Accuracy</span><span data-progress-accuracy>—</span></div>
+          <div class="ev-progress-row"><span>Weakest concept</span><span data-progress-weakest>None yet</span></div>
+        </div>
+        <p class="ev-recommend" data-adaptive-recommend hidden></p>
+        <p class="ev-storage-note" data-adaptive-storage></p>
+        <div class="ev-adaptive-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-adaptive-reset>Clear saved progress</button>
+        </div>
+      </div>
+
+      <div class="lab-panel">
+        <h3>What this lab is honest about</h3>
+        <ul class="lab-links">
+          <li>{{ icon("check", 15) }} <strong>Working now</strong> — the simulator, the three predictions, the mistake
+            detector and challenge mode all run in your browser</li>
+          <li>{{ icon("check", 15) }} <strong>Saved on this device</strong> — progress lives in this browser's
+            localStorage. It does not sync, and clearing site data removes it</li>
+          <li>{{ icon("close", 15) }} <strong>No AI</strong> — feedback comes from a fixed rule table that matches
+            your answer to a known arithmetic slip</li>
+        </ul>
+      </div>
+
+      <div class="lab-panel">
+        <h3>Keep going</h3>
+        <ul class="lab-links">
+          <li>{{ icon("book", 15) }} <a href="/explore">Browse the notes</a></li>
+          <li>{{ icon("target", 15) }} <a href="/practice">Practise hub</a></li>
+          <li>{{ icon("sigma", 15) }} <a href="/formulas">Formula centre</a></li>
+          <li>{{ icon("chart", 15) }} <a href="/dashboard">My progress</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <section class="section" aria-labelledby="ev-lab-next">
+    <div class="cta-panel between">
+      <div class="cta-panel-copy">
+        <p class="ev-eyebrow">Coming next</p>
+        <h2 id="ev-lab-next">More labs, same loop</h2>
+        <p>The loop — learn, experiment, predict, verify, improve — is not specific to Ohm's law. Series and parallel
+          networks, RC time constants and diode bias circuits are the next three, each tagged to the notes that
+          cover them. Nothing here is built yet; this is the plan, not a promise.</p>
+      </div>
+      <div class="cta-panel-actions">
+        <a class="btn btn-primary" href="/practice">Start practising {{ icon("chevron", 14) }}</a>
+        <a class="btn btn-ghost" href="/explore">Explore notes</a>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/lab.js" defer></script>{% endblock %}

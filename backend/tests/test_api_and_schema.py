@@ -796,7 +796,7 @@ class TestBranding:
         for path in ("/", "/explore", "/about"):
             html = client.get(path).text
             title = html[html.index("<title>") + 7:html.index("</title>")]
-            assert "Forge" in title, f"{path} rendered {title!r}"
+            assert "EngineVerse" in title, f"{path} rendered {title!r}"
 
     def test_brand_exposes_every_key_the_templates_use(self, seeded):
         from engineverse import brand
@@ -812,7 +812,7 @@ class TestBranding:
     def test_an_unset_key_falls_back_rather_than_rendering_blank(self, seeded):
         from engineverse import brand
 
-        assert brand.get("site_name") == "Forge"
+        assert brand.get("site_name") == "EngineVerse"
 
     def test_the_registration_toggle_is_enforced(self, app, seeded):
         """Each attempt uses a fresh client: a successful sign-up leaves a session

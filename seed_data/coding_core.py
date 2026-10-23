@@ -11,7 +11,7 @@ judge can compose and this repository can verify end to end (see
 ``scripts/check_problems.py``), and shipping a Java stub whose harness has never
 been run would be offering a language that does not work.
 
-The statements are written to be readable *inside* Forge: no problem tells
+The statements are written to be readable *inside* EngineVerse: no problem tells
 the learner to go and look something up on another site, and each editorial
 explains the pattern well enough to stand alone.
 """
@@ -1361,7 +1361,7 @@ PROBLEMS += [
                "Track both the maximum and the minimum product ending at each position."],
         editorial="Unlike the sum version, the best answer at a position depends on both the largest and the "
                   "smallest product ending at the previous position, because multiplying by a negative swaps "
-                  "them. Carrying two values keeps it O(n) with O(1) space. Forgetting the minimum is the exact "
+                  "them. Carrying two values keeps it O(n) with O(1) space. EngineVersetting the minimum is the exact "
                   "bug the negative test cases exist to catch.",
         wrapper="int-list",
     ),

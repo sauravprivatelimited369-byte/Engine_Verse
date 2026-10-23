@@ -269,7 +269,7 @@ caches with `accessOrder=true, removeEldestEntry`); `TreeMap` sorts by
 key (`O(log n)`, needs Comparable or Comparator). Reach for them only
 when order is required — plain HashMap is faster.
 
-**Common mistakes.** Forgetting `hashCode` when overriding `equals`
+**Common mistakes.** EngineVersetting `hashCode` when overriding `equals`
 (map finds nothing); mutable keys; iterating and modifying (use
 `iterator.remove()` or collect-then-remove); `get` returning null
 ambiguity (use `containsKey` or `getOrDefault`); autoboxing `null`

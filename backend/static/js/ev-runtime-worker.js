@@ -1,5 +1,5 @@
 "use strict";
-/* Forge in-browser language runtimes (static GitHub Pages & Android TWA).
+/* EngineVerse in-browser language runtimes (static GitHub Pages & Android TWA).
  *
  * One isolated worker driving six genuine language engines, all vendored
  * same-origin by scripts/fetch_browser_runtimes.py and cached offline:

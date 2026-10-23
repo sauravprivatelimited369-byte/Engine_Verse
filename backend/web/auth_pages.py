@@ -765,7 +765,7 @@ async def mfa_start(request: Request, current_password: str = Form(..., max_leng
         return response
     secret = totp.random_secret()
     codes = totp.recovery_codes()
-    issuer = brand.get("site_name", "Forge") or "Forge"
+    issuer = brand.get("site_name", "EngineVerse") or "EngineVerse"
     return render(
         request, "settings.html",
         **settings_context(viewer),
@@ -1030,7 +1030,7 @@ async def update_site_config(request: Request, site_name: str = Form(""), taglin
     from engineverse.security.sanitize import safe_css_color
 
     brand.set_many({
-        "site_name": site_name.strip()[:60] or "Forge",
+        "site_name": site_name.strip()[:60] or "EngineVerse",
         "tagline": tagline.strip()[:200],
         "announcement": announcement.strip()[:300],
         "support_email": support_email.strip()[:120],

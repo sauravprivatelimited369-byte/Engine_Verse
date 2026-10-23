@@ -1,4 +1,4 @@
-# Forge features in depth
+# EngineVerse features in depth
 
 The [README](../README.md) is the overview. This page describes what the full
 FastAPI website contains and how its major features work. Counts come from a
@@ -24,7 +24,7 @@ what is seeded today, not a completeness guarantee.
 | **My stream** | Each branch has a study hub at `/stream/{slug}` that gathers the subjects, notes, formula sheets, flashcards, question mix, sheets and projects that branch actually has, with the counts taken from the database rather than promised. `/stream` opens on the branch saved in the profile and `/streams` switches between them. Every stream also reaches the branch-neutral pattern sheets and the interview set, so no branch gets an empty page. |
 | **Projects** | 17 project briefs with ordered steps, skills and resources, spanning hardware, engineering software, full-stack apps and a model-free study planner with an optional allowlisted, confirmation-gated agent — including a substantial capstone brief linked to each of the ten language paths. |
 | **Revision and roadmaps** | 281 public flashcards are browsable at `/flashcards` and searchable without indexing their answers; personal SM-2 schedules are at `/revision`. The seed also includes 5 roadmaps and 57 roadmap nodes. |
-| **Study helper** | A retrieval-grounded tutor that composes answers from Forge's own indexed material and cites its sources. It does not make an external model call by default and should say when the catalogue has no relevant coverage. |
+| **Study helper** | A retrieval-grounded tutor that composes answers from EngineVerse's own indexed material and cites its sources. It does not make an external model call by default and should say when the catalogue has no relevant coverage. |
 
 Studying does not require leaving the site. Notes, worked examples, diagrams and
 3D models, formula sheets, flashcards, the practice bank, the coding judge and
@@ -66,7 +66,7 @@ GitHub Pages export list — so they cannot disagree about what exists or what
 something is called. See [Architecture](ARCHITECTURE.md#navigation-is-data)
 for what this replaced.
 
-The top bar is six grouped entries rather than ten flat links. Each group label
+The top bar is seven grouped entries rather than ten flat links. Each group label
 is itself a link to that group's landing page, so the bar is one click from the
 most useful page in every group even for a reader who never opens a menu:
 
@@ -75,8 +75,8 @@ most useful page in every group even for a reader who never opens a menu:
 | **My stream** | `/stream` | the full index |
 | **Learn** | `/explore` | formulas, videos, books, roadmaps, the study tutor, engineering swarm lab |
 | **Practice** | `/practice` | the daily set and its archive, the question bank, the mistake notebook |
-| **Code** | `/programming` | coding problems, practice sheets, projects, public APIs, data & BaaS studio |
-| **CodeLab** | `/codelab` | online compiler for Python, Java, C, C++, JavaScript, TypeScript, Go, SQL and shell |
+| **Lab** | `/lab` | the Adaptive Lab: a live DC circuit, predict-then-verify challenges and adaptive practice |
+| **Code** | `/programming` | CodeLab online compiler, coding problems, practice sheets, projects, public APIs, data & BaaS studio |
 | **Revise** | `/revision` | public flashcards, formulas, roadmaps |
 | **More** | `/resources` | today's plan, streaks, leaderboard, profile, workflow automations, community, placements, about |
 
@@ -249,7 +249,7 @@ Never commit `.env`, database files, private keys or real learner data.
 
 Production refuses to start with delivered sign-in codes enabled unless at
 least one mail or SMS transport is configured. SMS is deliberately an operator-run HTTP
-gateway: Forge does not provide a hosted SMS service, queue, delivery
+gateway: EngineVerse does not provide a hosted SMS service, queue, delivery
 receipt or carrier fallback, so the operator owns its availability and abuse
 controls. A verified phone is optional; email remains the default channel when
 mail is configured. An enrolled TOTP authenticator satisfies the every-login
@@ -258,7 +258,7 @@ check without a delivered code.
 ## CodeLab — Online Compiler
 
 `/codelab` (**CodeLab — Online Compiler**, top-bar tab **CodeLab**) provides a
-full multi-language compiler workspace built on Forge's isolated sandbox
+full multi-language compiler workspace built on EngineVerse's isolated sandbox
 and Judge0 execution architecture:
 
 - **Language-specific real runtimes (`backend/engineverse/codelab.py`)**:
