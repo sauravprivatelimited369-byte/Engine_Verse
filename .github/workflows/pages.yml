@@ -15,8 +15,9 @@ on:
   push:
     branches:
       - main
-      # Working branch: deploys now; main takes over once it is merged.
+      # Working branches: deploy now; main takes over once one is merged.
       - arena/38eff4a6-engine-verse
+      - arena/bfc1bfed-engine-verse
   workflow_dispatch:
 
 permissions:
