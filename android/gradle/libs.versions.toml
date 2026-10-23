@@ -1,7 +1,7 @@
 # Versions chosen for compileSdk/targetSdk 36 (Google Play's requirement from
 # 31 Aug 2026). Newer AndroidX releases need compileSdk 37; move together.
 [versions]
-agp = "9.1.1"
+agp = "9.4.1"
 kotlin = "2.4.21"
 composeBom = "2026.06.01"
 activityCompose = "1.12.4"
