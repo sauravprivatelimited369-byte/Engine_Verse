@@ -17,7 +17,13 @@ from urllib.request import Request, urlopen
 
 CAPABILITIES = ("apis", "studio", "workflows", "swarm")
 # Student tools and the device-local account pages every reading copy ships.
-STUDENT_PAGES = ("planner/", "opportunities/", "support/", "settings/", "dashboard/", "install/")
+#: Pages fetched from the live deployment after every publish. ``assistant/`` is
+#: here because it is the newest public page and the one whose "not connected"
+#: state must survive the export: if a future change shipped a chat box that
+#: cannot answer, this fetch would still pass, so the honest-state check stays
+#: in scripts/check_assistant.js.
+STUDENT_PAGES = ("planner/", "opportunities/", "support/", "settings/",
+                 "dashboard/", "install/", "assistant/")
 DEFAULT_URL = "https://sauravprivatelimited369-byte.github.io/Engine_Verse/"
 
 
