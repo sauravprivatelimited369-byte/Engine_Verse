@@ -206,6 +206,25 @@ instead of erroring as rustc does. A language whose runtime files fail to
 download is omitted from `runtimes/manifest.json` and reports NOT RUN with
 the reason — never a simulation, on either copy.
 
+## Study assistant (n8n)
+
+An AI chat assistant backed by an n8n Chat Trigger, available as a floating
+launcher on every page and as a full page at `/assistant`.
+
+- **Two transports.** Self-hosted, the browser calls `/api/assistant/chat` and
+  the server forwards to n8n, so the webhook URL stays private and the CSP stays
+  `connect-src 'self'`. On the static Pages copy the browser calls the Chat
+  Trigger directly, and only when the operator publishes the URL deliberately.
+- **Honest states.** With no webhook configured, the launcher is absent and the
+  page says the assistant is not connected; it does not display a chat box that
+  cannot answer. Every answer carries an AI-generated label.
+- **Page-aware prompts**, session continuity, timeouts, retry, offline
+  detection, keyboard and screen-reader support, and a reduced-motion path.
+- **Bounded.** 2–800 characters per question, per-IP and per-session limits, a
+  time budget, and no transcript stored by EngineVerse.
+- **Full detail:** [ASSISTANT.md](ASSISTANT.md). The workflows that power it and
+  the automation around it: [N8N_AUTOMATION.md](N8N_AUTOMATION.md).
+
 ## Security overview
 
 Security is part of the application design, not a deployment afterthought. The

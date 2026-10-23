@@ -1,0 +1,267 @@
+{
+  "name": "EngineVerse · Student copilot (HTTP model)",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {
+          "allowedOrigins": "https://sauravprivatelimited369-byte.github.io,http://localhost:8000,http://127.0.0.1:8000"
+        }
+      },
+      "id": "61390972-78a9-5d47-99c4-d44b4a4a3391",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "Embedded Chat. Copy the Chat URL from this node into ENGINEVERSE_ASSISTANT_URL (proxy) and/or ENGINEVERSE_ASSISTANT_PUBLIC_URL (static Pages copy).",
+      "notesInFlow": true,
+      "webhookId": "1bd40810-6260-55c4-bc3b-236fbbf8a490"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Validate one chat message before it costs a model call.\n//\n// The same rules EngineVerse enforces server-side (800 characters, control\n// characters stripped) plus a small per-session budget kept in the workflow's\n// static data. Static data is persisted for active workflows, so this survives\n// a restart; it is per-n8n-instance, which is exactly why the website also\n// rate-limits per IP and per session before it ever reaches n8n.\nconst MAX_CHARS = 800;\nconst PER_HOUR = 20;\nconst WINDOW_MS = 60 * 60 * 1000;\n\nconst item = $json || {};\nconst raw = item.chatInput ?? item.body?.chatInput ?? \"\";\nconst session = String(item.sessionId ?? item.body?.sessionId ?? \"unknown\").slice(0, 64);\n\nconst question = String(raw)\n  .replace(/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/g, \"\")\n  .replace(/\\r\\n?/g, \"\\n\")\n  .replace(/\\n{3,}/g, \"\\n\\n\")\n  .trim();\n\nconst now = Date.now();\nconst store = $getWorkflowStaticData(\"global\");\nstore.buckets = store.buckets || {};\n// Prune first: an unbounded map is a memory leak that also makes n8n's own\n// database grow.\nfor (const [key, bucket] of Object.entries(store.buckets)) {\n  if (!bucket || now - bucket.start > WINDOW_MS * 24) delete store.buckets[key];\n}\nconst bucket = store.buckets[session] || { start: now, count: 0 };\nif (now - bucket.start > WINDOW_MS) {\n  bucket.start = now;\n  bucket.count = 0;\n}\nbucket.count += 1;\nstore.buckets[session] = bucket;\n\nlet refusal = \"\";\nif (question.length < 2) refusal = \"Ask a question of at least a few words and I will help.\";\nelse if (question.length > MAX_CHARS) refusal = `Keep your question under ${MAX_CHARS} characters.`;\nelse if (bucket.count > PER_HOUR) refusal = \"That is a lot of questions in one hour. Take a short break and try again later.\";\n\nconst systemPrompt = $vars.engineverse_system_prompt || \"You are the EngineVerse study assistant: an AI assistant for engineering\\nstudents, mostly in India and also internationally. EngineVerse is a free study\\nplatform with notes for 93 subjects, coding practice, a study planner, projects\\nand placement preparation.\\n\\nHow to answer\\n- Be direct and warm. Prefer short paragraphs, then a bullet list or a small\\n  worked example.\\n- Teach, do not just answer: name the idea, show one concrete example, and say\\n  what a student should try next.\\n- Use fenced code blocks for code, with the language tag.\\n- If the student writes in Hindi or Hinglish, answer in the same language.\\n  Otherwise answer in the language they used.\\n- Keep the usual answer under 250 words unless the student asks for depth.\\n\\nHonesty rules (do not break these)\\n- You cannot run code, browse the web, open files or see the student's account.\\n  Say so if asked, and suggest an EngineVerse page that can help instead.\\n- If you are unsure or the question needs very recent or local information,\\n  say that plainly. Never invent a citation, a statistic, a deadline or a URL.\\n- Do not claim to be a person. You are an AI assistant.\\n- Never ask for passwords, API keys, Aadhaar/ID numbers, phone numbers or\\n  anything about another person. If a student pastes a secret, tell them to\\n  rotate it and do not repeat it back.\\n\\nScope\\n- Programming (Python, Java, C, C++, JavaScript, DSA), web development, AI/ML\\n  basics, study plans, revision schedules, interview and hackathon preparation,\\n  project ideas and portfolios.\\n- For medical, legal or financial decisions, give general study guidance and\\n  point to a qualified professional.\\n\";\n\nreturn [{\n  json: {\n    allowed: refusal === \"\",\n    refusal,\n    question,\n    questionChars: question.length,\n    sessionId: session,\n    messages: refusal\n      ? []\n      : [{ role: \"system\", content: systemPrompt }, { role: \"user\", content: question }],\n  },\n}];\n"
+      },
+      "id": "a135efa3-b4e3-59a5-971e-7d72a4757c8d",
+      "name": "Guard question",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ],
+      "notes": "Length bounds, control characters and a per-session budget of 20 questions/hour.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "37b4750d-c83e-5e5b-aedb-03864897d469",
+              "leftValue": "={{ $json.allowed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2605ed33-3c64-56c2-8382-21317cbfabba",
+      "name": "Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "A refused message never reaches the model.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: $json.messages, temperature: 0.3, max_tokens: 800 }) }}"
+      },
+      "id": "a6d866be-8dc7-5211-ae86-8ce4bcf90738",
+      "name": "Model (OpenAI-compatible)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        0
+      ],
+      "notes": "Point this at any OpenAI-compatible /chat/completions endpoint. The credential is an HTTP Header Auth credential holding Authorization: Bearer <your key> - never put the key in this node.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Turn an OpenAI-compatible response into the Chat Trigger's reply shape.\n// n8n's hosted chat reads `output`; the fallback keeps a plain-text body and a\n// refusal honest rather than rendering JSON at the student.\nconst data = $json || {};\nconst choice = Array.isArray(data.choices) ? data.choices[0] : null;\nconst message = choice?.message?.content ?? data.output ?? data.text ?? \"\";\nconst text = String(message).replace(/<[^>]+>/g, \"\").trim();\n\nreturn [{\n  json: {\n    output: text || \"I could not produce an answer for that. Please rephrase the question.\",\n    questionChars: $(\"Guard question\").item.json.questionChars,\n    sessionId: $(\"Guard question\").item.json.sessionId,\n    model: data.model || \"unknown\",\n  },\n}];\n"
+      },
+      "id": "44ec9207-c4e0-5aac-8f58-315d3fe2b962",
+      "name": "Shape reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO assistant_events (occurred_at, session_ref, question_chars, answer_chars, model)\n        VALUES (to_timestamp($1::double precision / 1000), $2, $3, $4, $5)",
+        "options": {
+          "queryReplacement": "={{ Date.now() }},{{ $('Guard question').item.json.sessionId }},{{ $('Guard question').item.json.questionChars }},{{ $json.output.length }},{{ $json.model }}"
+        }
+      },
+      "id": "4703be37-0b68-5804-973a-19e160f506b8",
+      "name": "Log metadata (optional)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        900,
+        0
+      ],
+      "notes": "Disabled by default. Enable only after creating the table (see n8n/README.md) and choosing a retention period. No question text is written.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_POSTGRES_CREDENTIAL",
+          "name": "EngineVerse Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item = $json || {};\nreturn [{ json: { output: item.output ?? \"I could not answer that.\" } }];\n"
+      },
+      "id": "1a17aac0-3ced-5782-a8e1-a15832f74f50",
+      "name": "Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "notes": "The last node's `output` is what n8n returns to the chat.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{ json: { output: $json.refusal || \"Ask a question of at least a few words.\" } }];\n"
+      },
+      "id": "139b8217-8f5e-56f0-95b3-d6d608627ae5",
+      "name": "Refusal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        220
+      ],
+      "notes": "Terminal node for a message that failed validation.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Guard question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard question": {
+      "main": [
+        [
+          {
+            "node": "Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Model (OpenAI-compatible)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model (OpenAI-compatible)": {
+      "main": [
+        [
+          {
+            "node": "Shape reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape reply": {
+      "main": [
+        [
+          {
+            "node": "Log metadata (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log metadata (optional)": {
+      "main": [
+        [
+          {
+            "node": "Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Chat Trigger → validate/limit → OpenAI-compatible model → reply. No LangChain node versions to match; point the HTTP node at any OpenAI-compatible endpoint."
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

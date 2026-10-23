@@ -2,6 +2,28 @@
 {% block title %}{{ brand.site_name }} — {{ brand.tagline }}{% endblock %}
 
 {% from "_icons.html" import icon %}
+
+{% block head %}
+{# Structured data only where the page qualifies: the home page of a site that
+   really does have an internal search at /search?q=. No aggregate ratings, no
+   invented review counts, no organisation claims beyond the repository. #}
+<script type="application/ld+json">
+{{ {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": brand.site_name,
+  "url": canonical_url,
+  "description": brand.tagline,
+  "inLanguage": "en",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {"@type": "EntryPoint", "urlTemplate": canonical_url ~ "search?q={search_term_string}"},
+    "query-input": "required name=search_term_string"
+  }
+} | tojson }}
+</script>
+{% endblock %}
+
 {% block content %}
 <section class="ev-feed" id="ev-feed">
 

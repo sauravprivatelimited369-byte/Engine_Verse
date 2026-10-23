@@ -16,6 +16,7 @@ from fastapi.responses import RedirectResponse
 from engineverse import (
     brand,
     academy,
+    assistant,
     catalog,
     certificates,
     coding,
@@ -1148,6 +1149,25 @@ async def tutor_page(request: Request):
             "How does cache locality affect my code's speed?",
             "Summarise the second law of thermodynamics",
         ],
+    )
+
+
+@router.get("/assistant")
+async def assistant_page(request: Request):
+    """Full-page n8n study assistant.
+
+    The floating launcher on every page and this page render the same chat
+    component; see static/js/assistant.js. When no Chat Trigger is configured
+    the page explains that and points at the retrieval-grounded /tutor instead
+    of showing a box that cannot answer.
+    """
+    state = assistant.status()
+    return render(
+        request, "assistant.html",
+        crumb_leaf="Study assistant",
+        assistant_state=state,
+        limitations=state["limitations"],
+        prompts=assistant.suggestions_for("/assistant"),
     )
 
 

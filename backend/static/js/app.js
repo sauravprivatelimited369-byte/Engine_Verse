@@ -840,6 +840,48 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
     });
   }
 
+  // ------------------------------------------------------------- share
+  // A "copy link" that degrades honestly. navigator.share exists on phones and
+  // is offered only there; clipboard access is not available on every desktop
+  // browser (or over plain HTTP), so the fallback selects the visible URL and
+  // says what happened instead of pretending the copy succeeded.
+  const share = $("[data-ev-share]");
+  if (share) {
+    const native = share.querySelector("[data-ev-share-native]");
+    const copy = share.querySelector("[data-ev-share-copy]");
+    const status = share.querySelector("[data-ev-share-status]");
+    const canonical = $('link[rel="canonical"]');
+    const url = (canonical && canonical.href) || location.href;
+    const say = (message) => {
+      if (!status) return;
+      status.textContent = message;
+      clearTimeout(status._t);
+      status._t = setTimeout(() => { status.textContent = ""; }, 4000);
+    };
+
+    if (native && typeof navigator.share === "function") native.hidden = false;
+    if (native) {
+      native.addEventListener("click", async () => {
+        try {
+          await navigator.share({ title: document.title, url });
+          say("Shared.");
+        } catch (err) {
+          if (err && err.name !== "AbortError") say("Sharing is not available. Use Copy link.");
+        }
+      });
+    }
+    if (copy) {
+      copy.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          say("Link copied.");
+        } catch (_) {
+          say("Could not copy automatically — the address bar has the link.");
+        }
+      });
+    }
+  }
+
   // --------------------------------------------------------- theme toggle
   // The [data-theme="light"] variable set in app.css was unreachable: base.html
   // hard-coded dark, so neither the admin setting nor any user preference could

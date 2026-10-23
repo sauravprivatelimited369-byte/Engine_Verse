@@ -1,0 +1,240 @@
+{
+  "name": "EngineVerse · Operational monitoring",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c252c5fc-904d-5bed-9e8d-7fa922aac2c3",
+      "name": "On workflow failure",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        0
+      ],
+      "notes": "Attach to any workflow with the Settings → Error Workflow selector.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Operational facts only. Error payloads can contain a student's message, an\n// API key in a URL, or a credential name, so only the shape is forwarded.\nconst data = $json || {};\nconst message = String(data.execution?.error?.message ?? data.error?.message ?? \"Unknown error\");\nconst safeMessage = message\n  .replace(/sk-[A-Za-z0-9_-]{10,}/g, \"[redacted key]\")\n  .replace(/Bearer\\s+[A-Za-z0-9._-]+/gi, \"Bearer [redacted]\")\n  .replace(/https?:\\/\\/[^\\s\"']*\\?[^\\s\"']*/g, \"[redacted url with query]\")\n  .slice(0, 500);\n\nconst workflowName = String(data.workflow?.name ?? \"unknown workflow\");\nconst nodeName = String(data.execution?.lastNodeExecuted ?? \"unknown node\");\nconst executionId = String(data.execution?.id ?? \"\");\nconst when = new Date().toISOString();\n\nreturn [{\n  json: {\n    severity: /credential|auth|401|403/i.test(safeMessage) ? \"high\" : \"medium\",\n    workflowName,\n    nodeName,\n    executionId,\n    safeMessage,\n    when,\n    // Coarse dedupe window: one notification per workflow per 15 minutes.\n    dedupeKey: `${workflowName}:${Math.floor(Date.now() / 900000)}`,\n    action: \"Open the n8n execution list, fix the cause, then re-run the failed execution. \"\n          + \"If the assistant is affected, check EngineVerse's /api/assistant/status.\",\n  },\n}];\n"
+      },
+      "id": "8dd06463-ba1d-5a9d-aaee-bf997c305c07",
+      "name": "Summarise without secrets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ],
+      "notes": "Redacts keys, bearer tokens and query strings before notifying.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const store = $getWorkflowStaticData(\"global\");\nconst seen = store.notified || {};\nconst now = Date.now();\nfor (const [key, at] of Object.entries(seen)) {\n  if (now - at > 86_400_000) delete seen[key];\n}\nconst item = $json;\nconst duplicate = Boolean(seen[item.dedupeKey]);\nif (!duplicate) seen[item.dedupeKey] = now;\nstore.notified = seen;\nreturn [{ json: { ...item, duplicate } }];\n"
+      },
+      "id": "4cbda8db-1072-5afd-b7ce-cc2909e380f9",
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Static data survives restarts for active workflows; one alert per workflow per window instead of an alert storm.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6f21f92d-fa25-51e9-a280-9a47129d9efa",
+              "leftValue": "={{ $json.duplicate === false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fbf87fd8-1d80-5392-9a42-b7703d3d4f4f",
+      "name": "New problem?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "REPLACE_WITH_CHAT_ID",
+        "text": "⚠️ {{ $json.workflowName }} failed at {{ $json.nodeName }} ({{ $json.severity }}).\n{{ $json.safeMessage }}\nExecution: {{ $json.executionId }}\n{{ $json.action }}",
+        "additionalFields": {}
+      },
+      "id": "1cac0c5c-c829-594d-8d19-38bb4a2c7f2b",
+      "name": "Notify admin (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        0
+      ],
+      "notes": "Disabled until a Telegram credential is selected.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL",
+          "name": "EngineVerse Telegram"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "assistant@example.org",
+        "toEmail": "admin@example.org",
+        "subject": "n8n failure: {{ $json.workflowName }}",
+        "emailFormat": "text",
+        "text": "Workflow: {{ $json.workflowName }}\nNode: {{ $json.nodeName }}\nSeverity: {{ $json.severity }}\nWhen: {{ $json.when }}\n\n{{ $json.safeMessage }}\n\n{{ $json.action }}\n",
+        "options": {}
+      },
+      "id": "ae820583-ba1b-5e92-b71c-c8891f834788",
+      "name": "Notify admin (email)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        680,
+        200
+      ],
+      "notes": "Enable either this or the Telegram node, not both.",
+      "notesInFlow": true,
+      "disabled": true,
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_WITH_SMTP_CREDENTIAL",
+          "name": "EngineVerse SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "fd554659-d408-55c6-b9dc-89a96de4b51f",
+      "name": "Logged",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "On workflow failure": {
+      "main": [
+        [
+          {
+            "node": "Summarise without secrets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarise without secrets": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "New problem?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New problem?": {
+      "main": [
+        [
+          {
+            "node": "Notify admin (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify admin (email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify admin (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify admin (email)": {
+      "main": [
+        [
+          {
+            "node": "Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Error Trigger → redact → dedupe → notify. Alerts carry no student text."
+  },
+  "tags": [
+    {
+      "name": "EngineVerse"
+    }
+  ]
+}

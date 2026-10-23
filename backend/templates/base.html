@@ -49,6 +49,9 @@
   <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/sora-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/app.css">
+  {# The assistant's own sheet: launcher, panel and the /assistant page. Kept
+     separate so a page that never opens it still pays only for app.css. #}
+  <link rel="stylesheet" href="/static/css/assistant.css">
   {# The configured accent colours, applied over the stylesheet's defaults.
      These come from site_config and are interpolated into CSS, so they are run
      through safe_css_color in the admin handler; | safe is used because Jinja
@@ -59,6 +62,12 @@
   <meta property="og:description" content="{{ brand.tagline }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ brand.site_name }}">
+  <meta property="og:image" content="{{ og_image }}">
+  <meta property="og:image:alt" content="{{ brand.site_name }} — {{ brand.tagline }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% block twitter_title %}{{ brand.site_name }}{% endblock %}">
+  <meta name="twitter:description" content="{{ brand.tagline }}">
+  <meta name="twitter:image" content="{{ og_image }}">
   {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">
   <meta property="og:url" content="{{ canonical_url }}">{% endif %}
   {% block head %}{% endblock %}
@@ -181,6 +190,12 @@
 {% include "_footer.html" %}
 
 {% if not gated %}
+{# The study assistant's launcher. Hidden until assistant.js confirms a
+   configured Chat Trigger exists, so an unconfigured instance shows no dead
+   bubble. The full page lives at /assistant, which is an ordinary link in the
+   navigation and works without this script. #}
+{% include "_assistant.html" %}
+
 {# The bottom bar. Five slots is the whole budget on a phone, so these are the
    five things a learner returns to every day; everything else is in the menu
    button above, which shows the same groups as the desktop bar.
@@ -200,6 +215,11 @@
 </nav>
 {% endif %}
 
+{# The assistant's browser configuration, as data rather than inline script.
+   In proxy mode this contains no endpoint other than the same-origin API path:
+   the n8n webhook URL is server-side only. export_pages.py replaces this block
+   for the static copy, where there is no server to proxy the request. #}
+<script type="application/json" id="ev-assistant-config">{{ assistant | tojson }}</script>
 <script nonce="{{ request.state.csp_nonce }}">
   window.EngineVerse = {
     csrf: "{{ csrf_token }}",
@@ -218,6 +238,7 @@
 <script src="/static/js/i18n.js" defer></script>
 <script src="/static/js/engine3d.js" defer></script>
 <script src="/static/js/app.js" defer></script>
+<script src="/static/js/assistant.js" defer></script>
 <script src="/static/js/pages-live.js" defer></script>
 <script src="/static/js/scroll.js" defer></script>
 {% block scripts %}{% endblock %}

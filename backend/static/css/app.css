@@ -3787,3 +3787,18 @@ body:has(.topbar.open)::after {
 /* The hidden attribute must win over component display rules (.btn, .chip,
    .empty, flex rows), or script-toggled elements stay visible. */
 [hidden] { display: none !important; }
+
+
+/* --------------------------------------------------------------- share row
+   A small, quiet control above the content. The status line is always part of
+   the layout (role="status" only announces when it changes) so the page does
+   not jump when "Link copied." appears. */
+.share {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 4px;
+}
+.share .btn { box-shadow: none; }
+.share .tiny { min-height: 1.2em; }
