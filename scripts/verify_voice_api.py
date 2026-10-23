@@ -15,8 +15,8 @@ Two independent jobs, both read-only:
 ``--site site``
     Called *after* the export. It reads the generated
     ``#ev-voice-config`` block and asserts that it matches the configured
-    origin (or is honestly empty in voice-disabled mode), and that no API key
-    or signed conversation URL reached the static output.
+    origin (or is honestly empty in device-voice-only mode), and that no API
+    key or signed conversation URL reached the static output.
 
 Neither check proves that ElevenLabs itself answers for this account: that
 needs the real key and voice ID, and is a separate live test. The status
@@ -178,7 +178,7 @@ def check_site(site: Path, expected: str) -> None:
     else:
         if api_base:
             _fail(f"the exported apiBase is {api_base!r} with no configured origin")
-        print("ok    voice-disabled export: apiBase is empty and the page says voice is not connected")
+        print("ok    device-only export: apiBase is empty; natural voice is not connected, device speech remains available")
     # Every HTML file, not just the home page: a key must reach none of them.
     for page in site.rglob("*.html"):
         text = page.read_text(encoding="utf-8", errors="replace")

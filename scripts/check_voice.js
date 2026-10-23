@@ -4,12 +4,12 @@
  *   npm install --prefix .toolchain/jsdom jsdom@26
  *   node scripts/check_voice.js
  *
- * No network, no credentials: the backend and the ElevenLabs WebSocket are
- * stubbed, so this proves what the browser code does with a response, not that
- * a real ElevenLabs account is reachable. It covers the parts a screenshot
- * cannot: which text is submitted, chunking without losing words, one active
- * player, cleanup of blob URLs, error messaging, and that the microphone is
- * untouched until the student presses Start.
+ * No network, no credentials: the backend, WebSocket, device speech engine and
+ * speech recognizer are stubbed. This verifies playback and fallback logic,
+ * real exported markup (when site/ exists), long-form chunking without lost
+ * words, controls after dynamic updates, cleanup and opt-in microphone access.
+ * It cannot prove that an ElevenLabs account or a browser's installed voices
+ * actually produce sound on a particular device.
  */
 "use strict";
 
@@ -44,6 +44,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const SECTION_HTML = `
   <nav><a href="/x">Navigation must not be read</a></nav>
+  <h1>Example lessons</h1>
   <article data-speak data-speak-title="Ohm's law">
     <h2>Ohm's law</h2>
     <p>Voltage equals current multiplied by resistance. V = IR describes a linear resistor.</p>
@@ -60,6 +61,11 @@ const SECOND_SECTION = `
   </section>`;
 
 const TUTOR_HTML = `
+  <form id="tutor-voice-form" data-tutor-form><input id="tutor-question" maxlength="400">
+    <button type="submit" id="tutor-send">Ask</button>
+    <button type="button" id="voice-ask" hidden>Ask by voice</button></form>
+  <p id="voice-ask-status" role="status" hidden></p>
+  <div id="tutor-answer" data-speak data-speak-dynamic></div>
   <section data-voice-tutor id="voice-tutor">
     <span id="voice-tutor-chip">Checking</span>
     <button id="voice-start" type="button">Start conversation</button>
@@ -68,11 +74,11 @@ const TUTOR_HTML = `
     <p id="voice-status" role="status" aria-live="polite"></p>
     <p id="voice-setup" hidden></p>
     <div id="voice-transcript" hidden></div>
-    <details id="voice-settings"><summary>Voice settings</summary>
-      <select id="voice-language"></select>
-      <select id="voice-voice"></select>
-      <select id="voice-speed"><option value="1">1x</option></select>
-      <p id="voice-prefs-status"></p>
+    <details id="voice-settings" data-voice-settings><summary>Voice settings</summary>
+      <select id="voice-language" data-voice-language></select>
+      <select id="voice-voice" data-voice-voice></select>
+      <select id="voice-speed" data-voice-speed><option value="1">1x</option></select>
+      <p id="voice-prefs-status" data-voice-prefs-status></p>
     </details>
   </section>`;
 
@@ -147,11 +153,14 @@ async function boot({
   status = STATUS_READY,
   session = { ok: true, signedUrl: "wss://api.elevenlabs.io/v1/convai/conversation?token=x" },
   speechStatus = 200,
+  statusError = false,
+  browserSpeech = false,
+  recognition = false,
   withTutor = false,
 } = {}) {
   const html = `<!doctype html><html><head><meta charset="utf-8">
     <script type="application/json" id="ev-voice-config">${JSON.stringify({ apiBase, staticCopy })}</script>
-    </head><body>${body}${withTutor ? TUTOR_HTML : ""}</body></html>`;
+    </head><body><main id="main">${body}${withTutor ? TUTOR_HTML : ""}</main></body></html>`;
   const virtualConsole = new VirtualConsole();
   const errors = [];
   virtualConsole.on("jsdomError", (error) => errors.push(String(error && error.message || error)));
@@ -164,7 +173,7 @@ async function boot({
   const w = dom.window;
   await sleep(5);
 
-  const calls = { fetch: [], revoked: [], created: 0, status: 0, speech: 0, session: 0, getUserMedia: 0 };
+  const calls = { fetch: [], revoked: [], created: 0, status: 0, speech: 0, session: 0, getUserMedia: 0, recognition: 0 };
   const blobUrls = new Set();
   w.URL.createObjectURL = () => {
     calls.created += 1;
@@ -179,6 +188,7 @@ async function boot({
     calls.fetch.push({ url, options });
     if (url.endsWith("/api/voice/status")) {
       calls.status += 1;
+      if (statusError) throw new Error("No backend");
       return response(status);
     }
     if (url.endsWith("/api/voice/speech")) {
@@ -270,9 +280,44 @@ async function boot({
   }
   w.AudioContext = FakeAudioContext;
 
+  const spoken = {
+    utterances: [], current: null, pauses: 0, resumes: 0, cancels: 0, voices: [],
+    getVoices() { return this.voices; },
+    speak(utterance) {
+      this.current = utterance;
+      this.utterances.push(utterance);
+      utterance.onstart?.();
+    },
+    pause() { this.pauses += 1; },
+    resume() { this.resumes += 1; },
+    cancel() { this.cancels += 1; this.current = null; },
+    finish() { const current = this.current; this.current = null; current?.onend?.(); },
+    listeners: {},
+    addEventListener(name, callback) { this.listeners[name] = callback; },
+    loadVoices(voices) { this.voices = voices; this.listeners.voiceschanged?.(); },
+  };
+  if (browserSpeech) {
+    w.SpeechSynthesisUtterance = class {
+      constructor(text) { this.text = text; this.rate = 1; this.voice = null; }
+    };
+    w.speechSynthesis = spoken;
+  }
+
+  const recognizers = [];
+  if (recognition) {
+    w.SpeechRecognition = class {
+      constructor() { recognizers.push(this); }
+      start() { calls.recognition += 1; this.onstart?.(); }
+      stop() { this.onend?.(); }
+      abort() { this.onend?.(); }
+      result(text) { this.onresult?.({ results: [[{ transcript: text }]] }); }
+      error(reason) { this.onerror?.({ error: reason }); this.onend?.(); }
+    };
+  }
+
   w.eval(RUNTIME);
   await sleep(20);
-  return { w, d: w.document, calls, errors, tracks, FakeSocket, blobUrls, FakeAudio };
+  return { w, d: w.document, calls, errors, tracks, FakeSocket, blobUrls, FakeAudio, spoken, recognizers };
 }
 
 const section = (d) => d.querySelector("article[data-speak]");
@@ -498,7 +543,7 @@ async function main() {
     check("unconfigured: the page says voice is not connected", Boolean(notice), "no notice rendered");
     check(
       "unconfigured: the notice is readable text, not an empty placeholder",
-      Boolean(notice) && /not connected/i.test(notice.textContent) && notice.textContent.length > 40,
+      Boolean(notice) && /no voice backend is connected/i.test(notice.textContent) && notice.textContent.length > 40,
       notice && notice.textContent,
     );
     check("unconfigured: the notice is a note, not a live region", Boolean(notice) && notice.getAttribute("role") === "note");
@@ -513,6 +558,253 @@ async function main() {
     check("unconfigured: no microphone is requested", calls.getUserMedia === 0);
     check("unconfigured: the page is marked voice-off", d.documentElement.classList.contains("voice-off"));
     check("unconfigured: one notice only", d.querySelectorAll(".voice-unavailable").length === 1);
+  }
+
+  // --------------------------------- 14. free, real device speech on Pages
+  {
+    const { d, w, calls, spoken, errors } = await boot({ apiBase: "", browserSpeech: true });
+    const article = section(d);
+    const readAll = d.querySelector(".voice-page-reader");
+    check("device: Listen appears without an API origin", Boolean(article.querySelector(".voice-listen")));
+    check("device: a multi-section page offers Listen to all", /Listen to all sections/.test(readAll?.textContent || ""));
+    check("device: a voice picker is accessible on the article", Boolean(article.querySelector("[data-voice-voice]")));
+    check("device: nothing calls a nonexistent Pages API", calls.fetch.length === 0, JSON.stringify(calls.fetch));
+    article.querySelector(".voice-listen").click();
+    check("device: speech synthesis is invoked by a click", spoken.utterances.length === 1);
+    check("device: only the relevant note is read", /linear resistor/.test(spoken.utterances[0]?.text || "") &&
+      !/Navigation|console output|Footer text/.test(spoken.utterances[0]?.text || ""));
+    check("device: device speech has a real playing state", /device voice/.test(stateOf(article)));
+    const toggle = article.querySelector(".voice-listen");
+    toggle.click();
+    check("device: Pause calls the speech engine", spoken.pauses === 1 && /paused/.test(stateOf(article)));
+    toggle.click();
+    check("device: Resume calls the speech engine", spoken.resumes === 1 && /Speaking/.test(stateOf(article)));
+    readAll.querySelector(".voice-listen").click();
+    check("device: starting all sections cancels the previous voice", spoken.cancels === 1 && /Stopped/.test(stateOf(article)));
+    check("device: all-section speech starts with the page heading", /Ohm's law/.test(spoken.current?.text || ""));
+    const spokenAll = [];
+    let guard = 0;
+    while (guard++ < 30 && !/Finished/.test(readAll.querySelector(".voice-state").textContent)) {
+      if (spoken.current) { spokenAll.push(spoken.current.text); spoken.finish(); }
+      else break;
+    }
+    const allWords = spokenAll.join(" ");
+    check("device: all-section speech includes the other section", /Electrical power/.test(allWords));
+    check("device: all-section speech omits page chrome and code", !/Navigation|console output|Footer text/.test(allWords));
+    check("device: all-section reading finishes", /Finished/.test(readAll.querySelector(".voice-state").textContent));
+    check("device: no browser exceptions", errors.length === 0, errors.join("; "));
+  }
+
+  // ----------------------------------------------- 15. no lost long sentences
+  {
+    const longText = Array.from({ length: 35 }, (_, i) => `Rule ${i + 1} explains a circuit clearly.`).join(" ");
+    const body = `<article data-speak data-speak-title="Long note"><h2>Long note</h2><p>${longText}</p></article>`;
+    const { d, w, spoken, calls } = await boot({ body, apiBase: "", browserSpeech: true });
+    const host = section(d);
+    host.querySelector(".voice-listen").click();
+    let guard = 0;
+    while (guard++ < 60 && !/Finished/.test(stateOf(host))) spoken.finish();
+    const actual = spoken.utterances.map((item) => item.text);
+    const expected = w.EV.voice.extractText(host, "Long note").replace(/\s+/g, " ").trim();
+    check("long device: several short utterances", actual.length > 2 && actual.every((item) => item.length <= 190), actual.map((a) => a.length).join(","));
+    check("long device: no words lost or repeated", actual.join(" ") === expected);
+    check("long device: completion is announced", /Finished/.test(stateOf(host)));
+    check("long device: no backend charge", calls.speech === 0);
+  }
+
+  // -------------------------------------- 16. installed language/voice picker
+  {
+    const { d, w, spoken } = await boot({ apiBase: "", browserSpeech: true, withTutor: true });
+    const english = { voiceURI: "english-1", lang: "en-US", name: "Clear English" };
+    const hindi = { voiceURI: "hindi-1", lang: "hi-IN", name: "Hindi speaker" };
+    spoken.loadVoices([english, hindi]);
+    const language = d.querySelector("#voice-language");
+    check("settings: late-loaded Hindi voice is offered", [...language.options].some((o) => o.value === "hi"));
+    language.value = "hi";
+    language.dispatchEvent(new w.Event("change"));
+    const voice = d.querySelector("#voice-voice");
+    check("settings: device voice has a name", [...voice.options].some((o) => /Hindi speaker/.test(o.textContent)));
+    voice.value = "browser:hindi-1";
+    voice.dispatchEvent(new w.Event("change"));
+    const lessonVoice = section(d).querySelector("[data-voice-voice]");
+    check("settings: tutor and lesson choices stay in sync", lessonVoice.value === voice.value);
+    section(d).querySelector(".voice-listen").click();
+    check("settings: chosen voice and language are spoken", spoken.current?.voice === hindi && spoken.current?.lang === "hi-IN");
+    check("settings: chosen voice persists", /browser:hindi-1/.test(w.localStorage.getItem("ev:voice:v1") || ""));
+  }
+
+  // ------------------------------------- 17. backend outages never silence us
+  {
+    const { d, calls, spoken } = await boot({ browserSpeech: true, speechStatus: 503 });
+    const host = section(d);
+    host.querySelector(".voice-listen").click();
+    await sleep(20);
+    check("fallback: natural voice was attempted when configured", calls.speech === 1);
+    check("fallback: device voice actually starts on upstream failure", spoken.utterances.length === 1, stateOf(host));
+    check("fallback: reason and provider are visible", /Natural voice unavailable.*device/.test(stateOf(host)), stateOf(host));
+    host.querySelector(".voice-stop").click();
+    check("fallback: Stop cancels the active device voice", spoken.cancels === 1);
+  }
+  {
+    const unavailable = { ...STATUS_READY, tts: { ...STATUS_READY.tts, available: false, languages: [] },
+      conversation: { available: false, reason: "No agent." }, reason: "No API key configured." };
+    const { d, calls, spoken } = await boot({ browserSpeech: true, withTutor: true, status: unavailable });
+    check("fallback: reader remains visible without an API key", !d.documentElement.classList.contains("voice-off"));
+    section(d).querySelector(".voice-listen").click();
+    check("fallback: speech works without a paid request", spoken.utterances.length === 1 && calls.speech === 0);
+    check("fallback: live tutor remains honestly disabled", d.querySelector("#voice-start").disabled);
+    check("fallback: settings call the speech device a device voice", /Device voice/.test(d.querySelector("#voice-voice").textContent));
+  }
+  {
+    const { d, calls, spoken } = await boot({ browserSpeech: true, statusError: true });
+    section(d).querySelector(".voice-listen").click();
+    check("fallback: unreachable status does not delay device speech", spoken.utterances.length === 1);
+    check("fallback: unreachable status never attempts paid synthesis", calls.speech === 0);
+  }
+
+  // ----------------------- 18. dynamically arrived assistant replies
+  {
+    const { d, w, spoken, calls } = await boot({ body: '<div id="assistant"></div>', apiBase: "", browserSpeech: true });
+    const reply = d.createElement("div");
+    reply.textContent = "Here is the result of your calculation.";
+    d.querySelector("#assistant").appendChild(reply);
+    w.EV.voice.enhance(reply, "Assistant reply");
+    check("dynamic reply: a Listen control appears without earlier notes", Boolean(reply.querySelector(".voice-listen")));
+    check("dynamic reply: the device voice picker is ready", Boolean(reply.querySelector("[data-voice-voice] option")));
+    reply.querySelector(".voice-listen").click();
+    check("dynamic reply: speech starts without a backend or a reload", spoken.utterances.length === 1 && calls.fetch.length === 0);
+  }
+
+  // ----------------------- 19. replacing an answer must not eat its controls
+  {
+    const { d, w, spoken, errors } = await boot({ browserSpeech: true, apiBase: "", withTutor: true });
+    const answer = d.querySelector("#tutor-answer");
+    check("dynamic: empty answer hides its Listen control", answer.querySelector(".voice-listen").disabled &&
+      answer.querySelector(".voice-controls").classList.contains("is-empty"));
+    answer.innerHTML = "<p>First answer with a resistor.</p>";
+    w.EV.voice.enhance(answer, "Tutor answer");
+    check("dynamic: Listen reattaches after innerHTML replacement", Boolean(answer.querySelector(".voice-listen")));
+    await sleep(5);
+    answer.querySelector(".voice-listen").click();
+    check("dynamic: first answer is read", /First answer/.test(spoken.current?.text || ""));
+    answer.innerHTML = "<p>Second answer with a capacitor.</p>";
+    w.EV.voice.enhance(answer, "Tutor answer");
+    await sleep(5);
+    answer.querySelector(".voice-listen").click();
+    check("dynamic: new answer is read rather than the old one", /Second answer/.test(spoken.current?.text || "") &&
+      !/First answer/.test(spoken.current?.text || ""));
+    check("dynamic: no self-triggering observer errors", errors.length === 0, errors.join("; "));
+  }
+
+  // ------------------------- 20. one explicit mic click -> grounded answer
+  {
+    const { d, w, calls, spoken, recognizers } = await boot({ browserSpeech: true, recognition: true, apiBase: "", withTutor: true });
+    const button = d.querySelector("#voice-ask");
+    const input = d.querySelector("#tutor-question");
+    const answer = d.querySelector("#tutor-answer");
+    d.querySelector("#tutor-voice-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      answer.innerHTML = "<p>Ohm's law states that voltage equals current times resistance.</p>";
+      w.EV.voice.enhance(answer, "Tutor answer");
+      w.EV.voice.tutorAnswered(answer);
+    });
+    check("dictation: Ask by voice is available when recognition exists", button.hidden === false);
+    check("dictation: microphone not opened on load", calls.recognition === 0 && calls.getUserMedia === 0);
+    button.click();
+    check("dictation: permission only requested by a click", calls.recognition === 1 && calls.getUserMedia === 0);
+    check("dictation: browser knows which language to recognize", recognizers[0].lang === "en-US");
+    recognizers[0].result("What is Ohm's law?");
+    check("dictation: recognized question is submitted", input.value === "What is Ohm's law?");
+    check("dictation: sourced answer is spoken automatically", /voltage equals current/.test(spoken.current?.text || ""));
+    check("dictation: status explains how to stop", /Pause or Stop/.test(d.querySelector("#voice-ask-status").textContent));
+    recognizers[0].stop();
+    button.click();
+    recognizers[1].error("not-allowed");
+    check("dictation: denied permission has a useful message", /Microphone access was denied/.test(d.querySelector("#voice-ask-status").textContent));
+  }
+
+  // ---------------------------------------------------- 21. session retry works
+  {
+    const session = { status: 503, code: "agent_not_configured", body: { code: "agent_not_configured", error: "No agent" } };
+    const { d, calls, FakeSocket } = await boot({ withTutor: true, session });
+    const start = d.querySelector("#voice-start");
+    start.click();
+    await sleep(20);
+    session.status = 200;
+    session.signedUrl = "wss://api.elevenlabs.io/v1/convai/conversation?token=x";
+    start.click();
+    await sleep(20);
+    check("tutor retry: session is requested again after an earlier failure", calls.session === 2);
+    check("tutor retry: microphone opens on the second try", calls.getUserMedia === 1);
+    check("tutor retry: socket opens after recovering", FakeSocket.instances.length === 1);
+  }
+
+  // ---------------------- 22. exercise the *exported* Pages markup too
+  // The small fixtures above test state machines. This catches an exporter or
+  // template change that silently drops the config, scripts or speakable blocks.
+  const site = path.resolve(process.argv[2] || path.join(__dirname, "..", "site"));
+  if (fs.existsSync(path.join(site, "tutor", "index.html"))) {
+    check("export: shipped voice JS matches the checked source",
+      fs.readFileSync(path.join(site, "static", "js", "voice.js"), "utf8") === RUNTIME);
+    const exported = fs.readFileSync(path.join(site, "tutor", "index.html"), "utf8");
+    const page = new JSDOM(exported).window.document;
+    const bootConfig = JSON.parse(page.getElementById("ev-voice-config").textContent);
+    check("export: static copy identifies itself", bootConfig.staticCopy === true);
+    const live = await boot({ body: page.getElementById("main").innerHTML, staticCopy: true,
+      apiBase: bootConfig.apiBase, browserSpeech: true });
+    check("export: the real tutor has the browser voice reader", Boolean(live.d.querySelector("#tutor-answer .voice-listen")));
+    check("export: the real tutor has the voice question control", Boolean(live.d.getElementById("voice-ask")));
+    check("export: without a backend, the real page makes no voice request", bootConfig.apiBase ? true : live.calls.fetch.length === 0);
+    // Run both shipped scripts against the real tutor markup: a recognized
+    // question must reach the static corpus and become *spoken*, not merely
+    // change a stubbed DOM in an isolated reader test.
+    if (!bootConfig.apiBase) {
+      const rendered = new JSDOM(exported, { url: "https://example.github.io/Engine_Verse/tutor/",
+        runScripts: "outside-only", pretendToBeVisual: true });
+      const v = rendered.window;
+      let microphone = null;
+      const said = [];
+      const corpus = [{ title: "Arrays", subject: "Data structures", url: "/Engine_Verse/topics/arrays/",
+        simple: "An array stores values contiguously in memory.", definition: "Indexing is constant time." }];
+      v.Audio = FakeAudio;
+      v.speechSynthesis = { getVoices: () => [], speak: (u) => { said.push(u.text); u.onstart?.(); },
+        cancel() {}, pause() {}, resume() {}, addEventListener() {} };
+      v.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+      v.SpeechRecognition = class {
+        constructor() { microphone = this; }
+        start() { this.onstart?.(); }
+        stop() { this.onend?.(); }
+        result(text) { this.onresult?.({ results: [[{ transcript: text }]] }); }
+      };
+      v.fetch = async (url) => {
+        if (String(url).endsWith("tutor-corpus.json")) return { ok: true, json: async () => corpus };
+        throw new Error(`No backend on Pages: ${url}`);
+      };
+      v.eval(RUNTIME);
+      v.eval(fs.readFileSync(path.join(site, "static", "js", "pages-live.js"), "utf8"));
+      await sleep(25);
+      v.document.getElementById("voice-ask").click();
+      microphone?.result("Arrays");
+      await sleep(35);
+      check("export: dictated question is submitted to the real Pages tutor",
+        v.document.getElementById("tutor-question").value === "Arrays" &&
+        Boolean(v.document.querySelector("#tutor-browser-results .panel")));
+      check("export: Pages tutor's real answer actually reaches speech synthesis",
+        said.some((text) => /Indexing is constant time/.test(text)), said.join(" | ").slice(0, 180));
+      rendered.window.close();
+    }
+    const topicFile = path.join(site, "topics", "arrays", "index.html");
+    if (fs.existsSync(topicFile)) {
+      const topic = new JSDOM(fs.readFileSync(topicFile, "utf8")).window.document;
+      const checked = await boot({ body: topic.getElementById("main").innerHTML,
+        apiBase: bootConfig.apiBase, browserSpeech: true });
+      check("export: real note sections and whole-page control exist",
+        checked.d.querySelectorAll("[data-speak] .voice-listen").length > 1 &&
+        Boolean(checked.d.querySelector(".voice-page-reader .voice-listen")));
+      checked.d.querySelector(".voice-page-reader .voice-listen").click();
+      check("export: real note text reaches speech synthesis", checked.spoken.utterances.length === 1 &&
+        /Arrays/i.test(checked.spoken.current?.text || ""));
+    }
   }
 
   if (failures.length) {

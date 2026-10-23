@@ -368,6 +368,17 @@ class TestPages:
         assert "wss://api.elevenlabs.io" not in headers.get("content-security-policy", "")
         assert "microphone=()" in headers.get("permissions-policy", "")
 
+    def test_notes_tutor_can_ask_by_voice_without_an_agent(self, client):
+        page = client.get("/tutor")
+        assert page.status_code == 200
+        assert 'id="voice-ask" hidden' in page.text
+        assert 'id="voice-ask-status"' in page.text
+        assert "microphone=(self)" in page.headers["permissions-policy"]
+        assert "wss://api.elevenlabs.io" not in page.headers["content-security-policy"]
+        # No other page gains microphone permission when ElevenLabs is off.
+        note = client.get(f"/topics/{self._topic_slug()}")
+        assert "microphone=()" in note.headers["permissions-policy"]
+
 
 class TestStaticExportConfig:
     def test_public_voice_api_url_is_a_bare_origin(self):
@@ -393,12 +404,11 @@ class TestStaticExportConfig:
 
 
 class TestDeploymentVoiceGate:
-    """The Pages gate: honest voice-disabled export, validated voice-enabled one.
+    """The Pages gate: honest device-only export, validated ElevenLabs origin.
 
     These are automated checks of the *gate*, not a live ElevenLabs test: no
-    request leaves the process. They make sure a voice-enabled release cannot
-    silently publish an empty apiBase, and that a disabled one cannot publish
-    a key, an agent id or a signed URL.
+    request leaves the process. An ElevenLabs-enabled release needs the public
+    API origin; a device-only one must never publish a key or signed URL.
     """
 
     def _site(self, tmp_path, config):
@@ -420,12 +430,12 @@ class TestDeploymentVoiceGate:
             with pytest.raises(SystemExit):
                 verify_voice_api.check_url(bad)
 
-    def test_empty_export_is_reported_as_unavailable_not_as_working(self, tmp_path, capsys):
+    def test_empty_export_is_device_only_not_fake_elevenlabs(self, tmp_path, capsys):
         from scripts import verify_voice_api
 
         verify_voice_api.check_site(self._site(tmp_path, {"apiBase": "", "staticCopy": True}), "")
         out = capsys.readouterr().out
-        assert "voice-disabled" in out and "not connected" in out
+        assert "device-only" in out and "natural voice is not connected" in out
 
     def test_configured_export_publishes_exactly_the_origin(self, tmp_path):
         from scripts import verify_voice_api

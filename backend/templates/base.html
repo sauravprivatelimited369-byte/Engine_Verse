@@ -220,11 +220,10 @@
 </nav>
 {% endif %}
 
-{# Non-secret runtime settings for the optional voice reader and voice tutor.
-   The API base is empty in the live app (same origin). The static Pages copy
-   overwrites this block's payload from its #ev-live boot data, which is the
-   only place a hosted voice API URL is published. No key, agent ID or signed
-   URL is ever written into a page. #}
+{# Non-secret runtime settings for optional ElevenLabs speech. Device voices
+   work without a backend. The API base is empty in the live app (same origin)
+   and in an unconfigured static Pages copy (which calls no voice endpoint).
+   No key, agent ID or signed URL is ever written into a page. #}
 <script type="application/json" id="ev-voice-config" nonce="{{ request.state.csp_nonce }}">
   {"apiBase": "{{ voice_api_base }}", "staticCopy": {{ 'true' if static_export else 'false' }}}
 </script>

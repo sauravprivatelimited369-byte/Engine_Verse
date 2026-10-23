@@ -3038,11 +3038,19 @@
       empty.textContent =
         "No matching note found for that phrasing. Try a topic name such as Ohm's Law, Bernoulli, pointers, deadlock, Carnot, or Dijkstra.";
       out.appendChild(empty);
+      const shell = out.closest("#tutor-result") || document.getElementById("tutor-result");
+      if (shell) shell.hidden = false;
+      const emptyHint = document.getElementById("tutor-empty");
+      if (emptyHint) emptyHint.hidden = true;
+      window.EV?.voice?.tutorAnswered?.(empty);
       return;
     }
     for (const r of ranked) {
       out.appendChild(renderMatch(r.item, mode));
     }
+    // Speak the top sourced answer only after an explicit voice question.
+    // The other matching cards retain individual Listen controls.
+    window.EV?.voice?.tutorAnswered?.(out.firstElementChild);
     // The result shell is server-rendered and hidden until there is an answer.
     const shell = out.closest("#tutor-result") || document.getElementById("tutor-result");
     if (shell) shell.hidden = false;

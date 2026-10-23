@@ -6,10 +6,9 @@ FastAPI app factory. Mounts:
 * ``/api``   JSON endpoints (``api/``)
 * ``/static`` vanilla CSS/JS, icons, PWA manifest and service worker
 
-Every response carries a hardened set of security headers. No third-party
-origin is ever contacted by the browser, so the CSP can stay strict: no
-inline script beyond the one nonce'd bootstrap, no external fonts, no
-analytics.
+Every response carries a hardened set of security headers. The optional
+ElevenLabs agent uses one explicitly allowed WebSocket origin when enabled;
+the ordinary pages stay same-origin with no external fonts or analytics.
 """
 from __future__ import annotations
 
@@ -107,10 +106,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        # The microphone is only ever requested by the opt-in voice tutor,
-        # and only after the student presses Start. With the feature switched
-        # off the permission is denied outright, exactly as before.
-        microphone = "microphone=(self)" if settings.elevenlabs_enabled else "microphone=()"
+        # On /tutor, browser speech recognition can ask the *notes* tutor a
+        # question even with no ElevenLabs account. Permission is still
+        # requested only by an explicit click. All other pages keep the mic
+        # closed when the live voice agent is not configured.
+        microphone = "microphone=(self)" if settings.elevenlabs_enabled or request.url.path.rstrip("/") == "/tutor" else "microphone=()"
         response.headers["Permissions-Policy"] = (
             f"camera=(), {microphone}, geolocation=(), payment=()"
         )

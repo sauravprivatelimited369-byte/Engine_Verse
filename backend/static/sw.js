@@ -16,11 +16,14 @@
 // v12: the 2026 visual layer, self-hosted Inter/Sora variable fonts, scroll.js
 // (topbar auto-hide + study-plan progress) and the new home/dashboard markup.
 // v14: the MERIDIAN identity — warm-paper glass, navy ink, signal blue.
-const VERSION = "meridian-v14";
+// v15: offline device speech and tutor answer controls; drop older cached JS.
+const VERSION = "meridian-v15";
 const SHELL = [
   "/static/css/app.css",
   "/static/css/codelab.css",
+  "/static/css/voice.css",
   "/static/js/app.js",
+  "/static/js/voice.js",
   "/static/js/codelab.js",
   "/static/js/pages-live.js",
   "/static/js/ev-runtime-worker.js",

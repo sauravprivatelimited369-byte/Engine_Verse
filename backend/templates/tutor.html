@@ -20,7 +20,10 @@
            placeholder="Ask about a topic, formula or concept&hellip;"
            maxlength="400" aria-label="Your question" style="flex:1;min-width:220px">
     <button class="btn btn-primary" type="submit" id="tutor-send">Ask</button>
+    <button class="btn btn-soft" type="button" id="voice-ask" hidden
+            aria-label="Ask the notes tutor by voice">Ask by voice</button>
   </form>
+  <p class="small muted" id="voice-ask-status" role="status" aria-live="polite" hidden></p>
   <div class="chips-row mt">
     {% for prompt in prompts %}<button type="button" class="chip" data-tutor-prompt>{{ prompt }}</button>{% endfor %}
   </div>
@@ -55,8 +58,8 @@
   <div class="between voice-tutor-head">
     <div class="grow">
       <h2 class="h-sub" style="margin:0">Talk to the tutor</h2>
-      <p class="small muted" style="margin:4px 0 0">Ask a question out loud and hear the answer.
-        Uses the ElevenLabs voice service; your microphone is only switched on when you press Start.</p>
+      <p class="small muted" style="margin:4px 0 0">Ask the notes tutor by voice above on supported browsers, or listen to its written answers.
+        Live back-and-forth conversations use ElevenLabs when an agent is connected. Your microphone is only requested when you press a voice button.</p>
     </div>
     <span class="chip" id="voice-tutor-chip" data-voice-chip>Checking&hellip;</span>
   </div>
@@ -70,24 +73,24 @@
   </p>
   <p class="small" id="voice-setup" hidden></p>
   <div class="voice-transcript" id="voice-transcript" hidden aria-live="polite" aria-label="Conversation transcript"></div>
-  <details class="voice-settings mt" id="voice-settings">
+  <details class="voice-settings mt" id="voice-settings" data-voice-settings>
     <summary>Voice settings</summary>
     <div class="voice-settings-grid">
       <label for="voice-language">Reading language</label>
-      <select id="voice-language"></select>
+      <select id="voice-language" data-voice-language></select>
       <label for="voice-voice">Voice</label>
-      <select id="voice-voice"></select>
+      <select id="voice-voice" data-voice-voice></select>
       <label for="voice-speed">Playback speed</label>
-      <select id="voice-speed">
+      <select id="voice-speed" data-voice-speed>
         <option value="0.85">0.85× (slower)</option>
         <option value="1" selected>1× (normal)</option>
         <option value="1.15">1.15×</option>
         <option value="1.35">1.35× (faster)</option>
       </select>
     </div>
-    <p class="tiny muted" style="margin:8px 0 0">Saved in this browser only. Speech language follows the selected
-      voice; an English voice does not become Hindi because the label changed.</p>
-    <p class="tiny muted" id="voice-prefs-status" role="status" aria-live="polite"></p>
+    <p class="tiny muted" style="margin:8px 0 0">Your choice is saved in this browser only. Device voice quality depends on installed voices.
+      An English voice does not become Hindi just because the language setting changed.</p>
+    <p class="tiny muted" id="voice-prefs-status" data-voice-prefs-status role="status" aria-live="polite"></p>
   </details>
   <p class="tiny muted" style="margin:12px 0 0">The spoken tutor is a general study assistant. EngineVerse's written
     tutor above is the one that quotes this platform's own notes; the voice agent does not see your progress or the

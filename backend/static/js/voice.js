@@ -1,22 +1,16 @@
 /* EngineVerse voice reader and voice tutor.
  *
- * Two capabilities, one opt-in module:
+ * Listen works with the browser's installed speech voices, even on the static
+ * Pages copy. When configured, ElevenLabs supplies a more natural voice via
+ * the FastAPI proxy; the browser takes over if that service fails. Neither
+ * path ever needs an API key in a page. The optional live voice agent still
+ * needs an ElevenLabs backend. On browsers with SpeechRecognition, students
+ * can also ask the notes tutor aloud and hear its grounded answer.
  *
- *  1. A Listen control on educational text. The text is extracted from the
- *     surrounding article (never the whole page), split into sentence-aligned
- *     chunks, and each chunk is synthesised by the FastAPI backend, which talks
- *     to ElevenLabs. Audio is played from a blob URL and released when done.
- *  2. A spoken tutor on /tutor. The browser asks the backend for a short-lived
- *     signed Conversational AI URL, then opens a WebSocket straight to
- *     ElevenLabs. The microphone is requested only after "Start conversation".
- *
- * Nothing here is required for EngineVerse to work: without this file, or
- * without a configured backend, the written site is unchanged. No API key is
- * ever present in the browser; the backend holds it.
- *
- * Privacy: spoken text is sent only when a student presses Listen, transcripts
- * stay in the page and are discarded when the conversation ends, and no audio
- * is stored in localStorage or on the server.
+ * No text or audio is stored. Reading sends text to ElevenLabs only when that
+ * voice is selected; the browser's speech/recognition privacy rules apply to
+ * device voices and dictated questions. The microphone is requested only
+ * after an explicit click.
  */
 (() => {
   "use strict";
@@ -32,19 +26,25 @@
 
   const API_BASE = String(boot.apiBase || "").replace(/\/+$/, "");
   const STATIC_COPY = Boolean(boot.staticCopy);
+  const HAS_API = !STATIC_COPY || Boolean(API_BASE);
+  const HAS_BROWSER_SPEECH = Boolean(window.speechSynthesis && window.SpeechSynthesisUtterance);
+  const synth = HAS_BROWSER_SPEECH ? window.speechSynthesis : null;
   const documentRoot = document;
+  const NO_BACKEND = {
+    reason: "A natural ElevenLabs voice is not connected here. You can still listen with a device voice.",
+    tts: { available: false, languages: [], defaultLanguage: "en", maxChars: 1200 },
+    conversation: { available: false, reason: "Live conversations need an ElevenLabs agent and backend. You can ask the notes tutor above and listen to its answer instead." },
+  };
 
   // ---------------------------------------------------------------- unavailable
-  // Published without a backend origin (or with a bad one) there is nowhere to
-  // send text, so no Listen button is drawn. Instead of failing silently the
-  // page says, in an accessible status region, that voice is not connected.
-  // Every other part of EngineVerse keeps working.
+  // If neither a backend nor browser speech is available, do not draw dead
+  // controls. Keep the written content and an accessible explanation.
   const voiceUnavailable = (message) => {
     const notice =
       message ||
-      "Voice is not connected on this copy of EngineVerse yet, so Listen and the " +
-        "spoken tutor are unavailable. All written notes, the tutor, the code " +
-        "playground and the study tools work normally.";
+      "This browser has no speech voice available and no voice backend is connected. " +
+        "Try a current browser with speech voices installed, or configure the " +
+        "ElevenLabs backend. The written tutor and notes still work.";
     documentRoot.documentElement.classList.add("voice-off");
     const panel = documentRoot.querySelector("[data-voice-tutor]");
     if (panel) {
@@ -68,7 +68,7 @@
       if (statusEl) statusEl.textContent = "No microphone is requested until voice is connected.";
     }
     if (documentRoot.querySelector(".voice-unavailable")) return;
-    const host = documentRoot.querySelector("[data-speak]");
+    const host = documentRoot.querySelector("[data-speak], .has-voice");
     if (!host) return;
     const note = documentRoot.createElement("p");
     note.className = "voice-unavailable small muted";
@@ -82,10 +82,9 @@
     }
   };
 
-  // On GitHub Pages there is no server at all. Without a configured voice API
-  // origin the controls are not rendered, so nobody is offered a button that
-  // cannot work - and the reason is shown rather than hidden.
-  if (STATIC_COPY && !API_BASE) {
+  // A static copy has no /api/voice endpoint. Browser speech works without
+  // one; only browsers lacking speech support need the unavailable notice.
+  if (!HAS_API && !HAS_BROWSER_SPEECH) {
     const announce = () => voiceUnavailable("");
     if (documentRoot.readyState === "loading") {
       documentRoot.addEventListener("DOMContentLoaded", announce, { once: true });
@@ -146,24 +145,35 @@
   };
 
   // -------------------------------------------------------------------------
-  // Backend status (public, secret-free). Fetched once, and again after a
-  // failure so a server brought online later starts working without a reload.
+  // Backend status (public, secret-free). Never call /api/voice on a static
+  // copy without an API origin. A down server must not delay device speech.
   // -------------------------------------------------------------------------
   let statusPromise = null;
+  let currentStatus = HAS_API ? null : NO_BACKEND;
   const getStatus = () => {
+    if (!HAS_API) return Promise.resolve(NO_BACKEND);
     if (!statusPromise) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
       statusPromise = fetch(`${API_BASE}/api/voice/status`, {
         headers: { accept: "application/json" },
         credentials: "omit",
+        signal: controller.signal,
       })
         .then((response) => {
           if (!response.ok) throw new Error(`status ${response.status}`);
           return response.json();
         })
+        .then((status) => {
+          currentStatus = status;
+          return status;
+        })
         .catch((error) => {
           statusPromise = null;
+          currentStatus = null;
           throw error;
-        });
+        })
+        .finally(() => clearTimeout(timer));
     }
     return statusPromise;
   };
@@ -282,6 +292,41 @@
     return chunks.filter(Boolean);
   };
 
+  // The browser's voices can arrive *after* page load (notably in Chrome).
+  // A device default still works when getVoices() initially returns [].
+  const browserVoices = () => {
+    try { return synth ? synth.getVoices() || [] : []; }
+    catch (_) { return []; }
+  };
+  const voicesFor = (code) => browserVoices().filter((voice) =>
+    String(voice.lang || "").toLowerCase().startsWith(`${code}-`) ||
+    String(voice.lang || "").toLowerCase() === code);
+  const languageTag = (code) => code === "hi" ? "hi-IN" : "en-US";
+  const availableLanguages = (status) => {
+    const codes = new Set();
+    if (HAS_BROWSER_SPEECH) codes.add("en"); // system default, even before voiceschanged
+    if (HAS_BROWSER_SPEECH && voicesFor("hi").length) codes.add("hi");
+    if (status.tts?.available) {
+      for (const item of status.tts.languages || []) codes.add(item.code);
+    }
+    return [...codes].filter((code) => code === "en" || code === "hi");
+  };
+  const selectVoice = (status, preference) => {
+    const voices = status.tts?.available
+      ? status.tts.languages?.find((item) => item.code === preference.language)?.voices || []
+      : [];
+    const selected = String(preference.voiceId || "");
+    if (selected.startsWith("browser:") && HAS_BROWSER_SPEECH) {
+      return { kind: "browser", id: selected.slice(8) };
+    }
+    const match = voices.find((item) => selected === item.id || selected === `elevenlabs:${item.id}`);
+    if (match) return { kind: "elevenlabs", id: match.id };
+    if (!selected && voices.length) return { kind: "elevenlabs", id: voices[0].id };
+    if (HAS_BROWSER_SPEECH) return { kind: "browser", id: "default" };
+    if (voices.length) return { kind: "elevenlabs", id: voices[0].id };
+    return null;
+  };
+
   // -------------------------------------------------------------------------
   // Audio helpers
   // -------------------------------------------------------------------------
@@ -307,7 +352,7 @@
   // -------------------------------------------------------------------------
   // One Listen control per educational block.
   // -------------------------------------------------------------------------
-  const buildControls = (host) => {
+  const buildControls = (idleLabel = "Listen") => {
     const row = document.createElement("div");
     row.className = "voice-controls";
     row.setAttribute("data-voice-skip", "");
@@ -320,7 +365,7 @@
     toggleIcon.innerHTML = icon("speaker");
     const toggleLabel = document.createElement("span");
     toggleLabel.className = "voice-label";
-    toggleLabel.textContent = "Listen";
+    toggleLabel.textContent = idleLabel;
     toggle.append(toggleIcon, toggleLabel);
 
     const stop = document.createElement("button");
@@ -343,22 +388,59 @@
     }
     speedWrap.appendChild(speed);
 
+    // Available on every note, not only on /tutor. These settings are shared
+    // between all readers via localStorage, and stay closed until requested.
+    const chooser = document.createElement("details");
+    chooser.className = "voice-chooser";
+    chooser.setAttribute("data-voice-settings", "");
+    const summary = document.createElement("summary");
+    summary.textContent = "Choose voice";
+    const grid = document.createElement("div");
+    grid.className = "voice-settings-grid";
+    for (const [label, hook] of [["Language", "language"], ["Voice", "voice"]]) {
+      const field = document.createElement("label");
+      field.textContent = label;
+      const select = document.createElement("select");
+      select.setAttribute(`data-voice-${hook}`, "");
+      select.setAttribute("aria-label", `${label} for reading`);
+      field.appendChild(select);
+      grid.appendChild(field);
+    }
+    const hint = document.createElement("p");
+    hint.className = "tiny muted";
+    hint.textContent = "Device voices depend on your browser. ElevenLabs voices need a connected server.";
+    const chooserStatus = document.createElement("p");
+    chooserStatus.className = "tiny muted";
+    chooserStatus.setAttribute("data-voice-prefs-status", "");
+    chooserStatus.setAttribute("role", "status");
+    chooser.append(summary, grid, hint, chooserStatus);
+
     const state = document.createElement("span");
     state.className = "voice-state";
     state.setAttribute("role", "status");
     state.setAttribute("aria-live", "polite");
 
-    row.append(toggle, stop, speedWrap, state);
-    return { row, toggle, toggleIcon, toggleLabel, stop, speedWrap, speed, state };
+    row.append(toggle, stop, chooser, speedWrap, state);
+    return { row, toggle, toggleIcon, toggleLabel, stop, speedWrap, speed, state, idleLabel };
   };
 
-  const attach = (host, titleOverride) => {
-    if (!host || host.dataset.voiceBound === "1") return;
+  const readers = new WeakMap();
+  const attach = (host, titleOverride, textProvider, idleLabel = "Listen") => {
+    if (!host) return null;
+    const existing = readers.get(host);
+    if (existing) {
+      // Dynamic tutor answers replace innerHTML, which removes the old row.
+      // Reattach it instead of leaving data-voice-bound set on a dead control.
+      if (!host.contains(existing.ui.row)) {
+        existing.stop();
+        host.insertBefore(existing.ui.row, host.firstChild);
+      }
+      return existing;
+    }
     host.dataset.voiceBound = "1";
     host.classList.add("has-voice");
 
-    const title = titleOverride || host.getAttribute("data-speak-title") || "this section";
-    const ui = buildControls(host);
+    const ui = buildControls(idleLabel);
     const heading = host.querySelector("h1, h2, h3");
     if (heading && heading.parentNode === host) {
       heading.insertAdjacentElement("afterend", ui.row);
@@ -370,6 +452,8 @@
       host,
       ui,
       audio: new Audio(),
+      utterance: null,
+      mode: "",
       chunks: [],
       urls: [],
       index: 0,
@@ -378,13 +462,18 @@
       token: 0,
       prefetching: new Map(),
     };
+    readers.set(host, player);
     player.audio.preload = "auto";
 
     const prefs = () => readPrefs();
     ui.speed.value = String(prefs().speed);
 
-    const isDynamicEmpty = () =>
-      host.hasAttribute("data-speak-dynamic") && extractText(host, "").length < 2;
+    const isDynamicEmpty = () => {
+      if (!host.hasAttribute("data-speak-dynamic")) return false;
+      const content = [];
+      collectText(host, content); // do not count data-speak-title as an answer
+      return content.join(" ").trim().length < 2;
+    };
 
     const setState = (state, message) => {
       player.state = state;
@@ -411,7 +500,7 @@
         ui.toggleLabel.textContent = "Retry";
       } else {
         ui.toggleIcon.innerHTML = icon("speaker");
-        ui.toggleLabel.textContent = "Listen";
+        ui.toggleLabel.textContent = ui.idleLabel;
       }
     };
 
@@ -429,73 +518,133 @@
     };
 
     const abortRequests = () => {
-      for (const controller of player.controllers) {
-        try {
-          controller.abort();
-        } catch (_) {
-          /* already aborted */
-        }
-      }
+      for (const controller of player.controllers) controller.abort();
       player.controllers.clear();
+    };
+
+    const cancelBrowser = () => {
+      if (!player.utterance) return;
+      player.utterance.onstart = null;
+      player.utterance.onend = null;
+      player.utterance.onerror = null;
+      player.utterance = null;
+      try { synth.cancel(); } catch (_) { /* speech already ended */ }
     };
 
     const stopPlayback = (message) => {
       player.token += 1;
+      player.mode = "";
       abortRequests();
+      cancelBrowser();
       releaseUrls();
       player.chunks = [];
       player.index = 0;
+      player.pendingNext = null;
       setState("idle", message || "");
     };
 
-    // Only one block may speak at once: starting a second one stops the first
-    // and cancels its in-flight request, so two voices can never overlap.
+    // Only one block may speak at once, across both audio engines.
     const claimPlayer = () => {
       if (activePlayer && activePlayer !== player) activePlayer.stop();
       activePlayer = player;
     };
 
+    // Browser speech synthesizers can stall on long utterances. Small,
+    // sentence-aligned chunks keep notes of any length readable. The next
+    // utterance is queued only after the previous one has actually finished.
+    const speakIndex = (index, notice = "") => {
+      const token = player.token;
+      if (index >= player.chunks.length) {
+        player.utterance = null;
+        setState("ended", "Finished.");
+        return;
+      }
+      player.index = index;
+      player.pendingNext = null;
+      const utterance = new window.SpeechSynthesisUtterance(player.chunks[index]);
+      const preference = readPrefs();
+      utterance.lang = languageTag(player.language);
+      utterance.rate = clampSpeed(preference.speed);
+      const voiceId = player.voiceId;
+      if (voiceId && voiceId !== "default") {
+        const voice = voicesFor(player.language).find((item) => (item.voiceURI || item.name) === voiceId);
+        if (voice) utterance.voice = voice;
+      }
+      const progress = `Speaking part ${index + 1} of ${player.chunks.length} with a device voice.`;
+      utterance.onstart = () => {
+        if (token === player.token && player.mode === "browser" && player.state !== "paused") {
+          setState("playing", `${notice}${progress}`);
+        }
+      };
+      utterance.onend = () => {
+        if (token !== player.token || player.mode !== "browser") return;
+        player.utterance = null;
+        if (player.state === "paused") player.pendingNext = index + 1;
+        else speakIndex(index + 1);
+      };
+      utterance.onerror = (event) => {
+        if (token !== player.token || player.mode !== "browser") return;
+        player.utterance = null;
+        if (event?.error === "canceled" || event?.error === "interrupted") return;
+        setState("error", "Your browser could not speak with that voice. Choose another voice or try a different browser.");
+      };
+      player.utterance = utterance;
+      try {
+        synth.speak(utterance);
+        if (token === player.token && player.mode === "browser" && player.utterance === utterance && player.state !== "error") {
+          setState("playing", `${notice}${progress}`);
+        }
+      } catch (_) {
+        player.utterance = null;
+        setState("error", "Your browser could not start speech. Check its sound and voice settings, then press Retry.");
+      }
+    };
+
+    // Fall back from a failed paid request *at the same word*, not at the
+    // beginning of the page. Aborted prefetches cannot create dangling blobs.
+    const switchToBrowser = (index) => {
+      if (!HAS_BROWSER_SPEECH) return false;
+      const remaining = player.chunks.slice(index).join(" ");
+      player.token += 1;
+      player.mode = "browser";
+      abortRequests();
+      releaseUrls();
+      player.chunks = chunkText(remaining, 190);
+      player.voiceId = "default";
+      speakIndex(0, "Natural voice unavailable; using your device instead. ");
+      return true;
+    };
+
     const ensureChunk = (index) => {
       if (index >= player.chunks.length) return Promise.resolve(null);
       if (player.prefetching.has(index)) return player.prefetching.get(index);
+      const token = player.token;
+      const chunk = player.chunks[index];
       const request = (async () => {
-        if (sessionChars + player.chunks[index].length > SESSION_CHAR_BUDGET) {
-          throw new Error(
-            "This tab has read its voice allowance for now. A new tab starts a fresh allowance.",
-          );
+        if (sessionChars + chunk.length > SESSION_CHAR_BUDGET) {
+          throw new Error("This tab has reached its ElevenLabs allowance. Listen with your device voice instead.");
         }
-        const status = await getStatus();
-        if (!status.tts || !status.tts.available) {
-          throw new Error(
-            status.reason || status.tts?.reason || "The voice reader is not configured on this server.",
-          );
-        }
-        const preference = prefs();
-        const language = status.tts.languages.some((item) => item.code === preference.language)
-          ? preference.language
-          : status.tts.defaultLanguage;
         const controller = new AbortController();
         player.controllers.add(controller);
-        const response = await fetch(`${API_BASE}/api/voice/speech`, {
-          method: "POST",
-          headers: { "content-type": "application/json", accept: "audio/mpeg" },
-          credentials: "omit",
-          signal: controller.signal,
-          body: JSON.stringify({
-            text: player.chunks[index],
-            language,
-            voiceId: preference.voiceId || undefined,
-          }),
-        });
-        if (!response.ok) throw await errorFrom(response, "The voice service could not read that.");
-        player.controllers.delete(controller);
-        player.controllers.delete(controller);
-        const blob = await response.blob();
-        if (!blob.size) throw new Error("The voice service returned no audio.");
-        sessionChars += player.chunks[index].length;
-        const url = URL.createObjectURL(blob);
-        player.urls.push(url);
-        return url;
+        try {
+          const response = await fetch(`${API_BASE}/api/voice/speech`, {
+            method: "POST",
+            headers: { "content-type": "application/json", accept: "audio/mpeg" },
+            credentials: "omit",
+            signal: controller.signal,
+            body: JSON.stringify({ text: chunk, language: player.language, voiceId: player.voiceId }),
+          });
+          if (!response.ok) throw await errorFrom(response, "The natural voice service could not read that.");
+          const blob = await response.blob();
+          if (controller.signal.aborted || token !== player.token) return null;
+          if (!blob.size) throw new Error("The voice service returned no audio.");
+          sessionChars += chunk.length;
+          const url = URL.createObjectURL(blob);
+          player.urls.push(url);
+          return url;
+        } finally {
+          player.controllers.delete(controller);
+        }
       })().catch((error) => {
         player.prefetching.delete(index);
         throw error;
@@ -507,103 +656,136 @@
     const playIndex = async (index) => {
       const token = player.token;
       if (index >= player.chunks.length) {
-        releaseUrls();
         setState("ended", "Finished.");
+        releaseUrls();
         return;
       }
       player.index = index;
-      setState("loading", "Preparing audio…");
+      setState("loading", "Preparing natural voice…");
       let url;
       try {
         url = await ensureChunk(index);
       } catch (error) {
-        if (token !== player.token) return;
-        if (error && error.name === "AbortError") return;
+        if (token !== player.token || error?.name === "AbortError") return;
+        if (switchToBrowser(index)) return;
         releaseUrls();
         setState("error", error.message || "The voice service is unavailable. Try again.");
         return;
       }
       if (token !== player.token) return;
       if (!url) {
-        releaseUrls();
         setState("ended", "Finished.");
+        releaseUrls();
         return;
       }
-      // Prefetch the next chunk while this one plays, one request at a time.
+      // Fetch one chunk ahead without holding an entire book in memory.
       ensureChunk(index + 1).catch(() => {});
       player.audio.src = url;
       player.audio.playbackRate = clampSpeed(readPrefs().speed);
       try {
         await player.audio.play();
       } catch (_) {
-        if (token === player.token) setState("error", "Playback was blocked. Press Listen again.");
+        if (token === player.token && !switchToBrowser(index)) {
+          setState("error", "Playback was blocked. Check your sound settings and press Retry.");
+        }
         return;
       }
       if (token !== player.token) return;
-      setState("playing", `Playing part ${index + 1} of ${player.chunks.length}.`);
+      setState("playing", `Playing part ${index + 1} of ${player.chunks.length} with ElevenLabs.`);
     };
 
     player.stop = () => stopPlayback("Stopped.");
-    player.setSpeed = (value) => {
-      player.audio.playbackRate = clampSpeed(value);
-    };
+    player.setSpeed = (value) => { player.audio.playbackRate = clampSpeed(value); };
 
     player.audio.addEventListener("ended", () => {
-      if (player.state === "playing") playIndex(player.index + 1);
+      if (player.mode === "elevenlabs" && player.state === "playing") playIndex(player.index + 1);
     });
     player.audio.addEventListener("error", () => {
-      if (player.state === "playing" || player.state === "loading") {
-        setState("error", "The audio could not be played. Press Retry.");
+      if (player.mode === "elevenlabs" && (player.state === "playing" || player.state === "loading")) {
+        if (!switchToBrowser(player.index)) setState("error", "The audio could not be played. Press Retry.");
       }
     });
 
-    const startReading = async () => {
+    const startReading = () => {
       claimPlayer();
       player.token += 1;
+      player.mode = "";
       abortRequests();
+      cancelBrowser();
       releaseUrls();
-      const text = extractText(host, titleOverride);
+      const text = textProvider ? String(textProvider() || "") : extractText(host, titleOverride);
       if (text.length < 2) {
         setState("idle", "There is nothing to read here yet.");
         return;
       }
-      setState("loading", "Checking the voice service…");
-      let status;
-      try {
-        status = await getStatus();
-      } catch (_) {
-        setState("error", "The voice service could not be reached. Check the server and try again.");
-        return;
+      const token = player.token;
+      const begin = (status, notice = "") => {
+        if (token !== player.token) return;
+        const preference = readPrefs();
+        const codes = availableLanguages(status);
+        const language = codes.includes(preference.language) ? preference.language : codes[0] || preference.language;
+        const choice = selectVoice(status, { ...preference, language });
+        if (!choice) {
+          setState("error", status.reason || "No speech voice is available in this browser or on the server.");
+          return;
+        }
+        player.mode = choice.kind;
+        player.voiceId = choice.id;
+        player.language = language;
+        player.urls = [];
+        player.prefetching = new Map();
+        if (choice.kind === "browser") {
+          player.chunks = chunkText(text, 190);
+          speakIndex(0, notice);
+        } else {
+          const limit = Math.max(200, Math.min(3000, Number(status.tts.maxChars) || 1200));
+          player.chunks = chunkText(text, limit);
+          playIndex(0);
+        }
+      };
+
+      // When status is still loading, start device speech immediately rather
+      // than waiting for a hung server. Next Listen uses ElevenLabs if ready.
+      if (currentStatus) begin(currentStatus);
+      else if (HAS_BROWSER_SPEECH) {
+        begin(NO_BACKEND, "Checking the natural voice; ");
+        if (HAS_API) getStatus().then(fillSettings).catch(() => {});
+      } else {
+        setState("loading", "Checking the voice service…");
+        getStatus().then((status) => begin(status)).catch(() => {
+          if (token === player.token) setState("error", "The voice service could not be reached. Try again later.");
+        });
       }
-      if (!status.tts || !status.tts.available) {
-        setState("error", status.reason || status.tts?.reason || "The voice reader is not configured.");
-        return;
-      }
-      const limit = Math.max(200, Math.min(3000, Number(status.tts.maxChars) || 1200));
-      player.chunks = chunkText(text, limit);
-      if (!player.chunks.length) {
-        setState("idle", "There is nothing to read here yet.");
-        return;
-      }
-      player.urls = [];
-      player.prefetching = new Map();
-      setState("playing", ""); // transient; playIndex sets the real state
-      await playIndex(0);
     };
+    player.read = startReading;
 
     ui.toggle.addEventListener("click", () => {
       const state = player.state;
       if (state === "playing") {
-        player.audio.pause();
+        if (player.mode === "browser") synth.pause();
+        else player.audio.pause();
         setState("paused", "Playback paused.");
         return;
       }
       if (state === "paused") {
-        player.audio.playbackRate = clampSpeed(readPrefs().speed);
-        player.audio
-          .play()
-          .then(() => setState("playing", `Playing part ${player.index + 1} of ${player.chunks.length}.`))
-          .catch(() => setState("error", "Playback was blocked. Press Resume again."));
+        if (player.mode === "browser") {
+          try {
+            synth.resume();
+            const next = player.pendingNext;
+            if (next !== null) speakIndex(next);
+            else setState("playing", `Speaking part ${player.index + 1} of ${player.chunks.length} with a device voice.`);
+          } catch (_) { setState("error", "Could not resume speech. Press Retry."); }
+        } else {
+          const token = player.token;
+          player.audio.playbackRate = clampSpeed(readPrefs().speed);
+          player.audio.play()
+            .then(() => {
+              if (token === player.token) setState("playing", `Playing part ${player.index + 1} of ${player.chunks.length} with ElevenLabs.`);
+            })
+            .catch(() => {
+              if (token === player.token) setState("error", "Playback was blocked. Press Retry.");
+            });
+        }
         return;
       }
       startReading();
@@ -618,24 +800,37 @@
       const value = clampSpeed(ui.speed.value);
       writePrefs({ speed: value });
       player.setSpeed(value);
-      for (const other of documentRoot.querySelectorAll(".voice-speed select")) {
+      for (const other of documentRoot.querySelectorAll(".voice-speed select, [data-voice-speed]")) {
         if (other !== ui.speed) other.value = String(value);
+      }
+      if (player.mode === "browser" && player.state === "playing") {
+        ui.state.textContent = "New speed takes effect on the next part.";
       }
     });
 
     // A dynamically filled block (a tutor answer, a checked quiz explanation)
     // starts empty. Keep the control out of the way until there is text.
     if (host.hasAttribute("data-speak-dynamic")) {
-      // A tutor answer or a checked quiz explanation is filled in later, so the
-      // control must react to text appearing rather than being decided once.
-      new MutationObserver(() => setState(player.state, ui.state.textContent)).observe(host, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
+      // Only update the disabled state. Rewriting the status inside this
+      // observer would itself create mutations and an endless callback loop.
+      new MutationObserver(() => {
+        const empty = isDynamicEmpty();
+        ui.toggle.disabled = player.state === "loading" || empty;
+        ui.row.classList.toggle("is-empty", empty);
+      }).observe(host, { childList: true, subtree: true, characterData: true });
     }
 
     setState("idle", "");
+    return player;
+  };
+
+  let voicesListenerAdded = false;
+  const listenForVoices = () => {
+    if (!synth || voicesListenerAdded) return;
+    voicesListenerAdded = true;
+    const refresh = () => fillSettings(currentStatus || NO_BACKEND);
+    if (synth.addEventListener) synth.addEventListener("voiceschanged", refresh);
+    else synth.onvoiceschanged = refresh;
   };
 
   const enhance = (root, title) => {
@@ -645,65 +840,129 @@
     if (title && scope.nodeType === 1 && !nodes.includes(scope)) nodes.push(scope);
     if (scope.querySelectorAll) nodes.push(...scope.querySelectorAll("[data-speak]"));
     for (const node of nodes) attach(node, title);
+    // A chat reply can be the first speakable text on a page. Populate its
+    // new picker and discover backend voices without requiring a page reload.
+    if (root?.nodeType === 1 && nodes.length) {
+      listenForVoices();
+      fillSettings(currentStatus || NO_BACKEND);
+      if (currentStatus && !currentStatus.tts?.available && !HAS_BROWSER_SPEECH) {
+        voiceUnavailable(currentStatus.reason);
+      }
+      if (HAS_API && !currentStatus) getStatus().then((status) => {
+        if (!status.tts?.available && !HAS_BROWSER_SPEECH) voiceUnavailable(status.reason);
+        fillSettings(status);
+      }).catch(() => {
+        if (!HAS_BROWSER_SPEECH) voiceUnavailable("The voice service could not be reached, and this browser has no device voice.");
+      });
+    }
   };
 
-  // -------------------------------------------------------------------------
-  // Voice settings (rendered on the tutor page, used by every player).
-  // -------------------------------------------------------------------------
+  // On a multi-section lesson the student can hear the whole reading, not
+  // only individual excerpts. Only explicitly marked educational blocks are
+  // included; the menu, code samples, controls and other page chrome are not.
+  const enhancePage = () => {
+    const main = documentRoot.getElementById("main");
+    const heading = main?.querySelector("h1");
+    if (!heading) return;
+    const sections = [...main.querySelectorAll("[data-speak]")].filter((node) =>
+      !node.hasAttribute("data-speak-dynamic") && !node.parentElement?.closest("[data-speak]"));
+    if (sections.length < 2) return;
+    const host = documentRoot.createElement("div");
+    host.className = "voice-page-reader";
+    heading.insertAdjacentElement("afterend", host);
+    attach(host, "", () => {
+      const parts = sections.map((node) => extractText(node, "")).filter(Boolean);
+      return `${heading.textContent.trim()}. ${parts.join("\n\n")}`;
+    }, "Listen to all sections");
+  };
+
+  // All pickers (on lessons and on /tutor) share one set of preferences.
+  // voiceschanged can fire many times; bind change handlers only once.
   const fillSettings = (status) => {
-    const languageSelect = document.getElementById("voice-language");
-    const voiceSelect = document.getElementById("voice-voice");
-    const speedSelect = document.getElementById("voice-speed");
-    const prefsStatus = document.getElementById("voice-prefs-status");
-    if (!languageSelect || !voiceSelect) return;
-    const languages = (status.tts && status.tts.languages) || [];
-    const prefs = readPrefs();
-    languageSelect.replaceChildren();
-    for (const language of languages) {
-      const option = document.createElement("option");
-      option.value = language.code;
-      option.textContent = language.label;
-      languageSelect.appendChild(option);
-    }
-    const chosenLanguage = languages.some((item) => item.code === prefs.language)
-      ? prefs.language
-      : languages[0]?.code || "en";
-    languageSelect.value = chosenLanguage;
-    languageSelect.disabled = !languages.length;
+    const codes = availableLanguages(status);
+    for (const panel of documentRoot.querySelectorAll("[data-voice-settings]")) {
+      const languageSelect = panel.querySelector("[data-voice-language]");
+      const voiceSelect = panel.querySelector("[data-voice-voice]");
+      const speedSelect = panel.querySelector("[data-voice-speed]");
+      const prefsStatus = panel.querySelector("[data-voice-prefs-status]");
+      if (!languageSelect || !voiceSelect) continue;
+      const prefs = readPrefs();
+      languageSelect.replaceChildren();
+      for (const code of codes) {
+        const option = documentRoot.createElement("option");
+        option.value = code;
+        option.textContent = code === "hi" ? "Hindi" : "English";
+        languageSelect.appendChild(option);
+      }
+      languageSelect.value = codes.includes(prefs.language) ? prefs.language : codes[0] || "";
+      languageSelect.disabled = !codes.length;
 
-    const renderVoices = () => {
-      const language = languages.find((item) => item.code === languageSelect.value);
       voiceSelect.replaceChildren();
-      for (const voice of (language && language.voices) || []) {
-        const option = document.createElement("option");
-        option.value = voice.id;
-        option.textContent = voice.name;
-        voiceSelect.appendChild(option);
+      if (HAS_BROWSER_SPEECH) {
+        const defaultVoice = documentRoot.createElement("option");
+        defaultVoice.value = "browser:default";
+        defaultVoice.textContent = "Device voice (default, free)";
+        voiceSelect.appendChild(defaultVoice);
+        for (const voice of voicesFor(languageSelect.value)) {
+          const option = documentRoot.createElement("option");
+          option.value = `browser:${voice.voiceURI || voice.name}`;
+          option.textContent = `Device · ${voice.name} (${voice.lang})`;
+          voiceSelect.appendChild(option);
+        }
       }
-      const current = readPrefs();
-      if (current.voiceId && [...voiceSelect.options].some((option) => option.value === current.voiceId)) {
-        voiceSelect.value = current.voiceId;
+      if (status.tts?.available) {
+        const language = status.tts.languages?.find((item) => item.code === languageSelect.value);
+        for (const voice of language?.voices || []) {
+          const option = documentRoot.createElement("option");
+          option.value = `elevenlabs:${voice.id}`;
+          option.textContent = `ElevenLabs · ${voice.name} (natural)`;
+          voiceSelect.appendChild(option);
+        }
       }
+      // Existing v1 preferences stored bare ElevenLabs IDs; keep them valid.
+      const savedId = prefs.voiceId && !prefs.voiceId.includes(":")
+        ? `elevenlabs:${prefs.voiceId}` : prefs.voiceId;
+      const matches = [...voiceSelect.options].some((option) => option.value === savedId);
+      if (matches) voiceSelect.value = savedId;
+      else voiceSelect.value = status.tts?.available && !prefs.voiceId
+        ? [...voiceSelect.options].find((option) => option.value.startsWith("elevenlabs:"))?.value || voiceSelect.options[0]?.value || ""
+        : voiceSelect.options[0]?.value || "";
       voiceSelect.disabled = !voiceSelect.options.length;
-    };
-    renderVoices();
-    if (speedSelect) speedSelect.value = String(prefs.speed);
-    if (prefsStatus) {
-      prefsStatus.textContent = languages.length
-        ? "Saved on this device."
-        : "No voices are configured yet, so there is nothing to choose.";
+      if (speedSelect) speedSelect.value = String(prefs.speed);
+      if (prefsStatus) {
+        prefsStatus.textContent = codes.length
+          ? status.tts?.available
+            ? "Device or ElevenLabs voice. Saved on this device."
+            : "Device voice. Natural ElevenLabs speech needs a connected backend."
+          : "No voice is available here. Try a browser with speech voices installed.";
+      }
+      if (panel.dataset.voiceSettingsBound === "1") continue;
+      panel.dataset.voiceSettingsBound = "1";
+      languageSelect.addEventListener("change", () => {
+        writePrefs({ language: languageSelect.value, voiceId: "" });
+        fillSettings(currentStatus || NO_BACKEND);
+      });
+      voiceSelect.addEventListener("change", () => {
+        writePrefs({ language: languageSelect.value, voiceId: voiceSelect.value });
+        fillSettings(currentStatus || NO_BACKEND);
+      });
+      speedSelect?.addEventListener("change", () => {
+        const speed = clampSpeed(speedSelect.value);
+        writePrefs({ speed });
+        for (const other of documentRoot.querySelectorAll(".voice-speed select, [data-voice-speed]")) {
+          if (other !== speedSelect) other.value = String(speed);
+        }
+        activePlayer?.setSpeed(speed);
+      });
     }
+  };
 
-    languageSelect.addEventListener("change", () => {
-      renderVoices();
-      writePrefs({ language: languageSelect.value, voiceId: voiceSelect.value || "" });
-    });
-    voiceSelect.addEventListener("change", () => {
-      writePrefs({ language: languageSelect.value, voiceId: voiceSelect.value || "" });
-    });
-    speedSelect?.addEventListener("change", () => {
-      writePrefs({ speed: clampSpeed(speedSelect.value) });
-    });
+  const read = (host, title) => {
+    const player = attach(host, title);
+    if (!player) return;
+    listenForVoices();
+    fillSettings(currentStatus || NO_BACKEND);
+    player.read();
   };
 
   // -------------------------------------------------------------------------
@@ -834,7 +1093,7 @@
           status.conversation?.reason ||
           "The server has no ElevenLabs agent configured, so a spoken session cannot start yet.";
       }
-      say("The written tutor above still works. The voice reader on notes and formulas works independently of this panel.");
+      say("Use Ask by voice above if your browser supports it, or type a question and tap Listen on the answer. Live conversation requires an ElevenLabs agent.");
       return;
     }
 
@@ -863,6 +1122,8 @@
     };
 
     const teardown = () => {
+      starting = false; // a failed attempt must not permanently disable Retry
+      muted = false;
       try {
         processor?.disconnect();
         sourceNode?.disconnect();
@@ -1021,9 +1282,18 @@
         say("Connected. The tutor is listening — just start talking.");
 
         const InputCtor = window.AudioContext || window.webkitAudioContext;
-        inputCtx = new InputCtor();
-        sourceNode = inputCtx.createMediaStreamSource(stream);
-        processor = inputCtx.createScriptProcessor(4096, 1, 1);
+        if (!InputCtor) {
+          bail("This browser cannot stream microphone audio. Use the notes tutor above or try a current browser.");
+          return;
+        }
+        try {
+          inputCtx = new InputCtor();
+          sourceNode = inputCtx.createMediaStreamSource(stream);
+          processor = inputCtx.createScriptProcessor(4096, 1, 1);
+        } catch (_) {
+          bail("The microphone audio could not be started. Check your browser and try again.");
+          return;
+        }
         processor.onaudioprocess = (event) => {
           if (!ws || ws.readyState !== WebSocket.OPEN) return;
           if (muted) return;
@@ -1042,8 +1312,12 @@
           const samples = resample(input, inputCtx.sampleRate, 16000);
           ws.send(JSON.stringify({ user_audio_chunk: encodeBase64(toPcm16(samples)) }));
         };
-        sourceNode.connect(processor);
-        processor.connect(inputCtx.destination);
+        try {
+          sourceNode.connect(processor);
+          processor.connect(inputCtx.destination);
+        } catch (_) {
+          bail("The microphone audio could not be streamed. Check your browser and try again.");
+        }
       };
 
       ws.onmessage = (event) => {
@@ -1123,44 +1397,139 @@
     });
 
     say("Press Start conversation. The microphone stays off until you do.");
+    return { stop: () => { if (ws || stream) bail("Conversation ended. Nothing was saved."); } };
   };
+
+  // Voice questions use the browser's speech recognizer, not an unconfigured
+  // AI agent. The answer still comes from the existing, source-linked notes
+  // tutor. Recognition may use the browser vendor's speech service; never
+  // request the microphone on load or pretend it works in every browser.
+  const setupVoiceQuestion = () => {
+    const button = documentRoot.getElementById("voice-ask");
+    const input = documentRoot.getElementById("tutor-question");
+    const form = input?.closest("form");
+    const status = documentRoot.getElementById("voice-ask-status");
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!button || !input || !form || !status || !Recognition || IS_ANDROID_APP) return null;
+    button.hidden = false;
+    status.hidden = false;
+    status.textContent = "Ask by voice uses your browser's speech recognition service. The answer comes from EngineVerse notes and can be read aloud.";
+    let listening = false;
+    let recognizer = null;
+    let waitingForAnswer = false;
+    let heard = false;
+
+    button.addEventListener("click", () => {
+      if (listening) { recognizer?.stop(); return; }
+      try {
+        activePlayer?.stop(); // do not transcribe the app's own voice
+        activeTutor?.stop(); // do not share the microphone with a live session
+        heard = false;
+        recognizer = new Recognition();
+        recognizer.lang = languageTag(readPrefs().language);
+        recognizer.continuous = false;
+        recognizer.interimResults = false;
+        recognizer.onstart = () => {
+          listening = true;
+          button.textContent = "Stop listening";
+          status.textContent = "Listening… Ask your question now.";
+        };
+        recognizer.onresult = (event) => {
+          const question = String(event.results?.[0]?.[0]?.transcript || "").trim();
+          if (!question || heard) return;
+          heard = true;
+          waitingForAnswer = true;
+          input.value = question.slice(0, input.maxLength > 0 ? input.maxLength : 400);
+          status.textContent = `Heard: ${input.value}. Looking in the notes…`;
+          if (form.requestSubmit) form.requestSubmit();
+          else form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        };
+        recognizer.onerror = (event) => {
+          if (heard) return; // the submitted answer may still be on its way
+          waitingForAnswer = false;
+          const message = event.error === "not-allowed" || event.error === "service-not-allowed"
+            ? "Microphone access was denied. Allow it for this site, then try again."
+            : event.error === "no-speech"
+            ? "No speech was heard. Try again or type your question."
+            : event.error === "network"
+            ? "Your browser's speech recognition service is offline. Type your question instead."
+            : "Could not recognize speech. Check your microphone or type your question.";
+          status.textContent = message;
+        };
+        recognizer.onend = () => {
+          listening = false;
+          button.textContent = "Ask by voice";
+          if (status.textContent.startsWith("Listening")) status.textContent = "Nothing was heard. Try again or type your question.";
+          recognizer = null;
+        };
+        recognizer.start(); // the only place recognition can access the mic
+      } catch (_) {
+        listening = false;
+        button.textContent = "Ask by voice";
+        status.textContent = "Could not start the microphone. Use a current browser or type your question.";
+      }
+    });
+
+    return {
+      answered(host) {
+        if (!waitingForAnswer) return;
+        waitingForAnswer = false;
+        if (!host || !extractText(host, "").trim()) {
+          status.textContent = "There is no answer to read. Try another question.";
+          return;
+        }
+        status.textContent = "Reading the answer aloud. Use Pause or Stop beside the answer to control it.";
+        read(host, "Tutor answer");
+      },
+      failed() {
+        if (!waitingForAnswer) return;
+        waitingForAnswer = false;
+        status.textContent = "The tutor could not answer. Try again or type your question.";
+      },
+      stop() { try { recognizer?.abort(); } catch (_) { /* already stopped */ } },
+    };
+  };
+  let voiceQuestion = null;
 
   // -------------------------------------------------------------------------
   // Boot
   // -------------------------------------------------------------------------
+  let activeTutor = null;
   const bootVoice = () => {
     enhance(documentRoot, "");
+    enhancePage();
+    voiceQuestion = setupVoiceQuestion();
     // Nothing on this page can speak: do not contact the API at all.
     if (!documentRoot.querySelector("[data-speak], [data-voice-tutor]")) return;
+    fillSettings(NO_BACKEND);
+    listenForVoices();
     getStatus()
       .then((status) => {
-        // A successful status that says "not configured" means the Listen
-        // controls would be dead buttons. Hide them instead of pretending the
-        // feature is available; the tutor panel still explains what is missing.
-        if (!status.tts || !status.tts.available) {
-          documentRoot.documentElement.classList.add("voice-off");
-        }
+        if (!status.tts?.available && !HAS_BROWSER_SPEECH) voiceUnavailable(status.reason);
         fillSettings(status);
-        setupTutor(status);
+        activeTutor = setupTutor(status);
       })
       .catch(() => {
-        fillSettings({ tts: { languages: [] } });
-        setupTutor({ conversation: { available: false, reason: "The voice service could not be reached." }, tts: { languages: [] } });
+        if (!HAS_BROWSER_SPEECH) voiceUnavailable("The voice service could not be reached, and this browser has no device voice. Try again later.");
+        fillSettings(NO_BACKEND);
+        activeTutor = setupTutor({ ...NO_BACKEND, conversation: { available: false, reason: "The live conversation service could not be reached. The device voice reader still works." } });
       });
   };
 
-  // Leaving the page (or switching tab away from a bfcache snapshot) releases
-  // the audio blobs and stops any in-flight synthesis request.
+  // Leaving a page (including a bfcache snapshot) stops both audio engines,
+  // releases blobs and microphone tracks, and aborts in-flight synthesis.
   window.addEventListener("pagehide", () => {
-    try {
-      activePlayer?.stop();
-    } catch (_) {
-      /* nothing playing */
-    }
+    try { activePlayer?.stop(); } catch (_) { /* nothing playing */ }
+    voiceQuestion?.stop();
+    activeTutor?.stop();
   });
 
   window.EV = window.EV || {};
-  window.EV.voice = { enhance, extractText, chunkText, status: getStatus };
+  window.EV.voice = {
+    enhance, read, extractText, chunkText, status: getStatus,
+    tutorAnswered: (host) => voiceQuestion?.answered(host),
+    tutorFailed: () => voiceQuestion?.failed(),
+  };
 
   if (documentRoot.readyState === "loading") {
     documentRoot.addEventListener("DOMContentLoaded", bootVoice, { once: true });

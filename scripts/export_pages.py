@@ -177,9 +177,8 @@ def prepare_env(db_path: Path) -> dict[str, str]:
     # post to a server, the browser Submit button on problem pages, and
     # canonical URLs on the Pages origin rather than the export's loopback host.
     env["ENGINEVERSE_STATIC_EXPORT"] = "1"
-    # The public build never needs a credential and must never carry one. The
-    # voice reader talks to a separately hosted FastAPI app, whose origin is the
-    # only voice setting that reaches a page.
+    # The public build never carries a credential. Device speech needs no
+    # server; only optional ElevenLabs speech uses a hosted FastAPI origin.
     env["ELEVENLABS_API_KEY"] = ""
     env["ELEVENLABS_AGENT_ID"] = ""
     env["ENGINEVERSE_ELEVENLABS_ENABLED"] = ""
@@ -1498,9 +1497,8 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     (site / ".nojekyll").write_text("", encoding="utf-8")
     copy_static(site, base)
 
-    # Templates read this while rendering the static copy, so the reader knows
-    # which origin to call and every other page stays untouched when it is
-    # empty. It is an origin only - no key, agent ID or signed URL.
+    # Templates read this while rendering the static copy. Empty means only
+    # device speech is available; never bake in a key or signed agent URL.
     os.environ["ENGINEVERSE_VOICE_API_URL"] = voice_api_url
 
     from fastapi.testclient import TestClient
@@ -1854,7 +1852,7 @@ def main() -> int:
                         help="versioned signed GitHub Release APK URL (default: $ENGINEVERSE_APK_URL)")
     parser.add_argument("--voice-api-url", default=None,
                         help="public FastAPI origin that serves /api/voice "
-                             "(default: $ENGINEVERSE_VOICE_API_URL; empty disables the reader on Pages)")
+                             "(default: $ENGINEVERSE_VOICE_API_URL; empty uses device speech only)")
     parser.add_argument("--assistant-url", default=None,
                         help="public n8n Chat Trigger URL for the static copy "
                              "(default: $ENGINEVERSE_ASSISTANT_PUBLIC_URL)")

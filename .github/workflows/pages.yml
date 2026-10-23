@@ -27,7 +27,7 @@ env:
   ENGINEVERSE_APK_URL: ${{ vars.ENGINEVERSE_APK_URL }}
   # PUBLIC origin of the FastAPI app that serves /api/voice. Not a secret, and
   # not a credential: it only tells the static page where to send text for
-  # speech. Empty means the export ships without voice controls.
+  # natural speech. Empty leaves the free browser/device voice reader working.
   ENGINEVERSE_VOICE_API_URL: ${{ vars.ENGINEVERSE_VOICE_API_URL }}
   # The public n8n Chat Trigger the static copy calls directly (there is no
   # server on Pages). Set as a repository *variable*, not a secret: the value
@@ -82,8 +82,8 @@ jobs:
       - name: Check the public voice backend before publishing a voice-enabled site
         # A configured backend that is unreachable, missing /api/voice, or that
         # refuses the Pages origin fails here. With no variable set the export
-        # is a voice-disabled copy and this gate is skipped, so an ordinary
-        # site release never depends on an ElevenLabs account being active.
+        # uses only device speech and this gate is skipped, so an ordinary
+        # release never depends on an ElevenLabs account being active.
         if: env.ENGINEVERSE_VOICE_API_URL != ''
         run: python scripts/verify_voice_api.py --url "$ENGINEVERSE_VOICE_API_URL"
 
@@ -103,17 +103,16 @@ jobs:
           fi
 
       - name: Verify the exported voice configuration and secret hygiene
-        # Voice-enabled: the published apiBase must be the validated origin.
-        # Voice-disabled: it must be empty, and the page must say so rather
-        # than offering a Listen button that cannot work. Either way no key,
-        # agent id or signed URL may appear in any exported page.
+        # ElevenLabs-enabled: apiBase must be the validated origin.
+        # Device-only: apiBase must be empty; Listen still works in supporting
+        # browsers. No key, agent id or signed URL may enter an exported page.
         shell: bash
         run: |
           if [ -n "$ENGINEVERSE_VOICE_API_URL" ]; then
             python scripts/verify_voice_api.py --url "$ENGINEVERSE_VOICE_API_URL" --site site
           else
             python scripts/verify_voice_api.py --site site
-            echo "::notice::ENGINEVERSE_VOICE_API_URL is not set: this release ships voice as explicitly unavailable."
+            echo "::notice::ENGINEVERSE_VOICE_API_URL is not set: the device voice reader works, while natural ElevenLabs voice and live conversations are unavailable."
           fi
 
       - name: Bundle the CPython runtime for the browser Python compiler
