@@ -25,9 +25,24 @@ from pathlib import Path
 import pytest
 
 from engineverse import coding, db
+from engineverse.judge import provider_info
 
 REPO = Path(__file__).resolve().parents[2]
 STATIC_JS = REPO / "backend" / "static" / "js"
+
+
+#: Whether this host can isolate a submission at all. GitHub-hosted runners and
+#: most container runtimes block unprivileged user namespaces, so the sandbox
+#: refuses to execute anything - correct behaviour, but it means "run this code"
+#: has nothing to assert here. test_judge.py already carries this guard; these
+#: two tests reached the same host without it and failed on a green suite.
+_CAN_ISOLATE = bool(provider_info().get("available"))
+
+requires_isolation = pytest.mark.skipif(
+    not _CAN_ISOLATE,
+    reason="host cannot create the required namespaces; the sandbox refuses to "
+           "run submissions, so there is nothing to execute",
+)
 
 
 def _csrf_token(html_text: str) -> str:
@@ -72,6 +87,7 @@ class TestCsrfRecovery:
         assert body["executed"] is False
         assert body["csrfTokenUrl"] == "/api/csrf"
 
+    @requires_isolation
     def test_page_token_still_authorises_a_run(self, client):
         page = client.get("/codelab")
         token = _csrf_token(page.text)
@@ -106,8 +122,15 @@ class TestCompilerPageWithoutCatalogue:
 
         page = client.get("/compiler")
         assert page.status_code == 200
+        # The language list must survive an empty catalogue on every host. The
+        # execution banner is a separate question and depends on whether this
+        # host can isolate a submission at all: where it cannot, the honest
+        # banner is the correct output, so it is asserted rather than excused.
         assert page.text.count("<option") >= len(rows)
-        assert "Code execution is off" not in page.text
+        if _CAN_ISOLATE:
+            assert "Code execution is off" not in page.text
+        else:
+            assert "Code execution is off" in page.text
 
 
 class TestToolchainDiagnostics:
