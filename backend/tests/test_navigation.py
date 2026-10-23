@@ -681,9 +681,10 @@ def test_menus_open_without_javascript(signed_in):
 # ---------------------------------------------------------------------------
 
 def _readme_nav_table() -> dict[str, str]:
-    """The top-bar table in README.md, as {group label: landing path}."""
-    readme = (Path(__file__).resolve().parents[2] / "README.md").read_text(encoding="utf-8")
-    section = readme.split("## Finding things", 1)[-1]
+    """The top-bar table in docs/FEATURES.md (moved there from the README),
+    as {group label: landing path}."""
+    readme = (Path(__file__).resolve().parents[2] / "docs" / "FEATURES.md").read_text(encoding="utf-8")
+    section = readme.split("## Finding things", 1)[-1].split("\n## ", 1)[0]
     rows = re.findall(r"^\|\s*\*\*(.+?)\*\*\s*\|\s*`([^`]+)`\s*\|", section, re.M)
     return {label.strip(): path.strip() for label, path in rows}
 
@@ -697,7 +698,7 @@ def test_the_readme_top_bar_table_matches_the_application():
     reads it at runtime.
     """
     documented = _readme_nav_table()
-    assert documented, "no top-bar table found under README's 'Finding things'"
+    assert documented, "no top-bar table found under docs/FEATURES.md 'Finding things'"
     actual = {item.label: item.href for item in navigation.primary_nav(signed_in=True)}
     assert documented == actual, (
         f"README says {documented} but the application renders {actual}"

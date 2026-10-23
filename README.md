@@ -1,483 +1,282 @@
 # EngineVerse
 
-EngineVerse is a self-hostable learning platform for engineering students and
-working professionals. It brings together a growing subject catalogue, structured
-notes, practice, programming paths, projects, revision tools and a community in
-one progressively enhanced web app.
+[![CI](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml)
+[![Android app](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**The seeded catalogue is starter material, not a complete degree syllabus.**
-Some expanded entries are explicitly marked `needs_review`; publication means a
-learner can read them, not that an expert has signed them off. EngineVerse is not
-an accredited institution and its certificates are not academic or professional
-qualifications.
+EngineVerse is a free, open-source study platform for engineering students. It
+offers structured notes for 93 subjects, judged coding practice, daily problem
+sets, flashcards, a study planner, a multi-language code playground, and
+links to internships and scholarships. You can use it in three ways:
 
-## Hosting the full website
+| | What it is | Accounts | Where your progress lives |
+|---|---|---|---|
+| **Website on GitHub Pages** | A static copy of the site, rebuilt and deployed by Actions from this repository | None | Your browser (export and import as JSON) |
+| **Android app** | A native Kotlin app with an offline catalogue, planner and progress, which opens the website for full notes and code | None | The app's private storage |
+| **Self-hosted full website** | The FastAPI application with accounts, a server-side judge and PostgreSQL | Yes | Your server's database |
 
-**Visitors never need to download a ZIP or clone this repository.** The public
-GitHub Pages URL currently serves a static reading copy; its browser streak
-cannot follow a learner to another device. GitHub Pages cannot run the Python
-backend, accounts, PostgreSQL or a code judge, and this public source repository
-must **never** contain learner data, password hashes or database dumps.
+**Website address:** `https://sauravprivatelimited369-byte.github.io/Engine_Verse/`.
+It is served once GitHub Pages is enabled for this repository (Settings > Pages >
+Source: GitHub Actions). The Pages workflow builds and tests the site on every
+push either way.
 
-To offer the full website, the **operator** needs one public HTTPS domain and a
-server with persistent storage (or an equivalent managed FastAPI + PostgreSQL
-host). A ready-to-configure Docker Compose deployment with automatic TLS is
-included:
+> The seeded catalogue is broad starter material, not a complete degree
+> syllabus. Topics not yet expert-reviewed are labelled as drafts. EngineVerse
+> is not an accredited institution, and its certificates are not qualifications.
 
-1. Point your domain's DNS to the server and allow inbound TCP 80/443. Copy
-   `deploy/.env.example` to the ignored `deploy/.env`; set
-   `ENGINEVERSE_SITE_URL=https://your-domain`, unique database passwords and
-   `ENGINEVERSE_SECRET`. Keep those values on the server, not in GitHub or chat.
-   Set `ENGINEVERSE_SIGNIN=optional` to let visitors browse without an account;
-   they register/sign in to sync personal progress and use account features.
-2. On that server, run
-   `docker compose --env-file deploy/.env -f deploy/docker-compose.yml -f deploy/public.yml up -d --build`.
-   Check `https://your-domain/health`, `/register` and `/install`, then run
-   `python scripts/verify_hosted_app.py --url https://your-domain`.
-3. **Only after the HTTPS app is live**, set the repository Actions variable
-   `ENGINEVERSE_APP_URL` to that origin (no path or trailing slash). On the next
-   `main` Pages run, a preflight checks the live backend and switches Pages to a
-   gateway that takes visitors and old deep links to the full site. Until then
-   Pages remains the reading copy. A code push or pull request alone does not
-   provision a server or switch the public URL.
+<p>
+  <img src="docs/images/screenshot-dashboard.png" alt="The My progress page of the GitHub Pages copy: XP, streak, completed topics and problems, all saved on this device" width="49%">
+  <img src="docs/images/screenshot-planner.png" alt="The study planner: a task form with subject, due date and priority, and a 25-minute focus timer" width="49%">
+</p>
 
-On the full site, learner accounts and progress live in its **private
-PostgreSQL database**; the same account works in a phone browser or PWA. Code
-execution is *disabled* in production until the operator deploys and configures
-an appropriately isolated Judge0 instance. The optional Android APK wraps this
-same hosted origin, not a second server; it is offered only after a signed
-release exists. For steps and limitations see [deployment](docs/DEPLOYMENT.md),
-[Android releases](docs/ANDROID_TWA.md) and [encrypted off-site backups](docs/BACKUPS.md).
-A separate **private** GitHub repository may hold *age-encrypted backup snapshots*,
-not live records. GitHub is not a safe database and a public repository is not a
-safe place for any user data.
+<sub>Screenshots of the static build, taken in headless Chromium at 1366×900 and 1280×800.</sub>
 
-## Run locally
+## Contents
 
-Requirements: Python 3.11 or newer. The default development database is SQLite;
-PostgreSQL and container setup are documented separately.
+- [What you can do](#what-you-can-do)
+- [Architecture](#architecture)
+- [Run it locally](#run-it-locally)
+- [Tests and checks](#tests-and-checks)
+- [Deployment](#deployment)
+- [Android app](#android-app)
+- [Privacy and security](#privacy-and-security)
+- [Known limitations](#known-limitations)
+- [Documentation](#documentation)
+- [Contributing and licence](#contributing-and-licence)
 
-```bash
-python -m venv .venv
-. .venv/bin/activate
-python -m pip install -r requirements.txt
-cp .env.example .env
-```
+## What you can do
 
-Set a private development signing secret in `.env` (do not commit the file):
-
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-Copy the output into `ENGINEVERSE_SECRET` in `.env`. Seed the local SQLite
-catalogue, then start the app:
-
-```bash
-python scripts/seed.py --fresh --no-demo
-uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
-```
-
-`--fresh` is destructive: use it only with a disposable development database.
-`--no-demo` avoids creating sample accounts. Open <http://127.0.0.1:8000> and
-create an account through **Register**. Do not use development demo credentials
-on a public instance. The login page may show demo-account details only when the
-application is configured for development or tests.
-
-**Sign-in is compulsory by default.** With `ENGINEVERSE_SIGNIN=required`, a
-signed-out visitor can reach the sign-in, registration, password-recovery,
-install and legal pages (plus certificate verification and static assets);
-other pages redirect to `/login` and return to the requested page after sign-in,
-and the JSON API answers `401`. Set `ENGINEVERSE_SIGNIN=optional` for public
-anonymous catalogue browsing. The Pages workflow publishes the reading copy
-until an operator configures a verified full app origin; it then publishes a
-gateway to that app, not an account server of its own. See
-[Deployment](docs/DEPLOYMENT.md#github-pages-and-the-full-app).
-
-A six-digit code is required in exactly three places, and never on a normal
-sign-in by a learner who has already verified once:
-
-| Situation | What is asked for |
-|---|---|
-| A **new account** is created | One 6-digit code, to the Gmail/email address or to a mobile number with its country code, before the account exists |
-| **Forgot password** | A 6-digit code by email or SMS, then the new password |
-| **Change password** (Settings) | A 6-digit code by email or SMS, then the new password |
-| **Returning, verified learner** | Password only - no code |
-
-On the server that is `ENGINEVERSE_LOGIN_OTP=signup_only`: new and unverified
-accounts are challenged once, and verified accounts sign in with their password.
-`ENGINEVERSE_LOGIN_OTP=required` adds a delivered code to *every* sign-in;
-production accepts both modes only alongside `ENGINEVERSE_SMTP_URL` or
-`ENGINEVERSE_SMS_URL`, and `disabled` (the default) keeps password-only sign-in
-for instances with no transport at all. An enrolled TOTP authenticator satisfies
-the per-sign-in step without stacking another delivered code. The public Pages
-reading copy runs the same three cases in the browser, where the code is shown
-on the page because there is no mail or SMS transport behind a static host —
-unless the operator deploys the tiny OTP delivery service in
-[`services/otp`](services/otp/README.md) (free Gmail SMTP for email, Twilio or
-MSG91 for SMS) and sets the Actions variable `ENGINEVERSE_OTP_API_URL` to its
-HTTPS origin. The Pages export then bakes that origin into the site and the
-codes are really delivered to the learner's inbox/phone; the browser never
-receives the code.
-
-Registration, recovery and password change all share the country-code selector,
-so a learner can choose Gmail or SMS at each step. Once the code is accepted the
-tab bar shows the account icon in place of "Sign in / Start free", and the
-signed-in state is read back from storage before first paint on every later
-page - see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#sessions-and-the-signed-in-tab-bar).
-
-For Windows/Git Bash, Docker Compose, PostgreSQL and production configuration,
-see [Deployment](docs/DEPLOYMENT.md) and [the Compose topology](deploy/README.md).
-
-## Learning catalogue
-
-The catalogue is data-driven: pages enumerate the subjects and learning material
-present in the database rather than assuming there are only one or two fixed
-subjects. The following counts come from a fresh, no-demo seed; they describe
-what is seeded today, not a completeness guarantee.
-
-| Area | Current seeded coverage |
-|---|---|
-| **Engineering subjects** | 45 branches and 93 published subjects. The catalogue includes computing, electrical, mechanical, civil, chemical, aerospace, biomedical, agricultural, cybersecurity and other engineering fields. Browse what is available in the app; missing material is not implied by this snapshot. |
-| **Notes** | 406 published topics, 1,624 notes across four reading depths, and 10,556 note sections. Standard notes use the [13-section note template](docs/NOTE_TEMPLATE.md). |
-| **Cyber Security** | 13 published starter topics; on an instance run with `ENGINEVERSE_SIGNIN=optional` learners can read them without signing in. They remain starter material and need expert review. |
-| **Diagrams and models** | 406 topic-linked SVG diagrams and 406 interactive 3D learning models. The WebGL renderer has no external runtime dependency. |
-| **Practice** | 534 active questions and 107 published Daily Practice Problem sets (535 slots); every active question, all 93 subjects and all ten language tracks appear in the seeded DPP archive. Practice XP is knowledge-based (owner decision, 19 October 2026, reversing the earlier attempt-based rule): a question pays its difficulty value on its first correct answer only, wrong answers and repeats pay 0, and a coding problem pays on its first accepted solution — so a learner's XP and leaderboard position reflect questions and problems actually passed, not attempts farmed. Attempts are still recorded (history, mistake notebook, streaks). XP earned before the change is kept as recorded. |
-| **Programming paths** | 10 learning paths and 225 staged, searchable modules across Python, Java, JavaScript, TypeScript, C, C++, C#, Go, Rust and SQL. Each path is staged — Foundations, then Working Practice, then Advanced Engineering — across 30 stages, and each stage ends with three checkpoint questions (90 total) answered through the normal practice flow, with feedback, explanation and XP only after submission. All modules have a focused reader. Fifteen modules now have structured learn–practice–prove units: one foundational unit per language plus priority-language complexity units. The other 210 retain legacy content; this is not a complete textbook curriculum. See [academy scope and authoring](docs/ACADEMY.md). |
-| **Coding practice** | 105 problems with language stubs and test cases, grouped into 14 curated sheets (first drills, arrays, two pointers and windows, stacks and search, linked lists, trees and heaps, graphs, dynamic programming, advanced patterns, SQL and stream sets) plus a 30-problem interview set. Every problem appears in at least one sheet, and every sheet is reachable at `/sheets` in a recommended order with hints, editorials and progress. Which languages can execute depends on the configured judge and installed toolchains; see [Code execution](#code-execution). |
-| **My stream** | Each branch has a study hub at `/stream/{slug}` that gathers the subjects, notes, formula sheets, flashcards, question mix, sheets and projects that branch actually has, with the counts taken from the database rather than promised. `/stream` opens on the branch saved in the profile and `/streams` switches between them. Every stream also reaches the branch-neutral pattern sheets and the interview set, so no branch gets an empty page. |
-| **Projects** | 17 project briefs with ordered steps, skills and resources, spanning hardware, engineering software, full-stack apps and a model-free study planner with an optional allowlisted, confirmation-gated agent — including a substantial capstone brief linked to each of the ten language paths. |
-| **Revision and roadmaps** | 281 public flashcards are browsable at `/flashcards` and searchable without indexing their answers; personal SM-2 schedules are at `/revision`. The seed also includes 5 roadmaps and 57 roadmap nodes. |
-| **Study helper** | A retrieval-grounded tutor that composes answers from EngineVerse's own indexed material and cites its sources. It does not make an external model call by default and should say when the catalogue has no relevant coverage. |
-
-Studying does not require leaving the site. Notes, worked examples, diagrams and
-3D models, formula sheets, flashcards, the practice bank, the coding judge and
-the projects are all served from this application, and `/resources` is the
-complete index of those in-app shelves rather than a page of outbound links. An
-older shelf of external reading still exists at `/resources/offsite` and is
-labelled as optional: no navigation, lesson or practice flow depends on it, and a
-deployment that never visits it loses no learning material.
-
-## Integrated engineering and developer labs
-
-Four advanced capabilities are wired into the existing catalogue and navigation:
-
-| Lab | What is integrated |
-|---|---|
-| **Public APIs directory** (`/apis`) | 12 curated developer/engineering APIs with category, auth, CORS, search and exact-slug filters; paired local topics/projects and cURL, Python and JavaScript examples. Inspired by `public-apis/public-apis`. |
-| **Data & BaaS studio** (`/studio`) | Five-service comparison and SDK snippets, a 26-table public schema inspector, an access/RLS policy matrix, and a bounded SELECT runner with `EXPLAIN QUERY PLAN`. SQL runs only on a disposable public snapshot—never the live app database. Inspired by Supabase and Appwrite. |
-| **Workflow automations** (`/workflows`) | Declarative study, revision, placement and catalogue-audit pipelines with real streamed step outputs and importable n8n JSON. Operators are allowlisted and read-only; custom code and webhooks cannot execute. Inspired by n8n. |
-| **Engineering swarm lab** (`/swarm`) | Five deterministic specialist review lenses, using only seeded topics, note sections, formulas, questions, coding briefs and projects. Quotes have citations; trade-offs are explicitly unresolved review prompts. No external model or autonomous tools are running. Inspired by MiroFish. |
-
-On GitHub Pages these pages show the directory, schema, blueprints, JSON downloads
-and clearly labelled seeded examples. New SQL queries, workflow runs and swarm
-reviews require a self-hosted backend; exported controls are disabled rather than
-pretending to execute. Normal account policy, CSRF and rate limits apply on the
-real app. No operator changes learner progress, grading or SRS state.
-
-See [Advanced capabilities](docs/ADVANCED_CAPABILITIES.md) for endpoint contracts,
-isolation limits, grounding guarantees, n8n setup and deployment verification.
-
-## Finding things
-
-Sixty pages is only useful if a learner can find the one they want. The whole
-site is described once, in `engineverse/navigation.py`: every destination, the
-group it belongs to, a one-line description, and the URL prefixes that mean "you
-are here". Everything the reader sees is derived from that table — the desktop
-top bar, the mobile bottom bar, the slide-down menu, the footer columns, the
-breadcrumb trail on every page, the index at `/resources`, `/sitemap.xml` and the
-GitHub Pages export list — so they cannot disagree about what exists or what
-something is called. See [Architecture](docs/ARCHITECTURE.md#navigation-is-data)
-for what this replaced.
-
-The top bar is six grouped entries rather than ten flat links. Each group label
-is itself a link to that group's landing page, so the bar is one click from the
-most useful page in every group even for a reader who never opens a menu:
-
-| Group | Landing page | Also in the menu |
+| Area | Pages copy | Full website |
 |---|---|---|
-| **My stream** | `/stream` | the full index |
-| **Learn** | `/explore` | formulas, videos, books, roadmaps, the study tutor, engineering swarm lab |
-| **Practice** | `/practice` | the daily set and its archive, the question bank, the mistake notebook |
-| **Code** | `/programming` | coding problems, practice sheets, projects, public APIs, data & BaaS studio |
-| **CodeLab** | `/codelab` | online compiler for Python, Java, C, C++, JavaScript, TypeScript, Go, SQL and shell |
-| **Revise** | `/revision` | public flashcards, formulas, roadmaps |
-| **More** | `/resources` | today's plan, streaks, leaderboard, profile, workflow automations, community, placements, about |
+| **Learn**: 45 branches, 93 subjects, 406 topics with notes at four depths, diagrams, interactive 3D models, formula sheets, videos and books | ✓ | ✓ |
+| **Practise**: 534 questions, daily problem sets, a mistake notebook and revision flashcards | ✓ (progress in the browser) | ✓ (progress in your account) |
+| **Code**: 105 judged problems in 14 sheets, 10 language paths and the CodeLab compiler | ✓ Runs in your browser through WebAssembly | ✓ Server judge, when the operator configures one |
+| **Plan**: study planner with tasks, exam countdowns and a focus timer | ✓ | ✓ |
+| **Track**: dashboard, streak heatmap and portfolio of completed work | ✓ On this device | ✓ Across devices |
+| **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |
+| **Help**: support and feedback, privacy and terms, a 404 page | ✓ (feedback through GitHub issues) | ✓ |
+| Accounts, two-factor sign-in, community posts, leaderboard, certificates | n/a | ✓ |
 
-On a phone the menu button opens every group expanded, which puts all sixty pages
-one tap away instead of leaving the last fifteen to the footer. Menus open on
-hover *and* on keyboard focus, so the whole navigation works with no JavaScript —
-as does every other page on the site.
+### Code playground
 
-`/resources` is the page that answers *what is actually on this site?*: every
-destination in its group with the description and the count this instance holds,
-opened by three ways in by intent. `/explore` carries the branch browser, which
-lists all 45 branch hubs with links to both the branch page and its study hub.
-Both were reachable from nowhere before.
+Each language runs on its real compiler or interpreter. Nothing is simulated.
 
-Deep links from search and from the recommendation cards narrow the page they
-land on — `/videos?slug=…`, `/books?slug=…`, `/formulas?slug=…` and
-`/practice/questions?slug=…` — rather than using a `#fragment`. The library pages
-paginate 24 rows at a time, and a fragment is never sent to the server, so a
-fragment link dropped the reader at the top of a long list with the item they had
-clicked several pages in. `backend/tests/test_links.py` asserts not just that
-these URLs resolve but that they *show the thing they named*, which is the
-property a status-code check cannot see.
+- **On the Pages copy and in the Android app**, code runs in your browser,
+  inside a Web Worker. It uses CPython 3.12 (Pyodide), Clang for C and C++,
+  javac with TeaVM for Java, Roslyn for C#, the TypeScript compiler, GopherJS
+  for Go, rustc's Miri for Rust, SQLite and a Bash interpreter. Each runtime is
+  downloaded the first time you pick its language. The Pages workflow
+  compiles and runs a real program in every language before deploying.
+- Known differences: Go in the browser cannot read stdin, and the Rust worker
+  wraps snippets that lack `fn main`. A runtime that fails to download is
+  reported as **not run**.
+- **On a self-hosted site**, the server judge runs code only when the operator
+  configures one. Production defaults to `ENGINEVERSE_JUDGE=disabled`.
 
-Every collection pages, including `/formulas`, which used to render all 365
-formulas as a 1.3 MB page while a hard-coded limit of 300 quietly deleted the
-last 65. Every page also keeps a clean heading outline: a reader who navigates by
-heading hears the structure, and the footer's headings and the markdown
-renderer's heading offset both used to make most pages skip two or three levels.
-
-Every page below the top level carries a breadcrumb, derived from the same table.
-It is audience-aware: a signed-out reader is never shown a link whose only effect
-would be a bounce to `/login`, and `/stream/{branch}` reads
-"Home › Streams › …" for them rather than pointing at a page they cannot open.
-
-`/resources` is the page that answers *"what is actually on this site?"*. It lists
-every destination in its group with the description and the count this instance
-really has — read from the database, so a deployment seeded with less shows less —
-and opens with three ways in by intent: just started, studying for an exam,
-preparing for interviews.
-
-The generated [curriculum coverage report](docs/CURRICULUM_COVERAGE.md) lists the
-current snapshot by branch and by stream. Use
-`python scripts/coverage_report.py` after seeding to regenerate it for a
-database. Do not read the counts as evidence that every
-subject has a complete semester or degree curriculum.
-
-## Practical programming
-
-The programming paths are intended to build from syntax toward useful software,
-not stop at isolated language trivia. Each path runs through the same three
-stages — **Foundations** (the language and its first programs), **Working
-Practice** (the habits of small correct programs: testing, error handling, safe
-input) and **Advanced Engineering** (structure, concurrency, persistence,
-authorization and the tooling a maintainer relies on). Every stage ends with a
-three-question checkpoint answered through the normal practice flow, and every
-path ends with a capstone project brief: a real problem with prerequisites,
-ordered milestones, testing expectations, resources and a shippable result.
-Depending on the path, modules cover collections, functions, object-oriented
-design, error handling, testing, safe input handling, APIs, persistence,
-concurrency, authorization and project structure. C and C++ paths also emphasize
-memory/resource safety and undefined-behavior avoidance. The Python, Java, C,
-C++ and C# paths also contain legacy modules on complexity, strings, recursion,
-sorting, stacks, linked lists, trees, heaps, graphs and dynamic programming.
-A linked problem is related practice, not evidence of a matching language starter
-or per-subtopic mastery. The new [academy reader](docs/ACADEMY.md) explicitly
-tracks structured-unit coverage and gives seven-level expansion goals for all ten
-languages. Initial units include traces, precise exercises, progressive hints,
-local code drafts, references and self-review rubrics. They do not execute drafts
-or save self-reported mastery; existing stage quizzes and submissions are separate.
-
-The coding problems on a language page are limited to the ones that language has
-a usable editor starter for; where a path has no starter yet the page says so
-rather than opening an editor that cannot run that language. The modules,
-checkpoints and capstone brief remain available regardless.
-
-Runnable support is a deployment property, not just a curriculum promise. The
-UI marks a language runnable only when the active provider supports it on that
-host. Missing compilers or blocked isolation cause the runner to refuse execution
-rather than silently run code with weaker controls.
-
-## Code execution
-
-Learner code is untrusted. **Production does not run code in the web process.**
-The production default is `ENGINEVERSE_JUDGE=disabled`; operators may instead
-configure a separately managed Judge0 endpoint. This application delegates to
-that endpoint but does not certify or independently verify its isolation.
-
-For development, `ENGINEVERSE_JUDGE=auto` may select the Java sandbox or the
-built-in local runner. The local runner only becomes available when the host
-proves it can create network, PID and mount namespaces, mount private procfs,
-and perform the filesystem-isolation mount. It applies bounded process
-resources, scrubs the child environment and refuses if required controls fail.
-It is still a child
-process on the same host—not a container or VM—and is not a production security
-boundary. A restrictive kernel/container may make it unavailable, in which
-case submissions are refused. See [Security](docs/SECURITY.md) for its limits.
-
-### Compilers and the terminal
-
-`/compiler` is a compiler-plus-terminal for **every taught language** —
-Python, Java, JavaScript, TypeScript, C++, Go, Rust, C, C# and SQL — and
-`/python-compiler` is the same page opened on Python. You write a complete
-program, give it stdin, and the judge compiles and runs it with the
-language's own toolchain, returning real stdout/stderr/status. The local
-runner has a toolchain entry for every catalogue language (CPython, Node,
-`tsc`/Node type-stripping for TypeScript, gcc/g++, `javac`, `go build`,
-`rustc`, .NET for C#, SQLite for SQL) and Judge0 maps the same slugs in
-production; a language is only offered as runnable when its toolchain is
-actually installed, and is otherwise labelled "no runtime here" — never
-simulated. Judged problems append a stdin/stdout harness for Python and
-JavaScript function stubs; other languages submit complete programs.
-
-On the static GitHub Pages copy there is no server judge, so every language
-brings its real toolchain with it, compiled to WebAssembly and fetched into
-the published artifact pinned and same-origin: JavaScript in an isolated Web
-Worker, Python on real CPython (Pyodide, `scripts/fetch_pyodide.py`, ~13 MiB),
-and C/C++ (Clang 22), Java (OpenJDK's javac + TeaVM), Rust (rustc's Miri),
-C# (Roslyn on Blazor WebAssembly), TypeScript (the official compiler, fully
-type-checking), Go (GopherJS) and SQL (SQLite) via
-`scripts/fetch_browser_runtimes.py` (~170 MiB across all of them, each loaded
-lazily only when its language is first picked). The Pages workflow verifies
-each one end-to-end — a real program compiled and run with stdin, plus its
-diagnostics — before deploying (`scripts/check_browser_runtimes.js`). Two
-platform limits are labelled rather than hidden: Go in the browser cannot
-read stdin, and the Rust browser worker wraps snippets that lack `fn main`
-instead of erroring as rustc does. A language whose runtime files fail to
-download is omitted from `runtimes/manifest.json` and reports NOT RUN with
-the reason — never a simulation, on either copy.
-
-## Security overview
-
-Security is part of the application design, not a deployment afterthought. The
-current implementation includes:
-
-- scrypt password hashing with bounded password length and bounded verification
-  parameters; a modest local exact-match common-password list is used, not a
-  breached-password lookup service;
-- opaque sessions whose random tokens are stored as HMAC-SHA-256 hashes under
-  `ENGINEVERSE_SECRET`, session- or browser-bound CSRF tokens, secure cookie
-  flags when served over HTTPS, and revocation on sensitive account changes;
-- a compulsory six-digit one-time code at every password sign-in, delivered by
-  configured email or an operator-run SMS gateway. An enrolled TOTP authenticator
-  satisfies that sign-in step without stacking another delivered code; codes are
-  short-lived, single-use, keyed and sealed, and public reading remains public;
-- authentication-factor replay controls for TOTP steps, one-use recovery codes
-  and short-lived one-use authentication/reset tokens. Practice answers are
-  repeatable as attempts, but XP is knowledge-based: only the first correct
-  answer to a question (and the first accepted solution to a problem) pays,
-  so repeated answers cannot mint XP;
-- server-side authorization, parameterized SQL, request/input bounds,
-  autoescaped templates and CSP/security headers. There is currently no
-  user-controlled file-upload feature or dynamic file-serving route;
-- rate limits for login (10 per 5 minutes), registration (5/hour), reset-link
-  requests (5/hour/IP plus 3/hour per keyed address), reset-token checks
-  (10 per 5 minutes), feedback
-  (5 per hour per IP), practice answers (120 per minute per IP), and coding
-  execution (30 per minute); sign-in code resends are capped at 5 issues per
-  15 minutes with a 60-second resend cooldown; per-account limits also bound
-  password/MFA/email actions and community posts, replies, reports and votes;
-- proxy trust disabled by default. Enable it only behind a trusted proxy that
-  overwrites forwarding headers.
-
-These protections reduce risk but do not make an application invulnerable.
-Review the threat model, operational requirements, key rotation effects and
-known limitations in [docs/SECURITY.md](docs/SECURITY.md) before deployment.
-Never commit `.env`, database files, private keys or real learner data.
-
-### Known limitations
-
-Production refuses to start with compulsory sign-in codes unless at least one
-mail or SMS transport is configured. SMS is deliberately an operator-run HTTP
-gateway: EngineVerse does not provide a hosted SMS service, queue, delivery
-receipt or carrier fallback, so the operator owns its availability and abuse
-controls. A verified phone is optional; email remains the default channel when
-mail is configured. An enrolled TOTP authenticator satisfies the every-login
-check without a delivered code.
+More detail on every feature is in [docs/FEATURES.md](docs/FEATURES.md).
 
 ## Architecture
 
-```text
-Browser / PWA  ──► FastAPI + Jinja2 server-rendered pages ──► SQLite or PostgreSQL
-                                         │
-                                         └──► configured judge provider
+```mermaid
+flowchart LR
+    subgraph repo[This repository]
+        seed[seed_data/*.py] --> db[(SQLite or PostgreSQL)]
+        app[FastAPI + Jinja2<br/>backend/] --> db
+        export[scripts/export_pages.py] -->|renders every public page| app
+        catexp[scripts/export_android_catalog.py] --> seed
+    end
+
+    export --> site[Static site<br/>+ pages-live.js<br/>+ WebAssembly runtimes]
+    site -->|pages.yml| pages[GitHub Pages]
+    catexp --> asset[catalog.json]
+    asset --> android[Android app<br/>Kotlin + Compose]
+    android -->|hardened WebView:<br/>full notes, CodeLab| pages
+
+    browser[Browser] --> pages
+    browser -.->|self-hosted| app
+    pages -.-> ls[(localStorage:<br/>device-local profile)]
+    android -.-> prefs[(App-private<br/>SharedPreferences)]
 ```
 
-The Python application uses server-rendered HTML with progressive enhancement.
-The default SQLite setup needs no database service; PostgreSQL is intended for
-production. Static assets are served by the application without a JavaScript
-build step or third-party CDN. The application also includes a service worker
-for offline reading; personalized responses are excluded from offline caching.
+- `backend/` holds the FastAPI app. Pages are server-rendered with progressive
+  enhancement: no JavaScript build step, no CDN and no third-party scripts.
+  `backend/engineverse/navigation.py` describes every page once; the menus,
+  breadcrumbs, sitemap and Pages export all derive from it.
+- `scripts/export_pages.py` renders the app into a static site with the correct
+  `/Engine_Verse/` base path, rewrites links, and skips pages that need a
+  server. `backend/static/js/pages-live.js` then provides device-local
+  progress, quizzes and the browser judge.
+- `android/` is a standalone Gradle project. Its offline catalogue is generated
+  from the same seed data.
+- Repository URLs come from `backend/engineverse/project.py`, which reads them
+  from `GITHUB_REPOSITORY` or the git remote, so a fork builds links to itself.
 
-See [Architecture](docs/ARCHITECTURE.md) for the module map, request lifecycle,
-search/tutor flow and judge providers.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module map and request
+lifecycle.
 
-## CodeLab — Online Compiler
+## Run it locally
 
-`/codelab` (**CodeLab — Online Compiler**, top-bar tab **CodeLab**) provides a
-full multi-language compiler workspace built on EngineVerse's isolated sandbox
-and Judge0 execution architecture:
+You need Python 3.11 or newer. Node 22 is only needed for the browser checks.
 
-- **Language-specific real runtimes (`backend/engineverse/codelab.py`)**:
-  - **Python 3 (`python`)**: `python3 -I -m py_compile` check + `python3 -I -B main.py`
-  - **Java (`java`)**: real JDK compilation (`javac`) to `.class` bytecode + JVM execution (`java Main` or detected `public class <Identifier>`)
-  - **C (`c`)**: `gcc -O2 -std=c17 -o program main.c` + `./program`
-  - **C++ (`cpp`)**: `g++ -O2 -std=c++17 -o program main.cpp` + `./program`
-  - **JavaScript (`javascript`)**: `node --check main.js` + isolated `node` runtime on server (and isolated Web Worker on static offline copies, explicitly labeled)
-  - **Additional registered languages**: TypeScript (`tsc` + `node`), Go (`go build`), SQL (isolated in-memory `SQLite`), POSIX Shell (`sh`), plus Rust (`rustc`) and C# (`dotnet`) when installed on the host or backed by Judge0.
-- **Strict runtime honesty**: A language appears as executable in CodeLab only
-  when `provider.supports(slug)` is `True` on the active host. Code entered in
-  one language mode is never routed to another language's interpreter or simulated.
-- **Execution API (`POST /api/execute`)**: Accepts `{ "language", "sourceCode", "stdin" }`
-  (CSRF-protected, sliding-window rate-limited, request-size bounded) and returns
-  `stdout`, `stderr`, `compileOutput` (kept separate from runtime `stderr`),
-  `exitCode`, `executionTime`, `status` (`success`, `compilation_error`,
-  `runtime_error`, `timeout`, `service_unavailable`), and active `runtime` label.
-- **Android phone & touch support**: Responsive mobile view tabs (`Code` /
-  `Input (stdin)` / `Output`), one-tap symbol key bar (`Tab`, `{`, `}`, `(`, `)`,
-  `[`, `]`, `;`, `:`, `"`, `'`, `=`, `<`, `>`, `_`, `/`, `←`, `→`) for soft
-  keyboards, PWA app shortcut to `/codelab`, `adjustResize` soft-input handling,
-  and native share/export bridge in `scripts/build_android_apk.py`.
-- **Adding a new language**: Add a runner entry in `backend/engineverse/judge/local.py`
-  (and `LANGUAGE_IDS` in `judge0.py`) and register its descriptor, starter
-  template, and examples in `LANGUAGE_SPECS` inside `backend/engineverse/codelab.py`.
+```bash
+git clone https://github.com/sauravprivatelimited369-byte/Engine_Verse.git
+cd Engine_Verse
+python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"   # paste into ENGINEVERSE_SECRET in .env
+python scripts/seed.py --fresh --no-demo                   # --fresh wipes the dev database
+uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
+```
+
+Open <http://127.0.0.1:8000> and register.
+
+- Sign-in is required by default. Set `ENGINEVERSE_SIGNIN=optional` to browse
+  anonymously.
+- `ENGINEVERSE_LOGIN_OTP` controls delivered six-digit codes:
+  - `disabled` (the default) is password-only sign-in.
+  - `signup_only` asks for a code when creating an account and resetting or
+    changing a password.
+  - `required` asks at every sign-in. It needs a configured mail or SMS
+    transport.
+
+To build and browse the static Pages copy locally:
+
+```bash
+python scripts/export_pages.py --out site --reading-copy
+python scripts/fetch_pyodide.py --out site/pyodide            # optional: Python in the browser
+python scripts/fetch_browser_runtimes.py --out site/runtimes  # optional: other languages
+mkdir -p /tmp/serve && ln -sfn "$PWD/site" /tmp/serve/Engine_Verse
+python -m http.server 8765 --directory /tmp/serve             # open http://127.0.0.1:8765/Engine_Verse/
+```
 
 ## Tests and checks
 
+Run everything from the repository root, as CI does.
+
 ```bash
-python -m pytest backend/tests -q
-python -m pytest backend/tests -q -m "not slow"
-node scripts/check_engine3d.js
-python scripts/dump_scenes.py | node scripts/check_scenes.js
-python scripts/export_pages.py --self-check
-python scripts/verify_pages.py --self-check
-node android/build-twa.cjs --self-check
+python -m pytest backend/tests -q                 # full suite, about 11 minutes
+python -m pytest backend/tests -q -m "not slow"   # skip real compile/run tests
+
+npm install --prefix .toolchain/jsdom jsdom@26    # once, for the static-site checks
+node scripts/check_static_site.js site            # 64 checks on the exported pages
+node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
+node scripts/check_browser_runtimes.js site       # needs the runtimes fetched above
+
+python scripts/export_android_catalog.py --check  # Android catalogue matches the seed
+cd android && ./gradlew testDebugUnitTest lintDebug assembleDebug   # needs JDK 17 + Android SDK
 ```
 
-The Python suite covers API and page behavior, authorization, request validation,
-rate limiting, authentication, seeded catalogue coverage and judge isolation.
-The scene checks validate both the renderer's geometry/math and the seeded 3D
-models. CI also builds and tests the Java sandbox and validates the PostgreSQL
-schema; those checks do not substitute for deployment testing against your own
-infrastructure.
+| Workflow | Runs on | What it does |
+|---|---|---|
+| [CI](.github/workflows/ci.yml) | Every push and pull request | Python suite on SQLite and PostgreSQL, JavaScript syntax and behaviour checks, the 3D scene checks, and the static-site checks under jsdom. A weekly job checks external links. |
+| [GitHub Pages](.github/workflows/pages.yml) | `main` and this project's working branch | Tests, export, a runtime check in every language, jsdom checks and a secret scan. It deploys only if all pass, then `verify_pages.py` checks the live URL. |
+| [Android app](.github/workflows/android-build.yml) | Changes under `android/` | Unit tests, lint and a debug APK artifact. A signed release is built on manual dispatch only. |
+| [Java sandbox](.github/workflows/java.yml) | Changes to `sandbox-java/` | Builds and tests the Java sandbox |
 
-## Documentation
+A passing suite is not a security audit and does not certify a deployment.
 
-- [Architecture](docs/ARCHITECTURE.md) — code map and request lifecycle
-- [Security](docs/SECURITY.md) — threat model, controls and limitations
-- [Deployment](docs/DEPLOYMENT.md) — local, Compose and production setup
-- [Compose topology](deploy/README.md) — services and code-execution boundary
-- [Curriculum coverage](docs/CURRICULUM_COVERAGE.md) — generated seeded-content snapshot
-- [Content and licensing](docs/CONTENT.md) — review lifecycle and third-party material policy
-- [Note template](docs/NOTE_TEMPLATE.md) — the 13-section note format
-- [PostgreSQL](db/postgres/README.md) — schema and partitioning notes
-- [Java sandbox](sandbox-java/README.md) — sandbox implementation and caveats
-- [Learning outcomes](docs/LEARNING_OUTCOMES.md) — accuracy and independence measures, thresholds and limits
-- [Full audit 2026-10-18](docs/AUDIT_2026-10-18.md) — evidence-based audit of all 100 areas: confirmed findings, fixes applied, test results and the remaining backlog
+## Deployment
+
+**GitHub Pages.** `pages.yml` builds and deploys on every push to `main`. In the
+repository settings, set **Settings > Pages > Source** to **GitHub Actions**.
+The site is served under `/Engine_Verse/`, and every internal link is rewritten
+for that base path. Nested routes are exported as `route/index.html`. A
+`404.html`, `sitemap.xml` and `robots.txt` are generated. GitHub Pages cannot run
+Python, so accounts, the server judge and the database are not part of this copy.
+
+**Full website.** Use Docker Compose with automatic TLS on your own HTTPS
+domain:
+
+```bash
+cp deploy/.env.example deploy/.env    # set ENGINEVERSE_SITE_URL, ENGINEVERSE_SECRET and database passwords
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml -f deploy/public.yml up -d --build
+python scripts/verify_hosted_app.py --url https://your-domain
+```
+
+Once that origin is live, setting the Actions variable `ENGINEVERSE_APP_URL`
+turns the Pages site into a gateway to it. See
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [deploy/README.md](deploy/README.md),
+[GLOBAL_DEPLOYMENT.md](GLOBAL_DEPLOYMENT.md) and
+[docs/BACKUPS.md](docs/BACKUPS.md).
+
+## Android app
+
+The app in [`android/`](android/README.md) is native Kotlin with Jetpack Compose
+(AGP 9.1.1, minSdk 24, targetSdk 36):
+
+- **Works offline:** the subject catalogue, topic summaries, progress and
+  streaks, the planner, the portfolio and settings.
+- **Opens the website in the in-app viewer:** full notes, CodeLab, daily
+  practice and opportunities. The viewer loads only this site over HTTPS,
+  exposes no JavaScript bridge and blocks mixed content.
+
+**Getting the APK.** Every Android change uploads a debug APK
+(`engineverse-debug-apk`) to its
+[workflow run](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml).
+Download it from the run page while signed in to GitHub. The debug APK is for
+testing. A signed release needs the maintainer's keystore in repository
+secrets; see [android/README.md](android/README.md#signed-release-builds). No
+release has been published yet, and the app is not on Google Play.
+
+## Privacy and security
+
+- The Pages copy and the app have **no accounts and no analytics**. Progress
+  stays on your device. Nothing you enter is uploaded, and imported files are
+  validated field by field.
+- On the full website:
+  - Passwords are hashed with scrypt.
+  - Sessions are opaque tokens, stored only as HMAC digests.
+  - Forms have CSRF protection, and requests are rate-limited.
+  - Content-Security-Policy uses per-request nonces.
+  - TOTP two-factor sign-in and optional delivered codes are available.
+- No secrets, keystores or learner data are committed. Release signing uses
+  repository secrets only.
+
+To report a vulnerability, follow [docs/SECURITY.md](docs/SECURITY.md#reporting-a-vulnerability).
+Don't use a public issue.
 
 ## Known limitations
 
-- Seeded content is broad starter coverage, not a complete engineering-degree
-  syllabus. The generated additions, including Cyber Security, are public but
-  marked for expert review. See the [coverage snapshot](docs/CURRICULUM_COVERAGE.md).
-- Toolchains and kernel features vary by host. A seeded language may have a
-  learning path without being executable on the current judge host. Production
-  refuses local code execution by default.
-- The local runner shares a host with the web application and is not a container
-  boundary. A configured external judge's isolation is the operator's
+- **Progress does not sync between devices** on the Pages copy or in the app.
+  Use export and import, or self-host the full site.
+- The website and the Android app keep **separate progress**.
+- In the app's viewer, the site's **download and export buttons cannot save
+  files**. They say so; use *Open in browser*.
+- **The browser runtimes are large.** About 13 MiB for Python and up to about
+  170 MiB across all languages, each downloaded only when first used. Go cannot
+  read stdin in the browser.
+- **The catalogue is starter coverage.** Many generated topics are still
+  marked for expert review. See
+  [docs/CURRICULUM_COVERAGE.md](docs/CURRICULUM_COVERAGE.md).
+- **The server's local code runner is not a container boundary.** Production
+  refuses local execution; an isolated Judge0 instance is the operator's
   responsibility.
-- Email delivery requires an SMTP URL. Without a mail transport, account
-  confirmation and self-service password reset cannot deliver links; reset
-  tokens are not exposed in public responses by default.
-- A passing test suite does not certify the deployment, backups, TLS proxy,
-  content review or security configuration. No production deployment is claimed
-  by this repository documentation.
+- **Opportunity deadlines change.** The page links to official sites and does
+  not copy dates. A weekly CI job checks the links.
 
-## Content and software licensing
+## Documentation
 
-Third-party books, videos and articles are linked rather than copied or hosted.
-Content authors should follow [the content policy](docs/CONTENT.md). Check the
-repository for applicable software licensing before redistribution.
+| Topic | Document |
+|---|---|
+| Every feature in depth | [docs/FEATURES.md](docs/FEATURES.md) |
+| Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |
+| Hosting, Compose, production settings | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Android app | [android/README.md](android/README.md) |
+| PWA and TWA for self-hosted domains | [docs/ANDROID_TWA.md](docs/ANDROID_TWA.md) |
+| Content policy and note format | [docs/CONTENT.md](docs/CONTENT.md), [docs/NOTE_TEMPLATE.md](docs/NOTE_TEMPLATE.md) |
+| Programming academy | [docs/ACADEMY.md](docs/ACADEMY.md) |
+| Labs (APIs, studio, workflows, swarm) | [docs/ADVANCED_CAPABILITIES.md](docs/ADVANCED_CAPABILITIES.md) |
+| PostgreSQL schema | [db/postgres/README.md](db/postgres/README.md) |
+| Java sandbox | [sandbox-java/README.md](sandbox-java/README.md) |
+| Past audits and incidents | [docs/AUDIT_2026-10-18.md](docs/AUDIT_2026-10-18.md), [docs/AUDIT_2026-10-19.md](docs/AUDIT_2026-10-19.md), [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) |
+| Changes | [CHANGELOG.md](CHANGELOG.md) |
+
+## Contributing and licence
+
+Contributions, especially corrections to notes, are welcome. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+The software is released under the [MIT License](LICENSE). Third-party books,
+videos and articles are linked, not copied; see [docs/CONTENT.md](docs/CONTENT.md).
