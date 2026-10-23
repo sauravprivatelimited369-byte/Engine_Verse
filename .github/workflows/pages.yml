@@ -16,7 +16,7 @@ on:
     branches:
       - main
       # Working branch: deploys now; main takes over once it is merged.
-      - arena/38eff4a6-engine-verse
+      - arena/2139a668-engine-verse
   workflow_dispatch:
 
 permissions:
@@ -64,7 +64,7 @@ jobs:
           python -m pytest -q backend/tests/test_navigation.py backend/tests/test_links.py \
             backend/tests/test_capabilities.py backend/tests/test_public_delivery.py \
             backend/tests/test_pages_live_contract.py backend/tests/test_static_export_contract.py \
-            backend/tests/test_student_tools.py
+            backend/tests/test_student_tools.py backend/tests/test_assistant.py
           python scripts/export_pages.py --self-check
           python scripts/fetch_pyodide.py --self-check
           python scripts/fetch_browser_runtimes.py --self-check
