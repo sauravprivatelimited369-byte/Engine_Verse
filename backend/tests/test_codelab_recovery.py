@@ -88,32 +88,26 @@ class TestCsrfRecovery:
 
 
 class TestCompilerPageWithoutCatalogue:
-    def test_compiler_page_still_lists_every_language_without_seed_data(self, client):
-        saved = db.query("SELECT slug, name, judge_slug, runnable, order_index FROM programming_languages")
-        assert saved, "precondition: the session database is seeded"
-        try:
-            db.execute("DELETE FROM programming_languages")
-            rows = coding.terminal_languages()
-            assert rows, "an unseeded catalogue must fall back to the static registry"
-            slugs = [row["slug"] for row in rows]
-            assert "python" in slugs and "java" in slugs and "cpp" in slugs
-            # Availability still comes from the judge, never from the table.
-            runnable = set(coding.runnable_languages())
-            for row in rows:
-                assert row["can_run"] == (row["judge_slug"] in runnable)
-                assert row["code"].strip(), f"{row['slug']} must have a starter program"
+    def test_compiler_page_still_lists_every_language_without_seed_data(self, client, monkeypatch):
+        # Simulate an unseeded catalogue by emptying the catalogue query, not
+        # the table: deleting rows would orphan every module/problem that
+        # references a language and poison the rest of the session.
+        monkeypatch.setattr(coding, "list_languages", lambda: [])
 
-            page = client.get("/compiler")
-            assert page.status_code == 200
-            assert page.text.count("<option") >= len(rows)
-            assert "Code execution is off" not in page.text
-        finally:
-            for row in saved:
-                db.execute(
-                    "INSERT INTO programming_languages (slug, name, judge_slug, runnable, order_index) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    row["slug"], row["name"], row["judge_slug"], row["runnable"], row["order_index"],
-                )
+        rows = coding.terminal_languages()
+        assert rows, "an unseeded catalogue must fall back to the static registry"
+        slugs = [row["slug"] for row in rows]
+        assert "python" in slugs and "java" in slugs and "cpp" in slugs
+        # Availability still comes from the judge, never from the table.
+        runnable = set(coding.runnable_languages())
+        for row in rows:
+            assert row["can_run"] == (row["judge_slug"] in runnable)
+            assert row["code"].strip(), f"{row['slug']} must have a starter program"
+
+        page = client.get("/compiler")
+        assert page.status_code == 200
+        assert page.text.count("<option") >= len(rows)
+        assert "Code execution is off" not in page.text
 
 
 class TestToolchainDiagnostics:

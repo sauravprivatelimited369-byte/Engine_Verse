@@ -83,7 +83,12 @@ class TestBuildConfiguration:
         assert "gradle-9.4.1-bin.zip" in wrapper
         assert (ANDROID / "gradle" / "wrapper" / "gradle-wrapper.jar").stat().st_size > 40_000
         versions = _read(ANDROID / "gradle" / "libs.versions.toml")
-        assert 'agp = "9.1.1"' in versions
+        # Assert the major version, not one patch release: the file has already
+        # moved 9.1.1 -> 9.4.1 while the toolchain stayed AGP 9, and a pinned
+        # patch turned every dependency bump into a red build.
+        agp = re.search(r'^agp\s*=\s*"([^"]+)"', versions, re.M)
+        assert agp, "libs.versions.toml must pin the Android Gradle plugin"
+        assert agp.group(1).split(".")[0] == "9", f"expected AGP 9.x, found {agp.group(1)}"
         gradle = _read(APP / "build.gradle.kts")
         assert "targetSdk = 36" in gradle and "minSdk = 24" in gradle
         # AGP 9 compiles Kotlin itself; applying kotlin-android as well breaks the build.

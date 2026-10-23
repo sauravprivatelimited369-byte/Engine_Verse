@@ -14,6 +14,7 @@ Covers the three decisions taken on the audit backlog:
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -147,10 +148,22 @@ class TestEveryLanguageHasACompiler:
 
     def test_missing_toolchains_are_not_advertised(self):
         provider = LocalSandboxProvider()
+        # C# is the one language whose compiler may legitimately be present
+        # without its namesake binary: the vendored Roslyn-on-WASM runner
+        # (scripts/setup_toolchains.py) compiles C# with Node and needs no
+        # `dotnet` at all. Every other language needs its own toolchain.
+        csharp_wasm_runner = Path(
+            os.environ.get("ENGINEVERSE_CSHARP_WASM", "/opt/engineverse/toolchains/csharp-wasm/runner.mjs")
+        ).is_file()
         for language, binary in (("go", "go"), ("rust", "rustc"), ("csharp", "dotnet"), ("java", "javac")):
-            if shutil.which(binary) is None:
-                assert provider.supports(language) is False, \
-                    f"{language} advertised without {binary} installed"
+            if shutil.which(binary) is not None:
+                continue
+            if language == "csharp" and csharp_wasm_runner:
+                assert provider.supports(language) is True, \
+                    "the vendored Roslyn WASM runner is installed but C# is not advertised"
+                continue
+            assert provider.supports(language) is False, \
+                f"{language} advertised without {binary} installed"
 
     @requires_isolation
     def test_typescript_really_executes(self):
