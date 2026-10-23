@@ -38,7 +38,7 @@ fun HomeScreen(store: AppStore, catalog: Catalog, navigate: (String) -> Unit, op
     val recent = store.completedTopics.takeLast(3).reversed().mapNotNull { catalog.topic(it) }
 
     ScreenScaffold(
-        title = "FORGE",
+        title = "MERIDIAN",
         actions = {
             IconButton(onClick = { navigate(Routes.SETTINGS) }) {
                 Icon(painterResource(R.drawable.ic_tune), contentDescription = "Settings")

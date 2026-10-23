@@ -3,7 +3,11 @@
 {% from "_quiz.html" import quiz_card with context %}
 {% block title %}{{ language.name }} — {{ brand.site_name }}{% endblock %}
 {% block content %}
-<h1 style="color:{{ language.color }}">{{ language.name }}</h1>
+{# The catalogue's per-language colour identifies the language; it is a 3px
+   rule above the title, not the colour of the words. A coloured heading fails
+   contrast for several of the stored colours and breaks the one-accent rule. #}
+<span class="lang-rule" style="background:{{ language.color }}" aria-hidden="true"></span>
+<h1>{{ language.name }}</h1>
 <p class="muted">{{ language.blurb }}</p>
 <div class="callout"><span class="label">Academy coverage — work in progress</span>
   {{ academy_coverage.structured }} of {{ academy_coverage.total }} modules have structured learn–practice–prove units.

@@ -1,6 +1,6 @@
-# Forge — Global Deployment Guide
+# Meridian — Global Deployment Guide
 
-Forge is built so engineering students in every country can use it:
+Meridian is built so engineering students in every country can use it:
 notes, practice, coding, projects, revision and placement prep — without
 leaving the site. This guide documents every barrier that previously prevented
 global use, the fix applied, and how to deploy a publicly accessible instance.
@@ -59,17 +59,17 @@ PORT=8000
 
 ```
 ENGINEVERSE_SMTP_URL=smtps://user:pass@smtp.example.com:465/?starttls=0
-ENGINEVERSE_MAIL_FROM=Forge <no-reply@your-domain.com>
+ENGINEVERSE_MAIL_FROM=Meridian <no-reply@your-domain.com>
 ENGINEVERSE_SMS_URL=https://gateway.internal/messages
 ENGINEVERSE_SHOW_OTP_ON_PAGE=1
-ENGINEVERSE_APK_URL=https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-v1.0.0/Forge.apk
+ENGINEVERSE_APK_URL=https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-v1.0.0/Meridian.apk
 ```
 
 ---
 
 ## 3. HTTPS / public domain (Caddy)
 
-Forge must run behind HTTPS for cookies, service workers and PWA install. The deploy/ directory includes a Caddyfile:
+Meridian must run behind HTTPS for cookies, service workers and PWA install. The deploy/ directory includes a Caddyfile:
 
 ```
 your-domain.com {
@@ -101,7 +101,7 @@ See backend/engineverse/judge/ for the judge integration.
 
 ### Web app (works everywhere, including where GitHub is blocked)
 
-Every Forge instance is a PWA:
+Every Meridian instance is a PWA:
 - Android (Chrome): Open the site → menu → "Add to Home screen" / "Install app".
 - iPhone (Safari): Share → "Add to Home Screen".
 - Desktop: Browser install icon.
@@ -157,7 +157,7 @@ Add a new locale: create backend/static/locales/<code>.json (copy en.json).
 Pushes to main run:
 - CI — Python test suite (requirements.txt pins).
 - GitHub Pages — publishes the static public site.
-- Android APK — builds, signs and releases Forge.apk (requires repo secrets/vars).
+- Android APK — builds, signs and releases Meridian.apk (requires repo secrets/vars).
 
 Required GitHub variables for APK: ENGINEVERSE_APP_URL, ENGINEVERSE_TWA_PACKAGE, ENGINEVERSE_TWA_ALIAS, ANDROID_SIGNING_KEYSTORE.
 

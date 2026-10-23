@@ -82,7 +82,7 @@
     "offline_limited": "离线访问仅限于之前缓存的公开页面；提交和登录需要网络连接。",
     "android_apk": "Android：签名 APK",
     "alternative_apk": "此同 HTTPS 网站的替代 Android 包装器可作为 GitHub 发行版的签名版本获得。",
-    "download_apk": "下载 Forge.apk",
+    "download_apk": "下载 Meridian.apk",
     "apk_checksum": "安装前请检查发行版、其 SHA-256 校验和及签名证书。",
     "apk_unofficial": "Android 可能会要求允许从此来源安装。仅从官方发行版安装 APK；不要从转发的副本安装。更新需要新的签名发行版。",
     "no_apk": "此网站尚未发布和配置签名 APK。请勿从非官方来源安装 APK。暂时使用网页应用。",

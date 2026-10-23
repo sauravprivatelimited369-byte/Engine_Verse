@@ -1,13 +1,13 @@
 # n8n workflows
 
-Importable configurations for the Forge study assistant and the
+Importable configurations for the Meridian study assistant and the
 automation around it. **They import inactive, with credential slots marked
 `REPLACE_WITH_…`,** so importing one cannot spend money or message anyone until
 you choose a credential and enable a node.
 
 | File | What it is |
 |---|---|
-| `01-student-copilot.json` | Chat Trigger → validate/limit → OpenAI-compatible model → reply. The assistant Forge's `/assistant` page expects. |
+| `01-student-copilot.json` | Chat Trigger → validate/limit → OpenAI-compatible model → reply. The assistant Meridian's `/assistant` page expects. |
 | `01b-student-copilot-agent.json` | The same, built on the AI Agent node with 10-turn memory per session. Pick one variant. |
 | `02-feedback-intake.json` | Consent-aware feedback capture with simple, explainable categories. |
 | `03-content-drafting.json` | Drafts a lesson and platform variants, then stops for a person to review. |
@@ -24,7 +24,7 @@ you choose a credential and enable a node.
 3. Open the model node and choose your own credential. Set a spend cap in your
    provider's dashboard.
 4. **Activate**, then copy the node's **Chat URL**.
-5. In Forge, set `ENGINEVERSE_ASSISTANT_URL` to that URL (self-hosted) or
+5. In Meridian, set `ENGINEVERSE_ASSISTANT_URL` to that URL (self-hosted) or
    the repository variable `ENGINEVERSE_ASSISTANT_PUBLIC_URL` (GitHub Pages).
 6. Verify with one real message:
 

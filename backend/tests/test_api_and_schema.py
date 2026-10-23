@@ -796,7 +796,7 @@ class TestBranding:
         for path in ("/", "/explore", "/about"):
             html = client.get(path).text
             title = html[html.index("<title>") + 7:html.index("</title>")]
-            assert "Forge" in title, f"{path} rendered {title!r}"
+            assert "Meridian" in title, f"{path} rendered {title!r}"
 
     def test_brand_exposes_every_key_the_templates_use(self, seeded):
         from engineverse import brand
@@ -812,7 +812,7 @@ class TestBranding:
     def test_an_unset_key_falls_back_rather_than_rendering_blank(self, seeded):
         from engineverse import brand
 
-        assert brand.get("site_name") == "Forge"
+        assert brand.get("site_name") == "Meridian"
 
     def test_the_registration_toggle_is_enforced(self, app, seeded):
         """Each attempt uses a fresh client: a successful sign-up leaves a session
@@ -1958,7 +1958,10 @@ class TestBrandingAccentColoursAreRealAndSafe:
                 emitted = self._emitted(client)
                 assert payload not in emitted, f"{payload!r} was emitted verbatim"
                 assert "<script>" not in emitted
-                assert "--accent:#f97316" in emitted, (
+                # The fallback is the stylesheet default in brand.DEFAULTS; a
+                # poisoned row must never be the reason a page renders without
+                # an accent.
+                assert f"--accent:{brand.DEFAULTS['accent_color']}" in emitted, (
                     f"a non-colour value must fall back to the default, got {emitted}"
                 )
             finally:
@@ -1971,7 +1974,7 @@ class TestBrandingAccentColoursAreRealAndSafe:
         db.execute("UPDATE site_config SET value = ? WHERE key = 'accent_color'",
                    "expression(alert(1))")
         try:
-            assert brand.brand()["accent_color"] == "#f97316"
+            assert brand.brand()["accent_color"] == brand.DEFAULTS["accent_color"]
         finally:
             db.execute("UPDATE site_config SET value = '#4f7cff' WHERE key = 'accent_color'")
 

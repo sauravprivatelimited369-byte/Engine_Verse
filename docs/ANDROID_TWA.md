@@ -1,12 +1,12 @@
 # Android: PWA and Trusted Web Activity for self-hosted sites
 
-> **Looking for the Forge Android app?** The repository's app is a native
+> **Looking for the Meridian Android app?** The repository's app is a native
 > Kotlin/Compose project in [`android/`](../android/README.md), built by
 > `.github/workflows/android-build.yml`. This page is for operators who host the
 > full website on their own domain and want it installable as a PWA or wrapped
 > as a TWA.
 
-The full Forge website is usable on an Android phone **without an APK**:
+The full Meridian website is usable on an Android phone **without an APK**:
 open its HTTPS origin in Chrome, then use **Install app / Add to Home screen**.
 `GET /install` has instructions and is public even if the catalogue requires
 sign-in. The browser/PWA uses the same account and private server database as a
@@ -71,7 +71,7 @@ rather than a trusted full-screen experience.
    Bubblewrap dependencies via `android/package-lock.json`, builds from the
    hosted manifest, checks `/health`/registration/install, compares Digital
    Asset Links with the keystore **before** building, verifies the built APK
-   signature, and publishes only `Forge.apk` and its SHA-256 checksum in
+   signature, and publishes only `Meridian.apk` and its SHA-256 checksum in
    release `android-v1.0.0`. Its Android `versionCode` comes from the monotonic
    workflow run number. Releasing another version needs a new tag and the same
    package/key. **This workspace cannot build or test the APK without a live
@@ -81,17 +81,17 @@ rather than a trusted full-screen experience.
    of the same name:
 
    ```text
-   https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-v1.0.0/Forge.apk
+   https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-v1.0.0/Meridian.apk
    ```
 
    Restart web so `/install` offers the direct download. The next `main` Pages
    workflow verifies the Release asset exists and is not a draft before showing
    the same link on the gateway. With no configured URL, neither site pretends
    that an APK exists. The server validates that links point to a versioned
-   Forge GitHub Release, not a caller-supplied APK mirror.
+   Meridian GitHub Release, not a caller-supplied APK mirror.
 
 Android may ask to allow installation from your browser. Compare the downloaded
-file's SHA-256 to the accompanying `Forge.apk.sha256` and install **only**
+file's SHA-256 to the accompanying `Meridian.apk.sha256` and install **only**
 from the official release. Updates require downloading a new signed release
 (or using the browser/PWA, which updates with the website). Never publish a
 random unsigned or debug-signed APK as if it were the release.
@@ -111,7 +111,7 @@ shortcut), in a Bubblewrap TWA package, and in the native app's web viewer:
 - **Soft-keyboard layout**: CodeLab provides sticky mobile workspace tabs (`Code`, `Input (stdin)`, `Output`)
   plus a horizontal coding key strip (`Tab`, `{`, `}`, `(`, `)`, `[`, `]`, `;`, `:`,
   `"`, `'`, `=`, `<`, `>`, `_`, `/`, `←`, `→`) above the editor.
-- **Real execution on Android**: Connected to a live Forge host (with local
+- **Real execution on Android**: Connected to a live Meridian host (with local
   namespace sandbox in dev or `ENGINEVERSE_JUDGE=judge0` in production), Android phones
   compile and run real Python 3, Java (`javac` + JVM), C (`gcc`), C++ (`g++`),
   JavaScript (`node`), TypeScript (`tsc`), Go, SQLite, and POSIX shell via `POST /api/execute`.

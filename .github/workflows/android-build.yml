@@ -188,9 +188,9 @@ jobs:
           ./gradlew --no-daemon assembleRelease
           apk=$(ls app/build/outputs/apk/release/*.apk)
           case "$apk" in *unsigned*) echo "::error::release APK is unsigned"; exit 1;; esac
-          cp "$apk" "$RUNNER_TEMP/Forge.apk"
-          (cd "$RUNNER_TEMP" && sha256sum Forge.apk > Forge.apk.sha256)
-          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --print-certs "$RUNNER_TEMP/Forge.apk"
+          cp "$apk" "$RUNNER_TEMP/Meridian.apk"
+          (cd "$RUNNER_TEMP" && sha256sum Meridian.apk > Meridian.apk.sha256)
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --print-certs "$RUNNER_TEMP/Meridian.apk"
 
       - name: Publish to GitHub Releases
         env:
@@ -199,9 +199,9 @@ jobs:
           set -euo pipefail
           tag="android-$VERSION"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$RUNNER_TEMP/Forge.apk" "$RUNNER_TEMP/Forge.apk.sha256" --clobber
+            gh release upload "$tag" "$RUNNER_TEMP/Meridian.apk" "$RUNNER_TEMP/Meridian.apk.sha256" --clobber
           else
-            gh release create "$tag" "$RUNNER_TEMP/Forge.apk" "$RUNNER_TEMP/Forge.apk.sha256" \
-              --target "$GITHUB_SHA" --title "Forge Android $VERSION" \
-              --notes "Signed release build of the native Forge Android app. Compare the SHA-256 in Forge.apk.sha256 before installing."
+            gh release create "$tag" "$RUNNER_TEMP/Meridian.apk" "$RUNNER_TEMP/Meridian.apk.sha256" \
+              --target "$GITHUB_SHA" --title "Meridian Android $VERSION" \
+              --notes "Signed release build of the native Meridian Android app. Compare the SHA-256 in Meridian.apk.sha256 before installing."
           fi

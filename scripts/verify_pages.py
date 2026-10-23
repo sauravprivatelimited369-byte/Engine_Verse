@@ -88,8 +88,8 @@ def verify(url: str, sha: str, *, attempts: int = 12, delay: float = 15,
             if manifest.get("capabilities") != expected:
                 raise ValueError("Deployment manifest is missing capability paths")
             home = _fetch(url, sha, attempt, "text/html")
-            if "<header" not in home.lower() and "Forge" not in home:
-                raise ValueError("Home page is not the published Forge site")
+            if "<header" not in home.lower() and "Meridian" not in home:
+                raise ValueError("Home page is not the published Meridian site")
             validate_page(home)
             for capability in CAPABILITIES:
                 text = _fetch(url + capability + "/", sha, attempt, "text/html")

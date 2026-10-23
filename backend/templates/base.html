@@ -15,7 +15,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ brand.site_name }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ brand.tagline }}{% endblock %}">
-  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f4f1ea{% else %}#0a1120{% endif %}">
+  <meta name="theme-color" content="{% if brand.theme == 'light' %}#f5f2eb{% else %}#0a1524{% endif %}">
   <script nonce="{{ request.state.csp_nonce }}">
     // Runs before first paint: a stored theme preference wins over the site
     // default. Sign-in state is never guessed from browser storage: on the
@@ -38,7 +38,7 @@
           theme = saved;
         }
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "light" ? "#faf6f0" : "#0b0908");
+        if (meta) meta.setAttribute("content", theme === "light" ? "#f5f2eb" : "#0a1524");
       } catch (e) { /* storage blocked - fall back to the server default */ }
     })();
   </script>
@@ -47,16 +47,20 @@
   <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/static/fonts/sora-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/app.css">
   {# The assistant's own sheet: launcher, panel and the /assistant page. Kept
      separate so a page that never opens it still pays only for app.css. #}
   <link rel="stylesheet" href="/static/css/assistant.css">
+  {# The Meridian design layer re-skins every component app.css defines, so no
+     page needs its own colours, and one file is the whole visual identity.
+     It loads last so it can re-skin assistant chrome too. #}
+  <link rel="stylesheet" href="/static/css/meridian.css">
   {# The configured accent colours, applied over the stylesheet's defaults.
      These come from site_config and are interpolated into CSS, so they are run
      through safe_css_color in the admin handler; | safe is used because Jinja
      would otherwise escape the '#' and break the declarations. #}
-  <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--grad:linear-gradient(135deg,var(--accent),var(--accent-3))}</style>
+  <style>:root{--accent:{{ brand.accent_color | safe }};--accent-2:{{ brand.accent_color_2 | safe }};--accent-3:{{ brand.accent_color_3 | safe }};--btn:{{ brand.accent_color | safe }};--grad:{{ brand.accent_color | safe }};--grad-3:{{ brand.accent_color | safe }}}</style>
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta property="og:title" content="{% block og_title %}{{ brand.site_name }}{% endblock %}">
   <meta property="og:description" content="{{ brand.tagline }}">
@@ -72,16 +76,17 @@
   <meta property="og:url" content="{{ canonical_url }}">{% endif %}
   {% block head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}"{% if gated %} data-signin-gate{% endif %}>
+<body class="{% block body_class %}{% endblock %}{{ ' is-gated' if gated }}{{ ' is-static' if static_export and not user }}"{% if gated %} data-signin-gate{% endif %}>
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="topbar">
   <div class="wrap topbar-inner">
     <a class="logo" href="{{ '/login' if gated else '/' }}" aria-label="{{ brand.site_name }} home">
       <span class="logo-mark" aria-hidden="true">
-        <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true" focusable="false">
-          <path fill="#fbbf24" d="M22.5 3.3 L23.5 5.7 L26 6.7 L23.5 7.7 L22.5 10.1 L21.5 7.7 L19 6.7 L21.5 5.7 Z"/>
-          <path fill="currentColor" d="M5.5 12.3 H18 Q21.8 13.4 25.3 14.7 Q21.8 15.8 18 16.4 H16.3 V18.9 L17.9 20.3 V21.9 H20.5 V24.8 H8 V21.9 H10.6 V20.3 L12.3 18.9 V16.4 H5.5 Z"/>
+        <svg viewBox="0 0 32 32" width="19" height="19" aria-hidden="true" focusable="false">
+          <circle cx="16" cy="16" r="12.4" fill="none" stroke="currentColor" stroke-opacity=".34" stroke-width="1.4"/>
+          <path d="M9.6 22V10.9L16 18l6.4-7.1V22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="22.4" cy="10.9" r="1.7" fill="#2f7cf6"/>
         </svg>
       </span>
       <span class="logo-text">{{ brand.site_name }}<span class="logo-dot" aria-hidden="true">.</span></span>
@@ -92,7 +97,7 @@
 
     <form class="searchbox" action="/search" method="get" role="search">
       <input type="search" name="q" value="{{ query.get('q', '') }}"
-             placeholder="Search everything…"
+             placeholder="{{ 'Search' if static_export else 'Search everything…' }}"
              autocomplete="off" aria-label="Search {{ brand.site_name }}" id="global-search">
       <button type="submit" aria-label="Search">{{ icon("search", 16) }}</button>
       <div class="suggest" id="suggest" hidden></div>

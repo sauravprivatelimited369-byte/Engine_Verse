@@ -1,6 +1,6 @@
-# The study assistant (Forge × n8n)
+# The study assistant (Meridian × n8n)
 
-The assistant is an AI chat panel on Forge, backed by an n8n workflow. This
+The assistant is an AI chat panel on Meridian, backed by an n8n workflow. This
 document describes what was built, what it will and will not do, how to configure
 it, and the manual steps that only the repository owner can perform.
 
@@ -28,7 +28,7 @@ a request has actually been answered. The code and the UI both have an honest
 ### Two transports, chosen by the server
 
 ```
-Self-hosted Forge (proxy mode)
+Self-hosted Meridian (proxy mode)
 
   browser ──POST /api/assistant/chat──▶ FastAPI ──POST──▶ n8n Chat Trigger ──▶ model
      ▲                                   │                  │
@@ -58,7 +58,7 @@ only controls. It is opt-in, and the page says which mode it is in.
 
 ### Session continuity
 
-n8n's Chat Trigger keeps context per `sessionId`. Forge computes it as
+n8n's Chat Trigger keeps context per `sessionId`. Meridian computes it as
 `HMAC-SHA256(instance secret, "assistant:" + subject + ":" + UTC date)`, truncated
 to 32 hex characters. The subject is the signed-in user id or the anonymous
 browser's CSRF subject.
@@ -68,7 +68,7 @@ Consequences, stated plainly:
 - The id is stable for one UTC day, so a conversation continues across pages and
   reloads.
 - Another browser cannot derive it from a username.
-- Server memory is the workflow's, not Forge's. Enabling it requires the
+- Server memory is the workflow's, not Meridian's. Enabling it requires the
   agent variant of the workflow (`n8n/workflows/01b-student-copilot-agent.json`).
 - In direct mode the browser generates its own random id per tab session.
 
@@ -156,19 +156,19 @@ assistant.
 
 ## 5. Privacy
 
-- Forge stores **no transcript** and no per-message row. The audit log gets
+- Meridian stores **no transcript** and no per-message row. The audit log gets
   a metadata entry (`assistant.asked` / `assistant.failed` / `assistant.limited`)
   with character counts, outcome and latency.
 - The question and answer travel to your n8n instance and then to the model
   provider you selected in the workflow. That provider's retention terms apply
-  and are outside Forge's control — the assistant page says so.
+  and are outside Meridian's control — the assistant page says so.
 - The page asks students not to paste passwords, API keys, identity numbers or
   information about other people.
 - Workflow settings default to `saveDataSuccessExecution: none`, so successful
   executions do not store the conversation in n8n. Failures are saved
   (`saveDataErrorExecution: all`) so an operator can debug them; tighten this if
   your policy requires it.
-- Forge's own privacy notice is at `/privacy`. The assistant adds a
+- Meridian's own privacy notice is at `/privacy`. The assistant adds a
   disclosure beside the chat and a "How this works" section on `/assistant`.
 
 ---

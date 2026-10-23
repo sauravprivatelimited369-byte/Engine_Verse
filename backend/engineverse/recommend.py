@@ -24,7 +24,10 @@ def for_topic(topic: dict, user_id: str | None = None) -> list[dict[str, Any]]:
             # ?topic= arrived as the unfiltered practice home. The question bank
             # is the page that filters by topic.
             "url": f"/practice/questions?topic={topic['slug']}",
-            "reason": f"{question_count} questions to lock this concept in.",
+            "reason": (
+                f"{question_count} question{'' if question_count == 1 else 's'} "
+                "to lock this concept in."
+            ),
         })
 
     formula = db.query_one("SELECT slug, name FROM formulas WHERE topic_id = ? LIMIT 1", topic_id)

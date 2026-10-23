@@ -1,4 +1,4 @@
-# Forge Java sandbox
+# Meridian Java sandbox
 
 The isolated runner for learner-submitted code. It is a **separate JVM process**
 that the Python web server shells out to — the web server never loads or executes

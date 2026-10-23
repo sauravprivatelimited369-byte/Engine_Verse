@@ -1,26 +1,64 @@
 {
-  "name": "Forge — Where engineers are made",
-  "short_name": "Forge",
+  "name": "Meridian — Engineering, studied properly",
+  "short_name": "Meridian",
   "description": "Notes, judged coding practice, daily problem sets and revision across every engineering branch.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait-primary",
-  "background_color": "#0b0908",
-  "theme_color": "#0b0908",
+  "background_color": "#f5f2eb",
+  "theme_color": "#f5f2eb",
   "lang": "en",
   "dir": "ltr",
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
-    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "CodeLab", "url": "/codelab", "description": "CodeLab — Online Compiler" },
-    { "name": "Daily practice", "url": "/dpp", "description": "Today's practice problems" },
-    { "name": "Coding", "url": "/programming", "description": "Solve coding problems" },
-    { "name": "Revision", "url": "/revision", "description": "Flashcards and formulas" }
+    {
+      "name": "CodeLab",
+      "url": "/codelab",
+      "description": "CodeLab — Online Compiler"
+    },
+    {
+      "name": "Daily practice",
+      "url": "/dpp",
+      "description": "Today's practice problems"
+    },
+    {
+      "name": "Coding",
+      "url": "/programming",
+      "description": "Solve coding problems"
+    },
+    {
+      "name": "Revision",
+      "url": "/revision",
+      "description": "Flashcards and formulas"
+    }
   ]
 }

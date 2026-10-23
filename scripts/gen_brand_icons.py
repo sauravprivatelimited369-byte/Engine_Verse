@@ -1,7 +1,7 @@
-"""Regenerate every FORGE brand icon from backend/static/icons/favicon.svg.
+"""Regenerate every MERIDIAN brand icon from backend/static/icons/favicon.svg.
 
-The SVG is the single source of truth for the mark (an anvil and a hammer
-spark on obsidian glass). This script rasterises it to the PWA icons, the
+The SVG is the single source of truth for the mark (an M inside a meridian
+ring, with the orbit's signal dot). This script rasterises it to the PWA icons, the
 legacy Android launcher mipmaps and the store-listing icon, and composes the
 1024x500 feature graphic. It is a maintainer tool, not a runtime dependency:
 
@@ -36,13 +36,13 @@ MIPMAPS = {  # density bucket -> legacy launcher px
 def _maskable_svg(svg: str) -> str:
     """Full-bleed tile, glyph inside the maskable safe zone (centre 80%)."""
     svg = svg.replace(
-        '<rect x="3" y="3" width="58" height="58" rx="15" fill="url(#tile)"/>',
+        '<rect x="3" y="3" width="58" height="58" rx="14" fill="url(#tile)"/>',
         '<rect x="0" y="0" width="64" height="64" fill="url(#tile)"/>',
     )
     svg = re.sub(r'<rect x="3\.6".*?/>\n', "", svg)  # the frame would be clipped by masks
     return svg.replace(
-        '<path d="M45 6.5', '<g transform="translate(6.4 6.4) scale(.8)"><path d="M45 6.5'
-    ).replace("</svg>", "</g></svg>")
+        '<g id="mark">', '<g id="mark" transform="translate(6.4 6.4) scale(.8)">'
+    )
 
 
 def main() -> int:
@@ -78,26 +78,27 @@ def main() -> int:
         round_icon.paste(tile, (0, 0), mask)
         save(round_icon, RES / bucket / "ic_launcher_round.png")
 
-    # Feature graphic (1024x500): obsidian field, ember glow, mark + wordmark.
+    # Feature graphic (1024x500): warm paper field, navy wordmark, blue signal.
     W, H = 1024, 500
-    graphic = Image.new("RGB", (W, H), (11, 9, 8))
-    glow = Image.new("RGB", (W, H), (0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gd.ellipse((-220, -260, 520, 300), fill=(70, 32, 4))
-    gd.ellipse((620, 180, 1180, 640), fill=(46, 12, 18))
+    graphic = Image.new("RGB", (W, H), (245, 242, 235))
     from PIL import ImageFilter
 
-    graphic = Image.blend(graphic, Image.blend(graphic, glow, .9).filter(ImageFilter.GaussianBlur(60)), .85)
-    mark = render(svg, 300)
-    graphic.paste(mark, (72, 100), mark)
+    wash = Image.new("RGB", (W, H), (245, 242, 235))
+    wd = ImageDraw.Draw(wash)
+    wd.ellipse((520, -260, 1280, 420), fill=(225, 234, 250))
+    graphic = Image.blend(graphic, wash.filter(ImageFilter.GaussianBlur(90)), .8)
+    mark = render(svg, 250)
+    graphic.paste(mark, (64, 125), mark)
     draw = ImageDraw.Draw(graphic)
     try:
-        bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 118)
-        sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
+        bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 92)
+        sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 33)
     except OSError:
         bold = sub = ImageFont.load_default()
-    draw.text((420, 150), "FORGE", font=bold, fill=(255, 247, 237))
-    draw.text((426, 300), "Where engineers are made.", font=sub, fill=(251, 191, 36))
+    draw.text((362, 168), "MERIDIAN", font=bold, fill=(14, 31, 54))
+    draw.text((366, 285), "Engineering, studied properly.", font=sub, fill=(29, 91, 214))
+    # Keep the graphic inside the 1024x500 canvas whatever font was available.
+    draw.text((366, 392), "Notes  ·  Practice  ·  Progress", font=sub, fill=(59, 74, 94))
     save(graphic, LISTING / "feature-graphic.png")
 
     print("Regenerated:\n  " + "\n  ".join(written))

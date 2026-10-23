@@ -26,7 +26,7 @@ and fails closed.
 
 ## What may be hosted
 
-The rule is simple: **Forge hosts what it creates, and links to everything
+The rule is simple: **Meridian hosts what it creates, and links to everything
 else.**
 
 | Content | Policy |
@@ -37,7 +37,7 @@ else.**
 | External articles and documentation | **Linked only.** `resources.url`, with `is_free` marking open material. |
 | Third-party diagrams | Only with a recorded `license` and `source_url`. |
 
-No copyrighted book, paper or video is stored on Forge servers, mirrored,
+No copyrighted book, paper or video is stored on Meridian servers, mirrored,
 proxied, or embedded. A link to a legal source is not a substitute for hosting,
 and it is the only thing this platform does with third-party media.
 
@@ -75,7 +75,7 @@ domain passes, so the checker is a floor rather than a guarantee.
 
 Certificates carry a `verify_id` and are verifiable at
 `/certificates/{verify_id}`. They state what the learner completed on
-Forge. They do **not** claim university accreditation, professional
+Meridian. They do **not** claim university accreditation, professional
 licensure, or equivalence to any awarding body's qualification, and no template
 or copy in the repository implies it. Anyone who needs that distinction can check
 the verification URL.

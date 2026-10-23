@@ -43,7 +43,8 @@
   </div>
   <div class="grid g3">{% for lang in languages %}
     <a class="card" href="/programming/{{ lang.slug }}">
-      <span class="title" style="color:{{ lang.color }}">{{ lang.name }}</span>
+      <span class="lang-mark" style="background:{{ lang.color }}" aria-hidden="true"></span>
+      <span class="title">{{ lang.name }}</span>
       <span class="desc">{{ lang.blurb }}</span>
       <div class="tags">
         <span class="chip">{{ lang.module_count }} modules</span>

@@ -1,4 +1,4 @@
-"""The n8n-backed study assistant (Forge / EngineVerse × n8n).
+"""The n8n-backed study assistant (Meridian / EngineVerse × n8n).
 
 What this module is
 -------------------
@@ -89,9 +89,9 @@ def _site_name() -> str:
     try:
         from . import brand
 
-        return brand.get("site_name") or "Forge"
+        return brand.get("site_name") or "Meridian"
     except Exception:  # pragma: no cover - defensive: a label must never raise
-        return "Forge"
+        return "Meridian"
 
 
 def identity() -> str:

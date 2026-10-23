@@ -1,11 +1,11 @@
-# Forge
+# Meridian
 
 [![CI](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml)
 [![Android app](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Forge is a free, open-source study platform for engineering students. It
+Meridian is a free, open-source study workspace for engineering students. It
 offers structured notes for 93 subjects, judged coding practice, daily problem
 sets, flashcards, a study planner, a multi-language code playground, and
 links to internships and scholarships. You can use it in three ways:
@@ -22,15 +22,16 @@ Source: GitHub Actions). The Pages workflow builds and tests the site on every
 push either way.
 
 > The seeded catalogue is broad starter material, not a complete degree
-> syllabus. Topics not yet expert-reviewed are labelled as drafts. Forge
+> syllabus. Topics not yet expert-reviewed are labelled as drafts. Meridian
 > is not an accredited institution, and its certificates are not qualifications.
 
 <p>
-  <img src="docs/images/screenshot-dashboard.png" alt="The My progress page of the GitHub Pages copy: XP, streak, completed topics and problems, all saved on this device" width="49%">
-  <img src="docs/images/screenshot-planner.png" alt="The study planner: a task form with subject, due date and priority, and a 25-minute focus timer" width="49%">
+  <img src="docs/images/home-1440.png" alt="The Meridian homepage: a serif headline, the primary call to action, and today's plan in a frosted glass panel" width="49%">
+  <img src="docs/images/home-390.png" alt="The same homepage on a 390 px phone: the headline, both calls to action, and the plan below" width="24%">
 </p>
 
-<sub>Screenshots of the static build, taken in headless Chromium at 1366×900 and 1280×800. They predate the FORGE "Obsidian Forge" glass theme — see [docs/BRAND.md](docs/BRAND.md) for the current identity; refreshed captures are welcome.</sub>
+<sub>Live captures of the running application (headless Chromium, 1440×900 and 390×844). They show the current
+"Meridian Glass" identity — warm paper, navy ink, one signal blue; see [docs/BRAND.md](docs/BRAND.md).</sub>
 
 ## Contents
 
@@ -93,7 +94,7 @@ notes tutor, instead of showing a chat box that cannot answer.
   `ENGINEVERSE_ASSISTANT_PUBLIC_URL` is set. CORS on the workflow must allow the
   Pages origin.
 - **Honest by construction:** answers are labelled AI-generated, the page lists
-  what the assistant cannot do, no transcript is stored by Forge, and the
+  what the assistant cannot do, no transcript is stored by Meridian, and the
   audit log keeps character counts rather than questions. See
   [docs/ASSISTANT.md](docs/ASSISTANT.md).
 - **Bounded:** 2–800 characters per question, a per-IP `ai` limit, a per-session
@@ -305,7 +306,7 @@ Don't use a public issue.
 | The study assistant, configuration and limits | [docs/ASSISTANT.md](docs/ASSISTANT.md) |
 | n8n workflows, credentials, costs, manual steps | [docs/N8N_AUTOMATION.md](docs/N8N_AUTOMATION.md) |
 | Growth, SEO and a 30-day student acquisition plan | [docs/GROWTH.md](docs/GROWTH.md) |
-| Name, logo and the Obsidian Forge design system | [docs/BRAND.md](docs/BRAND.md) |
+| Name, logo and the Meridian Glass design system | [docs/BRAND.md](docs/BRAND.md) |
 | Code map and request lifecycle | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Threat model, controls, reporting | [docs/SECURITY.md](docs/SECURITY.md) |
 | Hosting, Compose, production settings | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |

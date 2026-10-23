@@ -91,11 +91,29 @@
   </article>
 </div>
 {% else %}
-<article class="panel prose">{{ module.body | md | safe }}
-  <h2>Example</h2><pre class="console"><code>{{ module.example }}</code></pre>
-  <h2>Practice prompt</h2>{{ module.exercise | md | safe }}
-  <p>Run the example with your local toolchain; execution availability in the separate coding workspace depends on the configured judge.</p>
-</article>
+{# Legacy reader. These modules predate the structured unit format, so there is
+   no in-page section list to point at; the rail carries the course context
+   instead of leaving half the page empty. #}
+<div class="academy-layout">
+  <aside class="academy-toc panel" aria-label="Course context">
+    <h2 class="h-sub">In this course</h2>
+    <nav class="stack small">
+      <p><a href="/programming/{{ language.slug }}">{{ language.name }} course index</a><br>
+        <a href="/programming/{{ language.slug }}#stage-{{ module.stage }}">All modules in this stage</a></p>
+      {% if previous %}<p class="muted">Previous<br><a href="/programming/{{ language.slug }}/lessons/{{ previous.slug }}">{{ previous.title }}</a></p>{% endif %}
+      {% if following %}<p class="muted">Next<br><a href="/programming/{{ language.slug }}/lessons/{{ following.slug }}">{{ following.title }}</a></p>{% endif %}
+    </nav>
+    <p class="small muted" style="margin-top:.9rem">Legacy reader: read and practise locally. Nothing on this page is
+      graded, and examples are not compiler-verified here.</p>
+    <details><summary>Switch language</summary><ul>{% for lang in languages %}
+      <li><a href="/programming/{{ lang.slug }}">{{ lang.name }} course</a></li>{% endfor %}</ul></details>
+  </aside>
+  <article class="panel prose academy-reading">{{ module.body | md | safe }}
+    <h2>Example</h2><pre class="console"><code>{{ module.example }}</code></pre>
+    <h2>Practice prompt</h2>{{ module.exercise | md | safe }}
+    <p>Run the example with your local toolchain; execution availability in the separate coding workspace depends on the configured judge.</p>
+  </article>
+</div>
 {% endif %}
 <nav class="between section" aria-label="Previous and next lesson">
   {% if previous %}<a class="btn btn-soft" href="/programming/{{ language.slug }}/lessons/{{ previous.slug }}">← {{ previous.title }}</a>{% endif %}
