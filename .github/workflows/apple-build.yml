@@ -218,15 +218,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.target.outputs.tag }}
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" \
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "Meridian $TAG" \
               --notes "Native Meridian apps for macOS (universal .dmg) and iOS (.ipa), with SHA-256 digests."
           fi
-          gh release upload "$TAG" \
-            release-out/Meridian-macOS.dmg \
-            release-out/Meridian-macOS.dmg.sha256 \
-            release-out/Meridian-iOS.ipa \
-            release-out/Meridian-iOS.ipa.sha256 \
-            --clobber
+          FILES=()
+          for name in Meridian-macOS.dmg Meridian-macOS.dmg.sha256 Meridian-iOS.ipa Meridian-iOS.ipa.sha256; do
+            found="$(find release-out -name "$name" -print -quit)"
+            if [ -z "$found" ]; then
+              echo "::error::Expected artifact file $name not found in release-out"
+              exit 1
+            fi
+            FILES+=("$found")
+          done
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" "${FILES[@]}" --clobber
