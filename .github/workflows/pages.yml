@@ -102,9 +102,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$ENGINEVERSE_MACOS_URL" ] || [ -z "$ENGINEVERSE_IOS_URL" ]; then
-            if RELEASE_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" 2>/dev/null)"; then
-              MAC_ASSET="$(printf '%s' "$RELEASE_JSON" | python -c 'import json,sys; d=json.load(sys.stdin); print(next((a["browser_download_url"] for a in d.get("assets",[]) if a.get("name","").endswith(".dmg")), ""))')"
-              IOS_ASSET="$(printf '%s' "$RELEASE_JSON" | python -c 'import json,sys; d=json.load(sys.stdin); print(next((a["browser_download_url"] for a in d.get("assets",[]) if a.get("name","").endswith(".ipa")), ""))')"
+            if RELEASES_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases" 2>/dev/null)"; then
+              MAC_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".dmg")), ""))')"
+              IOS_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".ipa")), ""))')"
               [ -z "$ENGINEVERSE_MACOS_URL" ] && [ -n "$MAC_ASSET" ] && echo "ENGINEVERSE_MACOS_URL=$MAC_ASSET" >> "$GITHUB_ENV" && ENGINEVERSE_MACOS_URL="$MAC_ASSET"
               [ -z "$ENGINEVERSE_IOS_URL" ] && [ -n "$IOS_ASSET" ] && echo "ENGINEVERSE_IOS_URL=$IOS_ASSET" >> "$GITHUB_ENV" && ENGINEVERSE_IOS_URL="$IOS_ASSET"
             fi
@@ -200,6 +200,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

@@ -165,39 +165,59 @@ jobs:
   release:
     name: Attach packages to GitHub Release
     needs: build
-    if: >-
-      (github.event_name == 'release' && (
-        startsWith(github.event.release.tag_name, 'apple-v') ||
-        startsWith(github.event.release.tag_name, 'macos-v') ||
-        startsWith(github.event.release.tag_name, 'ios-v') ||
-        startsWith(github.event.release.tag_name, 'v')
-      )) || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
     steps:
+      - name: Determine target GitHub Release tag
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          DISPATCH_TAG: ${{ inputs.release_tag }}
+        run: |
+          TAG=""
+          if [ "$EVENT_NAME" = "release" ]; then
+            TAG="$EVENT_TAG"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$DISPATCH_TAG" ]; then
+            TAG="$DISPATCH_TAG"
+          else
+            TAG="$(gh api "repos/${GITHUB_REPOSITORY}/releases" --jq '.[] | select((.draft == false) and (.tag_name | startswith("apple-v")) and ([.assets[].name | endswith(".dmg")] | any | not)) | .tag_name' 2>/dev/null | head -n 1 || true)"
+          fi
+          case "$TAG" in
+            "")
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              ;;
+            v[0-9]*|apple-v[0-9]*|macos-v[0-9]*|ios-v[0-9]*)
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Refusing invalid release tag: $TAG" >&2
+              exit 1
+              ;;
+          esac
+
       - uses: actions/download-artifact@v8
+        if: steps.target.outputs.publish == 'true'
         with:
           name: meridian-macos-dmg
           path: release-out
 
       - uses: actions/download-artifact@v8
+        if: steps.target.outputs.publish == 'true'
         with:
           name: meridian-ios-ipa
           path: release-out
 
       - name: Upload assets to GitHub Release
+        if: steps.target.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT_TAG: ${{ github.event.release.tag_name }}
-          DISPATCH_TAG: ${{ inputs.release_tag }}
+          TAG: ${{ steps.target.outputs.tag }}
         run: |
-          TAG="${EVENT_TAG:-$DISPATCH_TAG}"
-          case "$TAG" in
-            v[0-9]*|apple-v[0-9]*|macos-v[0-9]*|ios-v[0-9]*) ;;
-            *) echo "Refusing invalid release tag: $TAG" >&2; exit 1 ;;
-          esac
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --target "$GITHUB_SHA" \
