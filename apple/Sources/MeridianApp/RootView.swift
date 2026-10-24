@@ -86,8 +86,12 @@ struct RootView: View {
     }
 
     private func splitLayout(palette: MeridianPalette) -> some View {
-        NavigationSplitView {
-            List(AppSection.allCases, selection: $selection) { section in
+        let optionalSelection = Binding<AppSection?>(
+            get: { selection },
+            set: { if let next = $0 { selection = next } }
+        )
+        return NavigationSplitView {
+            List(AppSection.allCases, selection: optionalSelection) { section in
                 Label(section.label, systemImage: section.systemImage)
                     .tag(section)
             }

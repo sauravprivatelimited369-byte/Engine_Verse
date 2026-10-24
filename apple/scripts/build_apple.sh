@@ -115,7 +115,18 @@ if [ "$run_macos" = true ]; then
 
   DMG_PATH="$OUT_DIR/Meridian-macOS.dmg"
   rm -f "$DMG_PATH" "$DMG_PATH.sha256"
-  hdiutil create -volname "Meridian" -srcfolder "$WORK_DIR/dmg_stage" -ov -format UDZO "$DMG_PATH" >/dev/null
+  dmg_ok=false
+  for attempt in 1 2 3; do
+    if hdiutil create -volname "Meridian" -srcfolder "$WORK_DIR/dmg_stage" -ov -format UDZO "$DMG_PATH" >/dev/null; then
+      dmg_ok=true
+      break
+    fi
+    sleep 2
+  done
+  if [ "$dmg_ok" != true ]; then
+    echo "error: hdiutil failed to create $DMG_PATH" >&2
+    exit 1
+  fi
   hdiutil verify "$DMG_PATH" >/dev/null
   (cd "$OUT_DIR" && shasum -a 256 "Meridian-macOS.dmg" > "Meridian-macOS.dmg.sha256")
   echo "    Built $DMG_PATH ($(wc -c < "$DMG_PATH" | tr -d ' ') bytes)"

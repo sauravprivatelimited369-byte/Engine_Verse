@@ -1,6 +1,12 @@
 import MeridianCore
 import SwiftUI
 
+private struct SubjectTopicGroup: Identifiable {
+    let subject: Subject
+    let topics: [Topic]
+    var id: String { subject.slug }
+}
+
 struct PortfolioView: View {
     @ObservedObject var store: AppStore
     let catalog: Catalog
@@ -42,20 +48,20 @@ struct PortfolioView: View {
                         .foregroundStyle(palette.mutedInk)
                         .padding(.vertical, 20)
                 } else {
-                    ForEach(grouped, id: \.0.slug) { subject, topics in
+                    ForEach(grouped) { group in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(subject.name)
+                                Text(group.subject.name)
                                     .font(.headline)
                                     .foregroundStyle(palette.ink)
                                 Spacer()
-                                Text("\(topics.count) of \(subject.topics.count) topics")
+                                Text("\(group.topics.count) of \(group.subject.topics.count) topics")
                                     .font(.caption)
                                     .foregroundStyle(palette.mutedInk)
                             }
-                            ForEach(topics) { topic in
+                            ForEach(group.topics) { topic in
                                 NavigationLink {
-                                    TopicDetailView(store: store, subject: subject, topic: topic, openWeb: openWeb)
+                                    TopicDetailView(store: store, subject: group.subject, topic: topic, openWeb: openWeb)
                                 } label: {
                                     HStack {
                                         Image(systemName: "checkmark.circle.fill")
@@ -87,14 +93,14 @@ struct PortfolioView: View {
         .navigationTitle("Learning record")
     }
 
-    private func groupedTopics() -> [(Subject, [Topic])] {
+    private func groupedTopics() -> [SubjectTopicGroup] {
         let pairs = store.completedTopics.compactMap { catalog.topic($0) }
         let dict = Dictionary(grouping: pairs, by: { $0.0.slug })
         return dict.values
-            .compactMap { list -> (Subject, [Topic])? in
+            .compactMap { list -> SubjectTopicGroup? in
                 guard let subject = list.first?.0 else { return nil }
-                return (subject, list.map(\.1))
+                return SubjectTopicGroup(subject: subject, topics: list.map(\.1))
             }
-            .sorted { $0.0.name.localizedCaseInsensitiveCompare($1.0.name) == .orderedAscending }
+            .sorted { $0.subject.name.localizedCaseInsensitiveCompare($1.subject.name) == .orderedAscending }
     }
 }

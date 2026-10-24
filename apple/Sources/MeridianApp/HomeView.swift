@@ -1,6 +1,12 @@
 import MeridianCore
 import SwiftUI
 
+private struct RecentTopicItem: Identifiable {
+    let subject: Subject
+    let topic: Topic
+    var id: String { topic.slug }
+}
+
 struct HomeView: View {
     @ObservedObject var store: AppStore
     let catalog: Catalog
@@ -14,7 +20,10 @@ struct HomeView: View {
         let palette = MeridianPalette.current(for: scheme)
         let streak = store.streak
         let nextTask = PlannerRules.nextUp(store.tasks)
-        let recent = store.completedTopics.suffix(3).reversed().compactMap { catalog.topic($0) }
+        let recent: [RecentTopicItem] = store.completedTopics.suffix(3).reversed().compactMap { slug in
+            guard let pair = catalog.topic(slug) else { return nil }
+            return RecentTopicItem(subject: pair.0, topic: pair.1)
+        }
 
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -102,18 +111,18 @@ struct HomeView: View {
                         .font(.headline)
                         .foregroundStyle(palette.ink)
                         .padding(.top, 4)
-                    ForEach(recent, id: \.1.slug) { subject, topic in
+                    ForEach(recent) { item in
                         NavigationLink {
-                            TopicDetailView(store: store, subject: subject, topic: topic, openWeb: openWeb)
+                            TopicDetailView(store: store, subject: item.subject, topic: item.topic, openWeb: openWeb)
                         } label: {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(palette.ok)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(topic.title)
+                                    Text(item.topic.title)
                                         .font(.headline)
                                         .foregroundStyle(palette.ink)
-                                    Text(subject.name)
+                                    Text(item.subject.name)
                                         .font(.caption)
                                         .foregroundStyle(palette.mutedInk)
                                 }
