@@ -50,8 +50,22 @@
       <div class="mx-hero-actions">
         <a class="btn btn-primary" href="/dpp">Start practising</a>
         <a class="btn btn-ghost" href="/explore">Explore notes</a>
-        <a class="mx-hero-aside" href="/install">{{ icon("download", 15) }} Android app</a>
+        <a class="mx-hero-aside" href="/install">{{ icon("download", 15) }} iOS, macOS &amp; Android</a>
       </div>
+      {% if macos_url or ios_url or apk_url %}
+      <p class="mx-hero-downloads" aria-label="Direct native app downloads">
+        <span class="small muted">Direct download:</span>
+        {% if macos_url %}
+        <a class="chip" href="{{ macos_url }}"{% if macos_url.startswith('/downloads/') %} download="Meridian-macOS.dmg"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("laptop", 13) }} macOS (.dmg)</a>
+        {% endif %}
+        {% if ios_url %}
+        <a class="chip" href="{{ ios_url }}"{% if ios_url.startswith('/downloads/') %} download="Meridian-iOS.ipa"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("smartphone", 13) }} {% if ios_url_kind == 'appstore' %}iOS App Store{% elif ios_url_kind == 'testflight' %}iOS TestFlight{% else %}iOS (.ipa){% endif %}</a>
+        {% endif %}
+        {% if apk_url %}
+        <a class="chip" href="{{ apk_url }}"{% if apk_url.startswith('/downloads/') %} download="Meridian.apk"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("download", 13) }} Android (.apk)</a>
+        {% endif %}
+      </p>
+      {% endif %}
       <ul class="mx-hero-facts">
         <li>{{ icon("check", 14) }} Read and practise in the browser, no setup</li>
         <li>{{ icon("check", 14) }} Code runs for real, with real test cases</li>

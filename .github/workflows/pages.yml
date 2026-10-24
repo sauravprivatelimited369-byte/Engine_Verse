@@ -16,15 +16,18 @@ on:
     branches:
       - main
       # Working branch: deploys now; main takes over once it is merged.
-      - arena/38eff4a6-engine-verse
+      - arena/3d7dc793-engine-verse
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   ENGINEVERSE_APP_URL: ${{ vars.ENGINEVERSE_APP_URL }}
   ENGINEVERSE_APK_URL: ${{ vars.ENGINEVERSE_APK_URL }}
+  ENGINEVERSE_MACOS_URL: ${{ vars.ENGINEVERSE_MACOS_URL }}
+  ENGINEVERSE_IOS_URL: ${{ vars.ENGINEVERSE_IOS_URL }}
   # PUBLIC origin of the FastAPI app that serves /api/voice. Not a secret, and
   # not a credential: it only tells the static page where to send text for
   # natural speech. Empty leaves the free browser/device voice reader working.
@@ -68,7 +71,8 @@ jobs:
           python -m pytest -q backend/tests/test_navigation.py backend/tests/test_links.py \
             backend/tests/test_capabilities.py backend/tests/test_public_delivery.py \
             backend/tests/test_pages_live_contract.py backend/tests/test_static_export_contract.py \
-            backend/tests/test_student_tools.py backend/tests/test_assistant.py
+            backend/tests/test_student_tools.py backend/tests/test_assistant.py \
+            backend/tests/test_apple_project.py
           python scripts/export_pages.py --self-check
           python scripts/fetch_pyodide.py --self-check
           python scripts/fetch_browser_runtimes.py --self-check
@@ -92,6 +96,36 @@ jobs:
         run: python scripts/verify_apk_release.py --url "$ENGINEVERSE_APK_URL"
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Resolve and verify macOS & iOS packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$ENGINEVERSE_MACOS_URL" ] || [ -z "$ENGINEVERSE_IOS_URL" ]; then
+            if RELEASES_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases" 2>/dev/null)"; then
+              MAC_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".dmg")), ""))')"
+              IOS_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".ipa")), ""))')"
+              [ -z "$ENGINEVERSE_MACOS_URL" ] && [ -n "$MAC_ASSET" ] && echo "ENGINEVERSE_MACOS_URL=$MAC_ASSET" >> "$GITHUB_ENV" && ENGINEVERSE_MACOS_URL="$MAC_ASSET"
+              [ -z "$ENGINEVERSE_IOS_URL" ] && [ -n "$IOS_ASSET" ] && echo "ENGINEVERSE_IOS_URL=$IOS_ASSET" >> "$GITHUB_ENV" && ENGINEVERSE_IOS_URL="$IOS_ASSET"
+            fi
+          fi
+          if [ -n "$ENGINEVERSE_MACOS_URL" ] || [ -n "$ENGINEVERSE_IOS_URL" ]; then
+            python scripts/verify_apple_release.py --macos-url "$ENGINEVERSE_MACOS_URL" --ios-url "$ENGINEVERSE_IOS_URL"
+          else
+            RUN_ID="$(gh run list --workflow=apple-build.yml --branch "$GITHUB_REF_NAME" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)"
+            if [ -z "$RUN_ID" ]; then
+              RUN_ID="$(gh run list --workflow=apple-build.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)"
+            fi
+            if [ -n "$RUN_ID" ]; then
+              mkdir -p data/releases
+              if gh run download "$RUN_ID" --name meridian-macos-dmg --dir data/releases && \
+                 gh run download "$RUN_ID" --name meridian-ios-ipa --dir data/releases; then
+                python scripts/verify_apple_release.py --local-dir data/releases
+              else
+                rm -rf data/releases
+              fi
+            fi
+          fi
 
       - name: Export the public site
         shell: bash
@@ -155,7 +189,7 @@ jobs:
 
       - name: Refuse leaked demo passwords or tokens
         run: |
-          if grep -R -n -E 'LearnBuild#2026!|TeachLearn#2026!|Str0ngPassphrase#42!|gh[pousr]_[A-Za-z0-9]{30,}' site; then
+          if grep -R -I -n -E 'LearnBuild#2026!|TeachLearn#2026!|Str0ngPassphrase#42!|gh[pousr]_[A-Za-z0-9]{30,}' site; then
             echo "refusing to publish a password or token"
             exit 1
           fi
@@ -166,6 +200,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

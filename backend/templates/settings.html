@@ -265,11 +265,15 @@
           <span class="chip accent">{{ 'Free' if not plan.price_cents else (plan.price_cents / 100) | int ~ ' INR/mo' }}</span></div>
       {% endfor %}</div></section>
 
-    <section class="panel"><h2>Install as an app</h2>
-      <p class="muted">{{ brand.site_name }} can live on your home screen. Previously cached public pages may
-        work offline; sign-in, synced progress and submissions need a connection.</p>
-      <button class="btn btn-soft hide" id="install-btn">Install</button>
-      <a class="btn btn-ghost" href="/install">Instructions</a></section>
+    <section class="panel"><h2>Install on iOS, macOS &amp; Android</h2>
+      <p class="muted">Download the native {{ brand.site_name }} app for Mac, iPhone, iPad or Android, or add the Web App to your home screen or Dock. Previously cached public pages work offline; sign-in, synced progress and submissions need a connection.</p>
+      <p class="row">
+        {% if macos_url %}<a class="btn btn-soft btn-sm" href="{{ macos_url }}"{% if macos_url.startswith('/downloads/') %} download="Meridian-macOS.dmg"{% else %} rel="noopener noreferrer"{% endif %}>Download for macOS (.dmg)</a>{% endif %}
+        {% if ios_url %}<a class="btn btn-soft btn-sm" href="{{ ios_url }}"{% if ios_url.startswith('/downloads/') %} download="Meridian-iOS.ipa"{% else %} rel="noopener noreferrer"{% endif %}>{% if ios_url_kind == 'appstore' %}iOS App Store{% elif ios_url_kind == 'testflight' %}iOS TestFlight{% else %}Download for iOS (.ipa){% endif %}</a>{% endif %}
+        {% if apk_url %}<a class="btn btn-soft btn-sm" href="{{ apk_url }}"{% if apk_url.startswith('/downloads/') %} download="Meridian.apk"{% else %} rel="noopener noreferrer"{% endif %}>Download Android (.apk)</a>{% endif %}
+        <button class="btn btn-soft btn-sm hide" id="install-btn" type="button">Install Web App</button>
+        <a class="btn btn-ghost btn-sm" href="/install">All platforms &amp; instructions</a>
+      </p></section>
 
     <section class="panel" id="export"><h2>Download your data</h2>
       <p class="muted">Download your profile, completed topics, solved problems, bookmarks and daily activity as a JSON file. The file is

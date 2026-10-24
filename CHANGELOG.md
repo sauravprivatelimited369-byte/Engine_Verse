@@ -9,6 +9,24 @@ release.
 
 ### Added
 
+- **Native macOS and iOS apps (`apple/`) and website downloads.** Added a Swift
+  5.10 multiplatform SwiftUI + WebKit project targeting macOS 14+ (Universal
+  `arm64` + `x86_64`) and iOS / iPadOS 17+ (`arm64`) with offline subject and
+  topic search (`scripts/export_apple_catalog.py` → `apple/Resources/catalog.json`),
+  study streaks, planner tasks, learning-record export, local-only privacy
+  manifest (`PrivacyInfo.xcprivacy`), and a hardened `WKWebView` viewer with
+  zero `WKScriptMessageHandler` bridges. `.github/workflows/apple-build.yml`
+  runs `swift test`, builds `Meridian-macOS.dmg` and `Meridian-iOS.ipa` with
+  SHA-256 digests, verifies archives via `scripts/verify_apple_release.py`, and
+  publishes release assets. Both the FastAPI backend (`ENGINEVERSE_MACOS_URL`,
+  `ENGINEVERSE_IOS_URL`, `/downloads/{filename}`) and static GitHub Pages export
+  (`scripts/export_pages.py`) surface macOS, iOS, and Android downloads across
+  the homepage hero, footer, OS-aware `/install` page (plus Safari Web App
+  instructions), `/hosting`, and `/settings`. Details in
+  [docs/APPLE.md](docs/APPLE.md); tests in `backend/tests/test_apple_project.py`,
+  `backend/tests/test_public_delivery.py`, and
+  `backend/tests/test_static_export_contract.py`.
+
 - **Search-engine and social metadata for the public site.** Every public page
   now has one canonical URL (filter parameters dropped, `page` and `card` kept),
   a meta description taken from its navigation blurb, and a `robots` meta tag

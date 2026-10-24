@@ -1,75 +1,138 @@
 {% extends "base.html" %}
-{% block title %}Install the app — {{ brand.site_name }}{% endblock %}
 {% from "_icons.html" import icon %}
-{% from "_media.html" import picture %}
+{% block title %}Download {{ brand.site_name }} for iOS, macOS &amp; Android{% endblock %}
+{% block description %}Download native {{ brand.site_name }} apps for macOS (.dmg), iOS &amp; iPadOS (.ipa) and Android (.apk), or install the Web App in Safari and Chrome.{% endblock %}
 {% block content %}
 <section class="page-hero">
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
-  {{ picture("/static/img/app-icon-192.webp", "/static/icons/icon-192.png",
-             brand.site_name ~ " app icon: the M mark inside a meridian ring", 96, 96,
-             eager=True, style="width:96px;height:96px;border-radius:22px;margin-bottom:14px") }}
-  <p class="ev-eyebrow">Install · Android · iPhone</p>
-  <h1>Use {{ brand.site_name }} on your phone</h1>
-  <p class="lead">You can use the full website without downloading anything. On Android or iPhone, add this
-    same HTTPS site to your home screen. Sign in to your account to keep progress across devices;
-    installing an app is not required.</p>
+  <picture><source type="image/webp" srcset="/static/img/app-icon-192.webp"><img src="/static/icons/icon-192.png" alt="{{ brand.site_name }} app icon: the M mark inside a meridian ring" width="96" height="96" loading="eager" decoding="sync" fetchpriority="high" style="width:96px;height:96px;border-radius:22px;margin-bottom:14px"></picture>
+  <p class="ev-eyebrow">iOS · macOS · Android</p>
+  <h1>Download {{ brand.site_name }} for iOS, macOS &amp; Android</h1>
+  <p class="lead">Native SwiftUI apps for iPhone, iPad and Mac, a native Compose app for Android, or instant Web App installation in Safari and Chrome. The offline subject catalogue, study planner, streaks and learning record run directly on your device.</p>
+
+  <div class="install-detected hide" id="install-detected" data-install-detected role="region" aria-label="Recommended download for this device"></div>
+
+  <nav class="install-jump" aria-label="Jump to platform">
+    <a class="chip" href="#macos">{{ icon("laptop", 14) }} macOS</a>
+    <a class="chip" href="#ios">{{ icon("smartphone", 14) }} iOS &amp; iPadOS</a>
+    <a class="chip" href="#android">{{ icon("download", 14) }} Android</a>
+    <a class="chip" href="#web-app">{{ icon("globe", 14) }} Browser Web App</a>
+  </nav>
 </section>
 
-<div class="stack install-cards">
-  <section class="panel install-card">
-    <span class="install-mark" aria-hidden="true">{{ icon("download", 18) }}</span>
+<div class="install-cards install-cards-grid">
+  <section class="panel install-card" id="macos" data-install-platform="macos" data-install-label="macOS (.dmg)">
+    <span class="install-mark" aria-hidden="true">{{ icon("laptop", 20) }}</span>
     <div class="install-body">
-      <h2>Android — install the web app</h2>
-      <ol class="steps">
-        <li>Open this site in Chrome.</li>
-        <li>Tap the ⋮ menu, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li>
-        <li>Confirm. The icon appears on your home screen.</li>
-      </ol>
-      <button class="btn btn-primary hide" id="install-btn" type="button">Install web app</button>
-      <p class="small muted">The web app uses this site's account and data. Offline access is limited to
-        previously cached public pages; submissions and sign-in need a connection.</p>
-    </div>
-  </section>
-
-  <section class="panel install-card">
-    <span class="install-mark" aria-hidden="true">{{ icon("hammer", 18) }}</span>
-    <div class="install-body">
-      <h2>Android — signed APK</h2>
-      {% if apk_url %}
-        <p>An alternative Android wrapper for this same HTTPS website is available as a signed GitHub Release.</p>
-        <p><a class="btn btn-primary" href="{{ apk_url }}" rel="noopener noreferrer">Download Meridian.apk</a></p>
-        <p class="small muted">Check the release, its SHA-256 checksum and signing certificate before installing.
-          Android may ask you to allow installs from this source. Only install the APK from the official release;
-          never from a forwarded copy. Updates require a new signed release.</p>
-      {% else %}
-        <p>No signed APK has been published and configured for this site yet. Do not install an APK from an
-          unofficial source — use the web app above in the meantime.</p>
+      <p class="install-platform-meta">macOS 14 Sonoma+ · Universal (Apple Silicon &amp; Intel)</p>
+      <h2>macOS app</h2>
+      <p>Native SwiftUI desktop app with sidebar navigation, the 93-subject / 406-topic offline catalogue, study planner, streaks, learning record and a restricted notes &amp; playground viewer.</p>
+      {% if macos_url %}
+      <p class="install-cta-row">
+        <a class="btn btn-primary" data-install-primary href="{{ macos_url }}"{% if macos_url.startswith('/downloads/') %} download="Meridian-macOS.dmg"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("download", 16) }} Download {{ brand.site_name }} for macOS (.dmg)</a>
+      </p>
+      {% if macos_sha256 %}
+      <p class="install-digest"><span class="muted">SHA-256:</span> <code>{{ macos_sha256[:16] }}…{{ macos_sha256[-8:] }}</code> · <a href="/downloads/Meridian-macOS.dmg.sha256">checksum</a></p>
       {% endif %}
-      <p class="small muted">The APK is a Trusted Web Activity, not an offline copy of the backend.
-        Accounts, saved progress and live code execution still require this website to be online;
-        execution also requires an operator-configured judge.</p>
-    </div>
-  </section>
-
-  <section class="panel install-card">
-    <span class="install-mark" aria-hidden="true">{{ icon("globe", 18) }}</span>
-    <div class="install-body">
-      <h2>iPhone — Safari</h2>
       <ol class="steps">
-        <li>Open this site in Safari.</li>
-        <li>Tap Share.</li>
-        <li>Choose <strong>Add to Home Screen</strong>.</li>
+        <li>Download <code>Meridian-macOS.dmg</code> and double-click to open the disk image.</li>
+        <li>Drag <strong>Meridian.app</strong> into your <strong>Applications</strong> folder.</li>
+        <li>If macOS asks to confirm an unnotarised build on first launch, Control-click <strong>Meridian</strong> and choose <strong>Open</strong> (or allow it in <strong>System Settings → Privacy &amp; Security</strong>).</li>
       </ol>
+      {% else %}
+      <p class="muted">No signed macOS disk image has been published for this deployment yet. You can add {{ brand.site_name }} directly to your Mac Dock from Safari below, or build <code>Meridian-macOS.dmg</code> from source with <code>apple/scripts/build_apple.sh</code>.</p>
+      {% endif %}
+      <details class="install-alt"{% if not macos_url %} open{% endif %}>
+        <summary>Or add to Mac Dock from Safari (no download)</summary>
+        <ol class="steps">
+          <li>Open <code>{{ site_root }}/</code> in <strong>Safari</strong> on macOS Sonoma or later.</li>
+          <li>Choose <strong>File → Add to Dock…</strong> in the menu bar and click <strong>Add</strong>.</li>
+        </ol>
+      </details>
     </div>
   </section>
 
-  <section class="panel install-card">
-    <span class="install-mark" aria-hidden="true">{{ icon("grid", 18) }}</span>
+  <section class="panel install-card" id="ios" data-install-platform="ios" data-install-label="{% if ios_url_kind == 'appstore' %}App Store{% elif ios_url_kind == 'testflight' %}TestFlight{% else %}iOS (.ipa){% endif %}">
+    <span class="install-mark" aria-hidden="true">{{ icon("smartphone", 20) }}</span>
     <div class="install-body">
-      <h2>Desktop</h2>
-      <p>Use your browser menu or the install icon in the address bar. Installing does not change where your
-        account data is stored: the operator's private database.</p>
+      <p class="install-platform-meta">iOS &amp; iPadOS 17+ · iPhone &amp; iPad</p>
+      <h2>iOS &amp; iPadOS app</h2>
+      <p>Native SwiftUI app for iPhone (tab bar) and iPad (split view) with the offline subject catalogue, streaks, study planner, learning record and restricted viewer.</p>
+      {% if ios_url %}
+        {% if ios_url_kind == "appstore" %}
+        <p class="install-cta-row">
+          <a class="btn btn-primary" data-install-primary href="{{ ios_url }}" rel="noopener noreferrer">{{ icon("download", 16) }} Open on the App Store</a>
+        </p>
+        {% elif ios_url_kind == "testflight" %}
+        <p class="install-cta-row">
+          <a class="btn btn-primary" data-install-primary href="{{ ios_url }}" rel="noopener noreferrer">{{ icon("download", 16) }} Join on TestFlight</a>
+        </p>
+        {% else %}
+        <p class="install-cta-row">
+          <a class="btn btn-primary" data-install-primary href="{{ ios_url }}"{% if ios_url.startswith('/downloads/') %} download="Meridian-iOS.ipa"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("download", 16) }} Download {{ brand.site_name }} for iOS (.ipa)</a>
+        </p>
+        {% if ios_sha256 %}
+        <p class="install-digest"><span class="muted">SHA-256:</span> <code>{{ ios_sha256[:16] }}…{{ ios_sha256[-8:] }}</code> · <a href="/downloads/Meridian-iOS.ipa.sha256">checksum</a></p>
+        {% endif %}
+        <ol class="steps">
+          <li>Download <code>Meridian-iOS.ipa</code>.</li>
+          <li>Install onto your iPhone or iPad with <strong>AltStore</strong>, <strong>SideStore</strong>, <strong>Sideloadly</strong> or <strong>Apple Configurator 2</strong> using your Apple ID.</li>
+          <li>If prompted on first launch, trust your developer certificate under <strong>Settings → General → VPN &amp; Device Management</strong>.</li>
+        </ol>
+        {% endif %}
+      {% else %}
+      <p class="muted">No iOS <code>.ipa</code> or TestFlight link has been published for this deployment yet. Add {{ brand.site_name }} directly to your Home Screen from Safari below in seconds.</p>
+      {% endif %}
+      <details class="install-alt"{% if not ios_url %} open{% endif %}>
+        <summary>Instant install via Safari (no sideloading needed)</summary>
+        <ol class="steps">
+          <li>Open <code>{{ site_root }}/</code> in <strong>Safari</strong> on iPhone or iPad.</li>
+          <li>Tap the <strong>Share</strong> button, then choose <strong>Add to Home Screen</strong>.</li>
+          <li>Tap <strong>Add</strong> — {{ brand.site_name }} opens full-screen from your Home Screen.</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <section class="panel install-card" id="android" data-install-platform="android" data-install-label="Android (.apk)">
+    <span class="install-mark" aria-hidden="true">{{ icon("download", 20) }}</span>
+    <div class="install-body">
+      <p class="install-platform-meta">Android 8.0+ · Signed APK &amp; Chrome Web App</p>
+      <h2>Android app</h2>
+      <p>Native Jetpack Compose app with the offline subject catalogue, study planner, streaks, learning record and restricted viewer.</p>
+      {% if apk_url %}
+      <p class="install-cta-row">
+        <a class="btn btn-primary" data-install-primary href="{{ apk_url }}"{% if apk_url.startswith('/downloads/') %} download="Meridian.apk"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("download", 16) }} Download signed {{ brand.name }}.apk</a>
+      </p>
+      {% if apk_sha256 %}
+      <p class="install-digest"><span class="muted">SHA-256:</span> <code>{{ apk_sha256[:16] }}…{{ apk_sha256[-8:] }}</code> · <a href="/downloads/Meridian.apk.sha256">checksum</a></p>
+      {% endif %}
+      <ol class="steps">
+        <li>Download the signed APK and open it on your Android phone.</li>
+        <li>Allow installation from your browser if prompted, then launch <strong>{{ brand.site_name }}</strong>.</li>
+      </ol>
+      <p class="small muted">Verify the SHA-256 checksum published with the release before installing.</p>
+      {% else %}
+      <p class="muted">No signed APK has been published for this deployment yet. Do not install an APK from third-party websites; add the Web App from Chrome below instead.</p>
+      {% endif %}
+      <details class="install-alt"{% if not apk_url %} open{% endif %}>
+        <summary>Or install from Chrome on Android</summary>
+        <ol class="steps">
+          <li>Open <code>{{ site_root }}/</code> in Chrome on your Android phone.</li>
+          <li>Tap the three-dot menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+        </ol>
+        <button class="btn btn-ghost btn-sm hide" id="install-btn" type="button">Install from this browser</button>
+      </details>
     </div>
   </section>
 </div>
+
+<section class="panel install-card mt" id="web-app">
+  <span class="install-mark" aria-hidden="true">{{ icon("globe", 20) }}</span>
+  <div class="install-body">
+    <h2>Browser Web App &amp; what works offline</h2>
+    <p>In desktop Chrome, Edge or Brave, click the install icon in the address bar; in Safari on Mac, use <strong>File → Add to Dock…</strong>; on iPhone and iPad, use <strong>Share → Add to Home Screen</strong>.</p>
+    <p class="small muted"><strong>Offline honesty:</strong> Native iOS, macOS and Android apps bundle all 93 subjects and 406 topic summaries, the study planner, streaks and your learning record offline on-device with no account or analytics. Full notes, daily practice and WebAssembly compilers load over HTTPS. In the browser Web App, pages you have already visited are cached for offline reading while unvisited pages and server-judged submissions need a connection.</p>
+  </div>
+</section>
 {% endblock %}

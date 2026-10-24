@@ -910,6 +910,60 @@ actual:   ${escapeHtml(c.actual)}</pre></div>`);
     });
   }
 
+  // --------------------------------------------------------- install OS detect
+  const detectedSlot = $("[data-install-detected]");
+  if (detectedSlot) {
+    const ua = navigator.userAgent || "";
+    const plat = navigator.platform || "";
+    const isIpadDesktopMode = /MacIntel/.test(plat) && (navigator.maxTouchPoints || 0) > 1;
+    let detected = "";
+    if (/iPhone|iPad|iPod/i.test(ua) || isIpadDesktopMode) detected = "ios";
+    else if (/Android/i.test(ua)) detected = "android";
+    else if (/Macintosh|Mac OS X/i.test(ua)) detected = "macos";
+
+    if (detected) {
+      const card = $(`[data-install-platform="${detected}"]`);
+      if (card) {
+        card.classList.add("is-recommended");
+        const primaryLink = card.querySelector("[data-install-primary]");
+        const names = {
+          macos: "Recommended for this Mac",
+          ios: "Recommended for this iPhone or iPad",
+          android: "Recommended for this Android device",
+        };
+        detectedSlot.replaceChildren();
+        const tag = document.createElement("span");
+        tag.className = "chip ok";
+        tag.textContent = names[detected] || "Recommended for this device";
+        detectedSlot.append(tag);
+
+        if (primaryLink && primaryLink.getAttribute("href")) {
+          const cta = document.createElement("a");
+          cta.className = "btn btn-primary btn-sm";
+          cta.href = primaryLink.getAttribute("href");
+          if (primaryLink.hasAttribute("download")) {
+            cta.setAttribute("download", primaryLink.getAttribute("download") || "");
+          } else {
+            cta.rel = "noopener noreferrer";
+          }
+          cta.textContent = primaryLink.textContent.trim();
+          detectedSlot.append(cta);
+        } else {
+          const jump = document.createElement("a");
+          jump.className = "btn btn-soft btn-sm";
+          jump.href = `#${detected}`;
+          jump.textContent = detected === "ios"
+            ? "Install from Safari steps"
+            : detected === "macos"
+              ? "Add to Mac Dock steps"
+              : "See Android install steps";
+          detectedSlot.append(jump);
+        }
+        detectedSlot.classList.remove("hide");
+      }
+    }
+  }
+
   // Merge into the namespace instead of replacing it. i18n.js loads before
   // this file and publishes `window.EV.i18n`; replacing the object dropped
   // that member, so i18n's own DOMContentLoaded init threw
