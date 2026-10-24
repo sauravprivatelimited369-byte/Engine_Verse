@@ -247,18 +247,45 @@ class Settings:
     signin: str = field(default_factory=lambda: os.environ.get(
         "ENGINEVERSE_SIGNIN", "optional").strip().lower())
 
-    # Advertise a signed Android release only after the operator has published
-    # it and configured its exact URL. A missing APK never masquerades as one.
+    # Advertise native releases only after the operator has published them and
+    # configured their exact URLs (or placed verified builds in data/releases/).
+    # A missing package never masquerades as one.
     apk_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_APK_URL", ""))
+    macos_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_MACOS_URL", ""))
+    ios_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_IOS_URL", ""))
 
     @property
     def approved_apk_url(self) -> str:
-        from engineverse.distribution import normalise_apk_url
+        from engineverse.distribution import local_download_path, normalise_apk_url
 
-        try:
-            return normalise_apk_url(self.apk_url)
-        except ValueError:
-            return ""
+        if self.apk_url.strip():
+            try:
+                return normalise_apk_url(self.apk_url)
+            except ValueError:
+                return ""
+        return local_download_path("android")
+
+    @property
+    def approved_macos_url(self) -> str:
+        from engineverse.distribution import local_download_path, normalise_macos_url
+
+        if self.macos_url.strip():
+            try:
+                return normalise_macos_url(self.macos_url)
+            except ValueError:
+                return ""
+        return local_download_path("macos")
+
+    @property
+    def approved_ios_url(self) -> str:
+        from engineverse.distribution import local_download_path, normalise_ios_url
+
+        if self.ios_url.strip():
+            try:
+                return normalise_ios_url(self.ios_url)
+            except ValueError:
+                return ""
+        return local_download_path("ios")
 
     @property
     def assistant_webhook(self) -> str:
@@ -523,12 +550,21 @@ class Settings:
             problems.append("ENGINEVERSE_FRAME_PREVIEW must not be set in production")
         if self.signin not in {"required", "optional"}:
             problems.append("ENGINEVERSE_SIGNIN must be either 'required' or 'optional'")
-        from engineverse.distribution import normalise_apk_url
+        from engineverse.distribution import (
+            normalise_apk_url,
+            normalise_ios_url,
+            normalise_macos_url,
+        )
 
-        try:
-            normalise_apk_url(self.apk_url)
-        except ValueError as exc:
-            problems.append(str(exc))
+        for check, raw in (
+            (normalise_apk_url, self.apk_url),
+            (normalise_macos_url, self.macos_url),
+            (normalise_ios_url, self.ios_url),
+        ):
+            try:
+                check(raw)
+            except ValueError as exc:
+                problems.append(str(exc))
         if self.email_deliverability_mode not in {"off", "fallback", "mx"}:
             problems.append(
                 "ENGINEVERSE_EMAIL_DELIVERABILITY must be 'auto', 'off', 'fallback' or 'mx' "

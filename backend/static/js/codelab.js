@@ -1944,11 +1944,11 @@
       const filename = (spec && spec.fileName) || "program.txt";
       const code = this.editor.getValue();
 
-      // The Android app's viewer cannot save blob downloads (and exposes no
-      // JavaScript bridge), so copy the code and say what happened.
-      if (/EngineVerseAndroid\//.test(navigator.userAgent)) {
+      // The native apps' in-app viewers cannot save blob downloads (and expose
+      // no JavaScript bridge), so copy the code and say what happened.
+      if (/EngineVerseAndroid\//.test(navigator.userAgent) || /EngineVerseApple\//.test(navigator.userAgent)) {
         this.copySource().then(() =>
-          toastMessage("Downloads are not available in the Android app. The code was copied instead.")
+          toastMessage("Downloads are not available inside the Meridian app. The code was copied instead.")
         );
         return;
       }

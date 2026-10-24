@@ -69,3 +69,15 @@ android/.idea/
 *.aab
 # The Gradle wrapper jar is part of the build and must be committed.
 !android/gradle/wrapper/gradle-wrapper.jar
+
+# Apple (native SwiftUI multiplatform project in apple/)
+apple/.build/
+apple/.swiftpm/
+apple/build/
+apple/DerivedData/
+*.ipa
+*.dmg
+*.pkg
+*.mobileprovision
+*.cer
+

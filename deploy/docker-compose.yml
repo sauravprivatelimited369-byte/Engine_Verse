@@ -82,8 +82,10 @@ services:
       ENGINEVERSE_SITE_URL: ${ENGINEVERSE_SITE_URL:-${SITE_URL:?set ENGINEVERSE_SITE_URL or SITE_URL to the public https origin}}
       ENGINEVERSE_JUDGE: ${ENGINEVERSE_JUDGE:-${JUDGE:-disabled}}
       ENGINEVERSE_JUDGE0_URL: ${ENGINEVERSE_JUDGE0_URL:-}
-      # Only advertise a versioned, signed release asset after it exists.
+      # Only advertise versioned, signed release assets after they exist.
       ENGINEVERSE_APK_URL: ${ENGINEVERSE_APK_URL:-}
+      ENGINEVERSE_MACOS_URL: ${ENGINEVERSE_MACOS_URL:-}
+      ENGINEVERSE_IOS_URL: ${ENGINEVERSE_IOS_URL:-}
       # Digital Asset Links must match the certificate that signed that APK.
       ENGINEVERSE_TWA_PACKAGE: ${ENGINEVERSE_TWA_PACKAGE:-}
       ENGINEVERSE_TWA_SHA256: ${ENGINEVERSE_TWA_SHA256:-}

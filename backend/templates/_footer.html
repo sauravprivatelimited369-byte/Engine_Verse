@@ -34,7 +34,10 @@
         <a class="small" href="/explore">Notes</a>
         <a class="small" href="/practice">Practice</a>
         <a class="small" href="{{ '/dashboard' if static_export and not user else ('/profile' if user else '/leaderboard') }}">Progress</a>
-        <a class="small" href="/install">{{ icon("download", 13) }} Android</a>
+        <a class="small" href="/install">{{ icon("download", 13) }} iOS, macOS &amp; Android</a>
+        {% if macos_url %}<a class="small" href="{{ macos_url }}"{% if macos_url.startswith('/downloads/') %} download="Meridian-macOS.dmg"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("laptop", 13) }} macOS</a>{% endif %}
+        {% if ios_url %}<a class="small" href="{{ ios_url }}"{% if ios_url.startswith('/downloads/') %} download="Meridian-iOS.ipa"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("smartphone", 13) }} iOS</a>{% endif %}
+        {% if apk_url %}<a class="small" href="{{ apk_url }}"{% if apk_url.startswith('/downloads/') %} download="Meridian.apk"{% else %} rel="noopener noreferrer"{% endif %}>{{ icon("download", 13) }} APK</a>{% endif %}
       </p>
     </div>
 

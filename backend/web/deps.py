@@ -263,6 +263,18 @@ def _issues_url() -> str:
     return project.issues_url()
 
 
+def distribution_ios_kind(url: str) -> str:
+    from engineverse.distribution import ios_url_kind
+
+    return ios_url_kind(url)
+
+
+def distribution_sha256(platform: str) -> str:
+    from engineverse.distribution import local_release_sha256
+
+    return local_release_sha256(platform)
+
+
 #: Query parameters that select a different document rather than a filter on the
 #: same one. ``?page=2`` is a later page of a list and ``?card=`` a deep link to
 #: one flashcard; both are listed in the sitemap, so they keep their own canonical.
@@ -428,6 +440,12 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         "login_otp_required": get_settings().login_otp_required,
         "signin_required": get_settings().signin_required,
         "apk_url": get_settings().approved_apk_url,
+        "macos_url": get_settings().approved_macos_url,
+        "ios_url": get_settings().approved_ios_url,
+        "ios_url_kind": distribution_ios_kind(get_settings().approved_ios_url),
+        "apk_sha256": distribution_sha256("android") if get_settings().approved_apk_url.startswith("/downloads/") else "",
+        "macos_sha256": distribution_sha256("macos") if get_settings().approved_macos_url.startswith("/downloads/") else "",
+        "ios_sha256": distribution_sha256("ios") if get_settings().approved_ios_url.startswith("/downloads/") else "",
         # The GitHub Pages export renders these same templates as a signed-out
         # visitor; this flag swaps account controls for device-local progress.
         "static_export": _static_export(),

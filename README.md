@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/pages.yml)
+[![Apple apps](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/apple-build.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/apple-build.yml)
 [![Android app](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml/badge.svg)](https://github.com/sauravprivatelimited369-byte/Engine_Verse/actions/workflows/android-build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -13,7 +14,8 @@ links to internships and scholarships. You can use it in three ways:
 | | What it is | Accounts | Where your progress lives |
 |---|---|---|---|
 | **Website on GitHub Pages** | A static copy of the site, rebuilt and deployed by Actions from this repository | None | Your browser (export and import as JSON) |
-| **Android app** | A native Kotlin app with an offline catalogue, planner and progress, which opens the website for full notes and code | None | The app's private storage |
+| **iOS & macOS apps** | Native SwiftUI apps (`apple/`) with an offline catalogue, planner, streaks and progress, opening the website in a restricted `WKWebView` | None | The app's local storage |
+| **Android app** | A native Kotlin app (`android/`) with an offline catalogue, planner and progress, which opens the website for full notes and code | None | The app's private storage |
 | **Self-hosted full website** | The FastAPI application with accounts, a server-side judge and PostgreSQL | Yes | Your server's database |
 
 **Website address:** `https://sauravprivatelimited369-byte.github.io/Engine_Verse/`.
@@ -228,13 +230,16 @@ node scripts/check_voice.js                       # voice reader/tutor behaviour
 node scripts/check_browser_runtimes.js site       # needs the runtimes fetched above
 
 python scripts/export_android_catalog.py --check  # Android catalogue matches the seed
+python scripts/export_apple_catalog.py --check    # iOS & macOS catalogue matches the seed
 cd android && ./gradlew testDebugUnitTest lintDebug assembleDebug   # needs JDK 17 + Android SDK
+bash apple/scripts/build_apple.sh --all                             # needs macOS 14+ with Xcode 16+
 ```
 
 | Workflow | Runs on | What it does |
 |---|---|---|
 | [CI](.github/workflows/ci.yml) | Every push and pull request | Python suite on SQLite and PostgreSQL, JavaScript syntax and behaviour checks, the 3D scene checks, and the static-site checks under jsdom. A weekly job checks external links. |
 | [GitHub Pages](.github/workflows/pages.yml) | `main` and this project's working branch | Tests, export, a runtime check in every language, jsdom checks and a secret scan. It deploys only if all pass, then `verify_pages.py` checks the live URL. |
+| [Apple apps](.github/workflows/apple-build.yml) | Changes under `apple/` and releases | Swift unit tests, iOS Simulator compile check, universal `Meridian-macOS.dmg` and native `arm64` `Meridian-iOS.ipa` artifacts. |
 | [Android app](.github/workflows/android-build.yml) | Changes under `android/` | Unit tests, lint and a debug APK artifact. A signed release is built on manual dispatch only. |
 | [Java sandbox](.github/workflows/java.yml) | Changes to `sandbox-java/` | Builds and tests the Java sandbox |
 

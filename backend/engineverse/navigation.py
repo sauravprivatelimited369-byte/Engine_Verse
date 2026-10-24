@@ -582,7 +582,7 @@ EXTRA_FOOTER_SECTIONS: tuple[Section, ...] = (
         icon="download",
         destinations=(
             Destination("Install the app", "/install",
-                        "Add Meridian to your home screen and use it like an app.",
+                        "Download Meridian for iOS, macOS or Android, or add it to your home screen.",
                         icon="download"),
             Destination("Offline help", "/offline",
                         "What still works when the connection does not.", minor=True),

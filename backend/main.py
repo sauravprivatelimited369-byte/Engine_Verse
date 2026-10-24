@@ -345,7 +345,7 @@ PUBLIC_EXACT = frozenset({
 })
 # The voice API is open on purpose: the public Pages copy has no account and
 # the reader must work there. It is rate-limited and bounded instead of gated.
-PUBLIC_PREFIXES = ("/static/", "/certificates/", "/api/voice/")
+PUBLIC_PREFIXES = ("/static/", "/downloads/", "/certificates/", "/api/voice/")
 
 
 def is_public_path(path: str) -> bool:
@@ -718,6 +718,24 @@ def create_app() -> FastAPI:
         return FileResponse(os.path.join(STATIC_DIR, "sw.js"),
                             media_type="application/javascript",
                             headers={"Service-Worker-Allowed": "/"})
+
+    @app.get("/downloads/{filename}", include_in_schema=False)
+    async def download_package(filename: str) -> Response:
+        """Serve verified native app packages from ``data/releases/`` when present."""
+        from fastapi.responses import FileResponse
+        from engineverse.distribution import ALLOWED_DOWNLOAD_MEDIA_TYPES, local_release_file
+
+        target = local_release_file(filename)
+        if target is None:
+            return JSONResponse({"ok": False, "error": "Package is not published on this host."}, status_code=404)
+        media_type = ALLOWED_DOWNLOAD_MEDIA_TYPES[filename]
+        headers = {
+            "Cache-Control": "public, max-age=300",
+            "X-Content-Type-Options": "nosniff",
+        }
+        if not filename.endswith(".sha256"):
+            headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return FileResponse(str(target), media_type=media_type, headers=headers)
 
     @app.get("/.well-known/assetlinks.json", include_in_schema=False)
     async def assetlinks() -> Response:

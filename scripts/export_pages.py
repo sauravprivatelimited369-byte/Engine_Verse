@@ -30,8 +30,16 @@ BACKEND = ROOT / "backend"
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
 from engineverse import project  # noqa: E402
-from engineverse.config import normalise_assistant_url  # noqa: E402
-from engineverse.distribution import normalise_apk_url  # noqa: E402
+from engineverse.config import normalise_assistant_url, reload_settings  # noqa: E402
+from engineverse.distribution import (  # noqa: E402
+    ALLOWED_DOWNLOAD_MEDIA_TYPES,
+    ios_url_kind,
+    local_download_path,
+    local_release_file,
+    normalise_apk_url,
+    normalise_ios_url,
+    normalise_macos_url,
+)
 
 FORBIDDEN = (
     "LearnBuild#2026!",
@@ -81,6 +89,12 @@ FILE_SUFFIXES = (
     ".txt",
     ".webmanifest",
     ".map",
+    ".dmg",
+    ".ipa",
+    ".apk",
+    ".pkg",
+    ".zip",
+    ".sha256",
 )
 ATTR_URL = re.compile(
     r"""(?P<attr>\b(?:href|src|srcset|action)\s*=\s*)(?P<q>["'])(?P<url>/[^"']*)(?P=q)"""
@@ -303,7 +317,7 @@ def banner(base: str) -> str:
     return ""
 
 
-def hosting_main(app_url: str = "", apk_url: str = "") -> str:
+def hosting_main(app_url: str = "", apk_url: str = "", macos_url: str = "", ios_url: str = "") -> str:
     """The /hosting page: what this static copy does, and what needs a server."""
     deploy_doc = f"{REPO}/blob/main/docs/DEPLOYMENT.md"
     if app_url:
@@ -319,11 +333,28 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
             f'<p class="row"><a class="btn btn-ghost" href="{html.escape(deploy_doc, quote=True)}" '
             'rel="noopener noreferrer">Deployment guide</a></p>'
         )
-    apk = (
-        f'<p><a class="btn btn-soft" href="{html.escape(apk_url, quote=True)}" rel="noopener noreferrer">'
-        'Download the Android app</a></p>'
-        if apk_url else ""
-    )
+    native_btns: list[str] = []
+    if macos_url:
+        native_btns.append(
+            f'<a class="btn btn-soft btn-sm" href="{html.escape(macos_url, quote=True)}" '
+            'rel="noopener noreferrer">Download for macOS (.dmg)</a>'
+        )
+    if ios_url:
+        ios_label = (
+            "Open on the App Store" if ios_url_kind(ios_url) == "appstore"
+            else "Join on TestFlight" if ios_url_kind(ios_url) == "testflight"
+            else "Download for iOS (.ipa)"
+        )
+        native_btns.append(
+            f'<a class="btn btn-soft btn-sm" href="{html.escape(ios_url, quote=True)}" '
+            f'rel="noopener noreferrer">{ios_label}</a>'
+        )
+    if apk_url:
+        native_btns.append(
+            f'<a class="btn btn-soft btn-sm" href="{html.escape(apk_url, quote=True)}" '
+            'rel="noopener noreferrer">Download the Android app</a>'
+        )
+    native_row = f'<p class="row">{"".join(native_btns)}</p>' if native_btns else ""
     return f"""
 <section class="page-hero">
   <p class="ev-eyebrow">Platform · how this site works</p>
@@ -343,8 +374,8 @@ def hosting_main(app_url: str = "", apk_url: str = "") -> str:
     </ul>
     <p class="row"><a class="btn btn-primary" href="/explore">Explore subjects</a>
       <a class="btn btn-ghost" href="/practice/problems">Coding problems</a>
-      <a class="btn btn-ghost" href="/install">Install the app</a></p>
-    {apk}
+      <a class="btn btn-ghost" href="/install">Download for iOS, macOS &amp; Android</a></p>
+    {native_row}
   </section>
   <section class="panel">
     <h2>What needs a server</h2>
@@ -364,29 +395,100 @@ def _svg(paths: list[str]) -> str:
             f'focusable="false">{body}</svg>')
 
 
-def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
-    """Phone installation page for the static Pages copy.
+def reading_copy_install_main(
+    app_url: str = "",
+    apk_url: str = "",
+    macos_url: str = "",
+    ios_url: str = "",
+) -> str:
+    """Native & Web App installation page for the static Pages copy.
 
-    Mirrors the template's hero and install-card layout, but describes this
-    copy honestly: no accounts, progress on this device, and an APK link only
-    when a signed GitHub Release has actually been configured.
+    Mirrors the template's hero and install-card layout, describing this copy
+    honestly: no accounts, progress on this device, and native download links
+    only when published releases or verified local builds exist.
     """
     android_ci = f"{REPO}/actions/workflows/android-build.yml"
+    apple_ci = f"{REPO}/actions/workflows/apple-build.yml"
     hosted = (
         f'<p class="small muted">A hosted Meridian server is also available at '
         f'<a href="{html.escape(app_url, quote=True)}/">{html.escape(app_url)}</a>, with accounts that sync '
         'between devices.</p>'
         if app_url else ""
     )
-    if apk_url:
-        apk_body = (
-            '<p>The native Meridian Android app is published as a signed GitHub Release. It includes an '
-            'offline subject catalogue, the study planner and settings, and opens lessons in a secure in-app '
-            'viewer.</p>'
-            f'<p><a class="btn btn-primary" href="{html.escape(apk_url, quote=True)}" '
-            'rel="noopener noreferrer">Download the signed APK</a></p>'
+    if macos_url:
+        mac_dl_attr = ' download="Meridian-macOS.dmg"' if macos_url.startswith("/downloads/") else ' rel="noopener noreferrer"'
+        macos_body = (
+            '<p>Native SwiftUI desktop app with sidebar navigation, the 93-subject / 406-topic offline catalogue, '
+            'study planner, streaks, learning record and restricted viewer.</p>'
+            f'<p class="install-cta-row"><a class="btn btn-primary" data-install-primary '
+            f'href="{html.escape(macos_url, quote=True)}"{mac_dl_attr}>Download Meridian for macOS (.dmg)</a></p>'
             '<ol class="steps">'
-            '<li>Download the APK from the official GitHub Release.</li>'
+            '<li>Download <code>Meridian-macOS.dmg</code> and double-click to mount it.</li>'
+            '<li>Drag <strong>Meridian.app</strong> into <strong>Applications</strong>.</li>'
+            '<li>If macOS asks to confirm an unnotarised build on first launch, Control-click <strong>Meridian</strong> '
+            'and choose <strong>Open</strong> (or allow it in <strong>System Settings → Privacy &amp; Security</strong>).</li>'
+            '</ol>'
+        )
+    else:
+        macos_body = (
+            '<p>No signed macOS disk image has been published yet, so there is no DMG download here. '
+            'Add Meridian to your Mac Dock from Safari below, or check the '
+            f'<a href="{html.escape(apple_ci, quote=True)}" rel="noopener noreferrer">Apple build workflow</a> '
+            'on GitHub.</p>'
+        )
+
+    ios_kind = ios_url_kind(ios_url)
+    ios_label = "App Store" if ios_kind == "appstore" else "TestFlight" if ios_kind == "testflight" else "iOS (.ipa)"
+    if ios_url:
+        if ios_kind == "appstore":
+            ios_cta = (
+                f'<p class="install-cta-row"><a class="btn btn-primary" data-install-primary '
+                f'href="{html.escape(ios_url, quote=True)}" rel="noopener noreferrer">Open on the App Store</a></p>'
+            )
+            ios_steps = ""
+        elif ios_kind == "testflight":
+            ios_cta = (
+                f'<p class="install-cta-row"><a class="btn btn-primary" data-install-primary '
+                f'href="{html.escape(ios_url, quote=True)}" rel="noopener noreferrer">Join on TestFlight</a></p>'
+            )
+            ios_steps = ""
+        else:
+            ios_dl_attr = ' download="Meridian-iOS.ipa"' if ios_url.startswith("/downloads/") else ' rel="noopener noreferrer"'
+            ios_cta = (
+                f'<p class="install-cta-row"><a class="btn btn-primary" data-install-primary '
+                f'href="{html.escape(ios_url, quote=True)}"{ios_dl_attr}>Download Meridian for iOS (.ipa)</a></p>'
+            )
+            ios_steps = (
+                '<ol class="steps">'
+                '<li>Download <code>Meridian-iOS.ipa</code>.</li>'
+                '<li>Install onto your iPhone or iPad with <strong>AltStore</strong>, <strong>SideStore</strong>, '
+                '<strong>Sideloadly</strong> or <strong>Apple Configurator 2</strong> using your Apple ID.</li>'
+                '<li>If prompted on first launch, trust your developer certificate under '
+                '<strong>Settings → General → VPN &amp; Device Management</strong>.</li>'
+                '</ol>'
+            )
+        ios_body = (
+            '<p>Native SwiftUI app for iPhone (tab bar) and iPad (split view) with the offline subject catalogue, '
+            'streaks, study planner, learning record and restricted viewer.</p>'
+            + ios_cta + ios_steps
+        )
+    else:
+        ios_body = (
+            '<p>No iOS <code>.ipa</code> or TestFlight link has been published yet. Add Meridian directly to your '
+            'Home Screen from Safari below, or check the '
+            f'<a href="{html.escape(apple_ci, quote=True)}" rel="noopener noreferrer">Apple build workflow</a> '
+            'on GitHub.</p>'
+        )
+
+    if apk_url:
+        apk_dl_attr = ' download="Meridian.apk"' if apk_url.startswith("/downloads/") else ' rel="noopener noreferrer"'
+        apk_body = (
+            '<p>The native Meridian Android app includes an offline subject catalogue, the study planner and '
+            'settings, and opens lessons in a secure in-app viewer.</p>'
+            f'<p class="install-cta-row"><a class="btn btn-primary" data-install-primary '
+            f'href="{html.escape(apk_url, quote=True)}"{apk_dl_attr}>Download the signed APK</a></p>'
+            '<ol class="steps">'
+            '<li>Download the APK from the official release.</li>'
             '<li>Open it on your Android phone and allow installation from your browser if asked.</li>'
             '<li>Launch <strong>Meridian</strong>.</li>'
             '</ol>'
@@ -403,62 +505,91 @@ def reading_copy_install_main(app_url: str = "", apk_url: str = "") -> str:
             'testing only.</p>'
         )
 
+    mac_open = "" if macos_url else " open"
+    ios_open = "" if ios_url else " open"
+    apk_open = "" if apk_url else " open"
+
     return f"""
 <section class="page-hero">
   <span class="hero-glow hero-glow-a" aria-hidden="true"></span>
   <picture><source type="image/webp" srcset="/static/img/app-icon-192.webp"><img src="/static/icons/icon-192.png" alt="Meridian app icon: the M mark inside a meridian ring" width="96" height="96" loading="eager" decoding="sync" fetchpriority="high" style="width:96px;height:96px;border-radius:22px;margin-bottom:14px"></picture>
-  <p class="ev-eyebrow">Install · Android · iPhone</p>
-  <h1>Use Meridian on your phone</h1>
-  <p class="lead">This website works in any modern mobile browser. You can also add it to your home screen so it
-    opens like an app. There is no account: your progress is saved in the browser on each device.</p>
+  <p class="ev-eyebrow">iOS · macOS · Android</p>
+  <h1>Download Meridian for iOS, macOS &amp; Android</h1>
+  <p class="lead">Native SwiftUI apps for iPhone, iPad and Mac, a native Compose app for Android, or instant Web App
+    installation in Safari and Chrome. There is no account: your progress is saved on each device.</p>
   {hosted}
+  <div class="install-detected hide" id="install-detected" data-install-detected role="region" aria-label="Recommended download for this device"></div>
+  <nav class="install-jump" aria-label="Jump to platform">
+    <a class="chip" href="#macos">macOS</a>
+    <a class="chip" href="#ios">iOS &amp; iPadOS</a>
+    <a class="chip" href="#android">Android</a>
+    <a class="chip" href="#web-app">Browser Web App</a>
+  </nav>
 </section>
 
-<div class="stack install-cards">
-  <section class="panel install-card">
+<div class="install-cards install-cards-grid">
+  <section class="panel install-card" id="macos" data-install-platform="macos" data-install-label="macOS (.dmg)">
+    <span class="install-mark" aria-hidden="true">{_svg(['M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5V15H4z', 'M2.5 18h19'])}</span>
+    <div class="install-body">
+      <p class="install-platform-meta">macOS 14 Sonoma+ · Universal (Apple Silicon &amp; Intel)</p>
+      <h2>macOS app</h2>
+      {macos_body}
+      <details class="install-alt"{mac_open}>
+        <summary>Or add to Mac Dock from Safari (no download)</summary>
+        <ol class="steps">
+          <li>Open this site in <strong>Safari</strong> on macOS Sonoma or later.</li>
+          <li>Choose <strong>File → Add to Dock…</strong> in the menu bar and click <strong>Add</strong>.</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <section class="panel install-card" id="ios" data-install-platform="ios" data-install-label="{ios_label}">
+    <span class="install-mark" aria-hidden="true">{_svg(['M7 3.5h10A1.5 1.5 0 0 1 18.5 5v14a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z', 'M12 17.5h.01'])}</span>
+    <div class="install-body">
+      <p class="install-platform-meta">iOS &amp; iPadOS 17+ · iPhone &amp; iPad</p>
+      <h2>iOS &amp; iPadOS app</h2>
+      {ios_body}
+      <details class="install-alt"{ios_open}>
+        <summary>Instant install via Safari (no sideloading needed)</summary>
+        <ol class="steps">
+          <li>Open this site in <strong>Safari</strong> on iPhone or iPad.</li>
+          <li>Tap the <strong>Share</strong> button, then choose <strong>Add to Home Screen</strong>.</li>
+          <li>Tap <strong>Add</strong> — Meridian opens full-screen from your Home Screen.</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <section class="panel install-card" id="android" data-install-platform="android" data-install-label="Android (.apk)">
     <span class="install-mark" aria-hidden="true">{_svg(['M12 4v11.4', 'm7.8 11.4 4.2 4.2 4.2-4.2', 'M5 19.6h14'])}</span>
     <div class="install-body">
-      <h2>Android: add to home screen</h2>
-      <ol class="steps">
-        <li>Open this site in Chrome.</li>
-        <li>Tap the ⋮ menu, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li>
-        <li>Confirm. The icon appears on your home screen.</li>
-      </ol>
-      <button class="btn btn-primary hide" id="install-btn" type="button">Install web app</button>
-      <p class="small muted">Pages you have already opened are cached for offline reading. Pages you have not
-        visited yet need a connection.</p>
-    </div>
-  </section>
-
-  <section class="panel install-card">
-    <span class="install-mark" aria-hidden="true">{_svg(['m13.4 6.6 4 4-7.4 7.4H6v-4z', 'm15.4 4.6 4 4', 'M4.6 19.4 8 16'])}</span>
-    <div class="install-body">
+      <p class="install-platform-meta">Android 8.0+ · Signed APK &amp; Chrome Web App</p>
       <h2>Android app</h2>
       {apk_body}
-    </div>
-  </section>
-
-  <section class="panel install-card">
-    <span class="install-mark" aria-hidden="true">{_svg(['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', 'M3 12h18', 'M12 3c5 5 5 13 0 18-5-5-5-13 0-18z'])}</span>
-    <div class="install-body">
-      <h2>iPhone: Safari</h2>
-      <ol class="steps">
-        <li>Open this site in Safari.</li>
-        <li>Tap Share.</li>
-        <li>Choose <strong>Add to Home Screen</strong>.</li>
-      </ol>
-    </div>
-  </section>
-
-  <section class="panel install-card">
-    <span class="install-mark" aria-hidden="true">{_svg(['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'])}</span>
-    <div class="install-body">
-      <h2>Desktop</h2>
-      <p>Use your browser menu or the install icon in the address bar. Installed or not, your progress stays in
-        that browser. Use <a href="/settings">Settings</a> to export it.</p>
+      <details class="install-alt"{apk_open}>
+        <summary>Or add to Android home screen from Chrome</summary>
+        <ol class="steps">
+          <li>Open this site in Chrome.</li>
+          <li>Tap the ⋮ menu, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li>
+        </ol>
+        <button class="btn btn-ghost btn-sm hide" id="install-btn" type="button">Install web app</button>
+      </details>
     </div>
   </section>
 </div>
+
+<section class="panel install-card mt" id="web-app">
+  <span class="install-mark" aria-hidden="true">{_svg(['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', 'M3 12h18', 'M12 3c5 5 5 13 0 18-5-5-5-13 0-18z'])}</span>
+  <div class="install-body">
+    <h2>Browser Web App &amp; offline reading</h2>
+    <p>Use your browser menu or the install icon in the address bar on desktop, <strong>File → Add to Dock…</strong> in
+      Safari on Mac, or <strong>Share → Add to Home Screen</strong> on iPhone and iPad. Installed or not, your progress
+      stays on that device. Use <a href="/settings">Settings</a> to export it as JSON.</p>
+    <p class="small muted">Native iOS, macOS and Android apps include all 93 subjects and 406 topic summaries, the
+      study planner, streaks and your learning record offline; full notes and WebAssembly compilers load over HTTPS.</p>
+  </div>
+</section>
 """.strip()
 
 
@@ -545,7 +676,13 @@ def retarget_missing_dpp(text: str, base: str, dates: list[str]) -> str:
     return pattern.sub(repl, text)
 
 
-def live_boot(base: str, dates: list[str], apk_url: str = "") -> str:
+def live_boot(
+    base: str,
+    dates: list[str],
+    apk_url: str = "",
+    macos_url: str = "",
+    ios_url: str = "",
+) -> str:
     payload = {
         "base": base if base.endswith("/") else base + "/",
         "dpp": [rewrite_url(f"/dpp/{day}", base) for day in dates],
@@ -566,7 +703,9 @@ def live_boot(base: str, dates: list[str], apk_url: str = "") -> str:
         "studioSnapshot": rewrite_url("/studio-snapshot.json", base),
         "workflowsCatalog": rewrite_url("/workflows-catalog.json", base),
         "swarmCorpus": rewrite_url("/swarm-corpus.json", base),
-        "apkUrl": apk_url,
+        "apkUrl": rewrite_url(apk_url, base) if apk_url.startswith("/") else apk_url,
+        "macosUrl": rewrite_url(macos_url, base) if macos_url.startswith("/") else macos_url,
+        "iosUrl": rewrite_url(ios_url, base) if ios_url.startswith("/") else ios_url,
         "issues": project.issues_url(),
     }
     blob = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
@@ -957,8 +1096,15 @@ def _no_accounts_main(heading: str, intro: str) -> str:
 """.strip()
 
 
-def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = "",
-                        branches: list[tuple[str, str]] | None = None) -> int:
+def write_account_pages(
+    site: Path,
+    base: str,
+    home_html: str,
+    apk_url: str = "",
+    branches: list[tuple[str, str]] | None = None,
+    macos_url: str = "",
+    ios_url: str = "",
+) -> int:
     """Write the static copy's personal pages, driven by pages-live.js.
 
     The Pages copy has no accounts. These pages read and write one local
@@ -970,12 +1116,29 @@ def write_account_pages(site: Path, base: str, home_html: str, apk_url: str = ""
         f'            <option value="{html.escape(slug, quote=True)}">{html.escape(name)}</option>'
         for slug, name in (branches or [])
     )
-    apk_link = (
-        f'<a class="btn btn-soft btn-sm" href="{html.escape(apk_url, quote=True)}" rel="noopener noreferrer">'
-        'Download the Android app</a>'
-        if apk_url else
-        '<a class="btn btn-soft btn-sm" href="/install">Install the app</a>'
-    )
+    install_links: list[str] = []
+    if macos_url:
+        install_links.append(
+            f'<a class="btn btn-soft btn-sm" href="{html.escape(macos_url, quote=True)}" '
+            'rel="noopener noreferrer">Download for macOS (.dmg)</a>'
+        )
+    if ios_url:
+        ios_lbl = (
+            "Open on the App Store" if ios_url_kind(ios_url) == "appstore"
+            else "Join on TestFlight" if ios_url_kind(ios_url) == "testflight"
+            else "Download for iOS (.ipa)"
+        )
+        install_links.append(
+            f'<a class="btn btn-soft btn-sm" href="{html.escape(ios_url, quote=True)}" '
+            f'rel="noopener noreferrer">{ios_lbl}</a>'
+        )
+    if apk_url:
+        install_links.append(
+            f'<a class="btn btn-soft btn-sm" href="{html.escape(apk_url, quote=True)}" '
+            'rel="noopener noreferrer">Download the Android app</a>'
+        )
+    install_links.append('<a class="btn btn-ghost btn-sm" href="/install">iOS, macOS &amp; Android</a>')
+    apk_link = " ".join(install_links)
     stats = """
   <div class="grid g4 dash-stats" aria-label="Your progress">
     <div class="stat dash-stat"><div class="n" id="ev-stat-xp">0</div><div class="l">XP · <span id="ev-stat-level">Level 1</span></div></div>
@@ -1263,8 +1426,17 @@ def patch_assistant_config(text: str, base: str, public_url: str = "") -> str:
     return text
 
 
-def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = None,
-           apk_url: str = "", assistant_url: str = "") -> str:
+def inject(
+    text: str,
+    base: str,
+    *,
+    search: bool,
+    dpp_dates: list[str] | None = None,
+    apk_url: str = "",
+    macos_url: str = "",
+    ios_url: str = "",
+    assistant_url: str = "",
+) -> str:
     text = reading_copy_controls(rewrite_html(text, base))
     text = patch_assistant_config(text, base, assistant_url)
     text = text.replace('href="/explore?year=1"', f'href="{rewrite_url("/explore/first-year", base)}"', 1)
@@ -1281,7 +1453,7 @@ def inject(text: str, base: str, *, search: bool, dpp_dates: list[str] | None = 
     if dpp_dates:
         text = retarget_missing_dpp(text, base, dpp_dates)
     if "</body>" in text:
-        boot = live_boot(base, dpp_dates or [], apk_url=apk_url)
+        boot = live_boot(base, dpp_dates or [], apk_url=apk_url, macos_url=macos_url, ios_url=ios_url)
         text = text.replace("</body>", boot + "\n" + mirror_script() + "\n</body>", 1)
     return text
 
@@ -1334,7 +1506,7 @@ def copy_static(site: Path, base: str) -> None:
     manifest = {
         "name": "Meridian",
         "short_name": "Meridian",
-        "description": "Meridian: Engineering notes, coding practice, labs, Android app and GitHub sync.",
+        "description": "Meridian: Engineering notes, coding practice, labs and native iOS, macOS & Android apps.",
         "start_url": rewrite_url("/", base),
         "scope": rewrite_url("/", base),
         "display": "standalone",
@@ -1451,10 +1623,23 @@ def _link_target(page: Path, url: str, site: Path, prefix: str) -> Path | None:
     return candidate
 
 
+BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".dmg", ".ipa", ".apk", ".pkg", ".zip"}
+
+
+def copy_local_releases(site: Path) -> None:
+    """Copy verified local packages from ``data/releases/`` into ``site/downloads/``."""
+    out_dir = site / "downloads"
+    for filename in ALLOWED_DOWNLOAD_MEDIA_TYPES:
+        src = local_release_file(filename)
+        if src is not None:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, out_dir / filename)
+
+
 def assert_clean(site: Path) -> None:
     bad: list[str] = []
     for path in site.rglob("*"):
-        if not path.is_file() or path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico"}:
+        if not path.is_file() or path.suffix.lower() in BINARY_SUFFIXES:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for secret in FORBIDDEN:
@@ -1527,17 +1712,34 @@ def write_redirect_stubs(site: Path, base: str) -> int:
     return written
 
 
-def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
-           voice_api_url: str = "", assistant_url: str = "") -> int:
+def export(
+    site: Path,
+    base: str,
+    app_url: str = "",
+    apk_url: str = "",
+    voice_api_url: str = "",
+    assistant_url: str = "",
+    macos_url: str = "",
+    ios_url: str = "",
+) -> int:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
     (site / ".nojekyll").write_text("", encoding="utf-8")
     copy_static(site, base)
+    copy_local_releases(site)
 
-    # Templates read this while rendering the static copy. Empty means only
+    # Templates read these while rendering the static copy. Empty means only
     # device speech is available; never bake in a key or signed agent URL.
     os.environ["ENGINEVERSE_VOICE_API_URL"] = voice_api_url
+    os.environ["ENGINEVERSE_APK_URL"] = apk_url
+    os.environ["ENGINEVERSE_MACOS_URL"] = macos_url
+    os.environ["ENGINEVERSE_IOS_URL"] = ios_url
+    reload_settings()
+
+    effective_apk_url = apk_url or local_download_path("android")
+    effective_macos_url = macos_url or local_download_path("macos")
+    effective_ios_url = ios_url or local_download_path("ios")
 
     from fastapi.testclient import TestClient
 
@@ -1564,12 +1766,33 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
         if response.status_code != 200 or "text/html" not in response.headers.get("content-type", ""):
             failed.append(f"{path} -> {response.status_code}")
             continue
-        body = inject(response.text, base, search=(path == "/search"), dpp_dates=dpp_dates,
-                      apk_url=apk_url, assistant_url=assistant_url)
+        body = inject(
+            response.text,
+            base,
+            search=(path == "/search"),
+            dpp_dates=dpp_dates,
+            apk_url=effective_apk_url,
+            macos_url=effective_macos_url,
+            ios_url=effective_ios_url,
+            assistant_url=assistant_url,
+        )
         if path.startswith("/practice/problems/") and path.count("/") == 3:
             body = enable_problem_editor(body)
         if path == "/install":
-            body = fill_shell(body, "Install Meridian", rewrite_html(reading_copy_install_main(app_url, apk_url), base), private=False)
+            body = fill_shell(
+                body,
+                "Download Meridian for iOS, macOS & Android",
+                rewrite_html(
+                    reading_copy_install_main(
+                        app_url,
+                        effective_apk_url,
+                        macos_url=effective_macos_url,
+                        ios_url=effective_ios_url,
+                    ),
+                    base,
+                ),
+                private=False,
+            )
         # First-year page should not keep a query-string link to itself as the only year view.
         if path == "/explore/first-year":
             body = body.replace("<title>", "<title>First year - ", 1)
@@ -1586,17 +1809,48 @@ def export(site: Path, base: str, app_url: str = "", apk_url: str = "",
     from engineverse import catalog
 
     branch_list = [(row["slug"], row["name"]) for row in catalog.list_branches()]
-    written += write_account_pages(site, base, home_html, apk_url=apk_url, branches=branch_list)
+    written += write_account_pages(
+        site,
+        base,
+        home_html,
+        apk_url=effective_apk_url,
+        branches=branch_list,
+        macos_url=effective_macos_url,
+        ios_url=effective_ios_url,
+    )
 
-    hosting = fill_shell(home_html, "Use Meridian", rewrite_html(hosting_main(app_url, apk_url), base))
+    hosting = fill_shell(
+        home_html,
+        "Use Meridian",
+        rewrite_html(
+            hosting_main(
+                app_url,
+                effective_apk_url,
+                macos_url=effective_macos_url,
+                ios_url=effective_ios_url,
+            ),
+            base,
+        ),
+    )
     hosting_path = output_path(site, "/hosting")
     hosting_path.parent.mkdir(parents=True, exist_ok=True)
     hosting_path.write_text(hosting, encoding="utf-8")
     written += 1
 
     missing = client.get("/this-page-is-not-in-the-catalogue")
-    not_found = inject(missing.text, base, search=False, apk_url=apk_url,
-                       assistant_url=assistant_url) if missing.text else home_html
+    not_found = (
+        inject(
+            missing.text,
+            base,
+            search=False,
+            apk_url=effective_apk_url,
+            macos_url=effective_macos_url,
+            ios_url=effective_ios_url,
+            assistant_url=assistant_url,
+        )
+        if missing.text
+        else home_html
+    )
     (site / "404.html").write_text(not_found, encoding="utf-8")
 
     index = search_index(base)
@@ -1717,8 +1971,16 @@ def normalise_voice_api_url(value: str | None) -> str:
         ) from None
 
 
-def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = False,
-                 apk_url: str = "") -> str:
+def gateway_page(
+    base: str,
+    app_url: str,
+    site_name: str,
+    *,
+    not_found: bool = False,
+    apk_url: str = "",
+    macos_url: str = "",
+    ios_url: str = "",
+) -> str:
     """A small public doorway to the full app, with a deep-link-preserving 404."""
     css = html.escape(join_base(base, "/static/css/app.css"), quote=True)
     icon = html.escape(join_base(base, "/static/icons/favicon.svg"), quote=True)
@@ -1734,15 +1996,28 @@ def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = F
             f'<a class="btn btn-primary" href="{home}" id="gateway-open">Open full website</a>'
             f'<a class="btn btn-ghost" href="{login}" id="gateway-signin">Sign in</a>'
             f'<a class="btn btn-ghost" href="{register}">Create account</a></p>'
-            f'<p><a href="{install}">Use Meridian on your phone</a></p>'
+            f'<p><a href="{install}">Download Meridian for iOS, macOS &amp; Android</a></p>'
             '<p class="small muted">Accounts and progress live on the hosted app, not on GitHub Pages. '
             'Code execution is available only if that host has a judge configured.</p>'
         )
-        if apk_url:
-            actions += (
-                f'<p><a class="btn btn-soft" href="{html.escape(apk_url, quote=True)}" '
-                'rel="noopener noreferrer">Download signed Meridian.apk</a></p>'
+        dl_btns: list[str] = []
+        if macos_url:
+            dl_btns.append(
+                f'<a class="btn btn-soft btn-sm" href="{html.escape(macos_url, quote=True)}" '
+                'rel="noopener noreferrer">Download for macOS (.dmg)</a>'
             )
+        if ios_url:
+            dl_btns.append(
+                f'<a class="btn btn-soft btn-sm" href="{html.escape(ios_url, quote=True)}" '
+                'rel="noopener noreferrer">Download for iOS (.ipa)</a>'
+            )
+        if apk_url:
+            dl_btns.append(
+                f'<a class="btn btn-soft btn-sm" href="{html.escape(apk_url, quote=True)}" '
+                'rel="noopener noreferrer">Download signed Meridian.apk</a>'
+            )
+        if dl_btns:
+            actions += '<p class="row" style="justify-content:center;gap:8px">' + "".join(dl_btns) + "</p>"
         # GitHub Pages serves its 404.html for old bookmarked catalogue paths.
         # Route those to the same path on the app (not blindly to /login). The
         # app itself decides whether a particular page needs authentication.
@@ -1804,8 +2079,15 @@ def gateway_page(base: str, app_url: str, site_name: str, *, not_found: bool = F
 """
 
 
-def export_gateway(site: Path, base: str, app_url: str, site_name: str = "Meridian",
-                   apk_url: str = "") -> int:
+def export_gateway(
+    site: Path,
+    base: str,
+    app_url: str,
+    site_name: str = "Meridian",
+    apk_url: str = "",
+    macos_url: str = "",
+    ios_url: str = "",
+) -> int:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
@@ -1815,9 +2097,14 @@ def export_gateway(site: Path, base: str, app_url: str, site_name: str = "Meridi
     (static / "icons").mkdir(parents=True)
     shutil.copy2(BACKEND / "static" / "css" / "app.css", static / "css" / "app.css")
     shutil.copy2(BACKEND / "static" / "icons" / "favicon.svg", static / "icons" / "favicon.svg")
-    (site / "index.html").write_text(gateway_page(base, app_url, site_name, apk_url=apk_url), encoding="utf-8")
-    (site / "404.html").write_text(gateway_page(base, app_url, site_name, not_found=True,
-                                                apk_url=apk_url), encoding="utf-8")
+    (site / "index.html").write_text(
+        gateway_page(base, app_url, site_name, apk_url=apk_url, macos_url=macos_url, ios_url=ios_url),
+        encoding="utf-8",
+    )
+    (site / "404.html").write_text(
+        gateway_page(base, app_url, site_name, not_found=True, apk_url=apk_url, macos_url=macos_url, ios_url=ios_url),
+        encoding="utf-8",
+    )
     (site / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")
     revision = os.environ.get("GITHUB_SHA", "") or subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
@@ -1889,6 +2176,10 @@ def main() -> int:
                         help="full app HTTPS origin (default: $ENGINEVERSE_APP_URL)")
     parser.add_argument("--apk-url", default=None,
                         help="versioned signed GitHub Release APK URL (default: $ENGINEVERSE_APK_URL)")
+    parser.add_argument("--macos-url", default=None,
+                        help="versioned GitHub Release macOS .dmg/.pkg/.zip URL (default: $ENGINEVERSE_MACOS_URL)")
+    parser.add_argument("--ios-url", default=None,
+                        help="versioned GitHub Release iOS .ipa or TestFlight/App Store URL (default: $ENGINEVERSE_IOS_URL)")
     parser.add_argument("--voice-api-url", default=None,
                         help="public FastAPI origin that serves /api/voice "
                              "(default: $ENGINEVERSE_VOICE_API_URL; empty uses device speech only)")
@@ -1911,6 +2202,12 @@ def main() -> int:
         apk_url = normalise_apk_url(
             args.apk_url if args.apk_url is not None else os.environ.get("ENGINEVERSE_APK_URL", "")
         )
+        macos_url = normalise_macos_url(
+            args.macos_url if args.macos_url is not None else os.environ.get("ENGINEVERSE_MACOS_URL", "")
+        )
+        ios_url = normalise_ios_url(
+            args.ios_url if args.ios_url is not None else os.environ.get("ENGINEVERSE_IOS_URL", "")
+        )
     except ValueError as exc:
         raise SystemExit(str(exc)) from None
     voice_api_url = normalise_voice_api_url(
@@ -1928,15 +2225,23 @@ def main() -> int:
     if args.gateway and not app_url:
         raise SystemExit("Refusing to publish a gateway without a hosted full app origin.")
     if (args.gateway or app_url) and not args.reading_copy:
-        export_gateway(ROOT / args.out, base, app_url, apk_url=apk_url)
+        export_gateway(ROOT / args.out, base, app_url, apk_url=apk_url, macos_url=macos_url, ios_url=ios_url)
         return 0
     db_path = ROOT / "data" / "pages-export.sqlite"
     env = prepare_env(db_path)
     os.environ.update(env)
     if not args.skip_seed:
         seed(env, db_path)
-    export(ROOT / args.out, base, app_url=app_url, apk_url=apk_url,
-           voice_api_url=voice_api_url, assistant_url=assistant_url)
+    export(
+        ROOT / args.out,
+        base,
+        app_url=app_url,
+        apk_url=apk_url,
+        voice_api_url=voice_api_url,
+        assistant_url=assistant_url,
+        macos_url=macos_url,
+        ios_url=ios_url,
+    )
     return 0
 
 

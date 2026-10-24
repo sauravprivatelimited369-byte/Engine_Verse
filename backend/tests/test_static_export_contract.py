@@ -86,3 +86,25 @@ def test_static_home_page_makes_no_account_claims(client, monkeypatch):
     hosted_hero = _hero(client.get("/").text)
     assert "One account keeps progress across devices" in hosted_hero
     assert "this browser" not in hosted_hero
+
+
+def test_static_pages_expose_macos_and_ios_downloads_across_surfaces():
+    macos = project.release_download_prefix() + "apple-v1.0.0/Meridian-macOS.dmg"
+    ios = project.release_download_prefix() + "apple-v1.0.0/Meridian-iOS.ipa"
+
+    install_html = export_pages.reading_copy_install_main("", APK, macos_url=macos, ios_url=ios)
+    assert f'href="{macos}"' in install_html
+    assert f'href="{ios}"' in install_html
+    assert f'href="{APK}"' in install_html
+    assert "Add to Home Screen" in install_html
+    assert "Add to Dock" in install_html
+
+    hosting_html = export_pages.hosting_main("", APK, macos_url=macos, ios_url=ios)
+    assert f'href="{macos}"' in hosting_html
+    assert f'href="{ios}"' in hosting_html
+
+    boot = export_pages.live_boot("/EngineVerse/", ["2026-10-15"], apk_url=APK, macos_url=macos, ios_url=ios)
+    payload = json.loads(boot.split(">", 1)[1].rsplit("<", 1)[0])
+    assert payload["macosUrl"] == macos
+    assert payload["iosUrl"] == ios
+

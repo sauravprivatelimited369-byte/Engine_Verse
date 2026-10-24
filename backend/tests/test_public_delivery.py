@@ -398,3 +398,102 @@ def test_public_compose_keeps_postgres_private_and_does_not_commit_credentials()
     assert "PGUSER: engineverse_app" in github and "ENGINEVERSE_BACKUP_GH_TOKEN:?" in github
     assert "networks: [internal, backup-egress]" in github
     assert '127.0.0.1:8000:8000' in base and '"5432:5432"' not in base
+
+
+def test_macos_and_ios_urls_are_strictly_validated():
+    from engineverse.distribution import ios_url_kind, normalise_ios_url, normalise_macos_url
+
+    macos_dmg = project.release_download_prefix() + "apple-v1.0.0/Meridian-macOS.dmg"
+    macos_tag_v = project.release_download_prefix() + "v1.0.0/Meridian-macOS.dmg"
+    ios_ipa = project.release_download_prefix() + "apple-v1.0.0/Meridian-iOS.ipa"
+    tf_url = "https://testflight.apple.com/join/AbCdEf12"
+    store_url = "https://apps.apple.com/us/app/meridian-study/id1234567890"
+
+    assert normalise_macos_url("") == ""
+    assert normalise_macos_url(macos_dmg) == macos_dmg
+    assert normalise_macos_url(macos_tag_v) == macos_tag_v
+
+    assert normalise_ios_url("") == ""
+    assert normalise_ios_url(ios_ipa) == ios_ipa
+    assert normalise_ios_url(tf_url) == tf_url
+    assert normalise_ios_url(store_url) == store_url
+    assert ios_url_kind(ios_ipa) == "ipa"
+    assert ios_url_kind(tf_url) == "testflight"
+    assert ios_url_kind(store_url) == "appstore"
+    assert ios_url_kind("/downloads/Meridian-iOS.ipa") == "ipa"
+
+    for invalid_mac in (
+        "https://evil.example/Meridian-macOS.dmg",
+        "javascript:alert(1)",
+        macos_dmg + "?redirect=evil",
+        macos_dmg.replace("apple-v1.0.0", "../apple-v1.0.0"),
+        project.release_download_prefix() + "apple-v1.0.0/untrusted.dmg",
+    ):
+        with pytest.raises(ValueError):
+            normalise_macos_url(invalid_mac)
+
+    for invalid_ios in (
+        "https://evil.example/Meridian-iOS.ipa",
+        "http://apps.apple.com/app/id1234567890",
+        ios_ipa + "?token=1",
+        "https://testflight.apple.com/join/../../etc",
+        project.release_download_prefix() + "apple-v1.0.0/Meridian.mobileconfig",
+    ):
+        with pytest.raises(ValueError):
+            normalise_ios_url(invalid_ios)
+
+
+def test_apple_package_verifier_and_local_downloads_work_end_to_end(seeded, tmp_path, monkeypatch):
+    import hashlib
+    import io
+    import zipfile
+    from main import create_app
+    from scripts import verify_apple_release
+
+    # Construct minimal valid DMG (with Apple UDIF 'koly' trailer) and IPA (with Mach-O binary + plist + catalog).
+    dmg_bytes = b"\x00" * 5000 + b"koly" + b"\x00" * 508
+    dmg_sha = hashlib.sha256(dmg_bytes).hexdigest()
+
+    ipa_buf = io.BytesIO()
+    with zipfile.ZipFile(ipa_buf, "w", compression=zipfile.ZIP_STORED) as zf:
+        zf.writestr("Payload/Meridian.app/Info.plist", b"<?xml version='1.0'?><plist/>")
+        zf.writestr("Payload/Meridian.app/Meridian", b"\xcf\xfa\xed\xfe" + b"\x00" * 5000)
+        zf.writestr("Payload/Meridian.app/catalog.json", b'{"format":"engineverse-apple-catalog","version":1,"subjects":[]}')
+    ipa_bytes = ipa_buf.getvalue()
+    ipa_sha = hashlib.sha256(ipa_bytes).hexdigest()
+
+    (tmp_path / "Meridian-macOS.dmg").write_bytes(dmg_bytes)
+    (tmp_path / "Meridian-macOS.dmg.sha256").write_text(f"{dmg_sha}  Meridian-macOS.dmg\n")
+    (tmp_path / "Meridian-iOS.ipa").write_bytes(ipa_bytes)
+    (tmp_path / "Meridian-iOS.ipa.sha256").write_text(f"{ipa_sha}  Meridian-iOS.ipa\n")
+
+    verified = verify_apple_release.verify_local_dir(tmp_path)
+    assert verified == {"macos_sha256": dmg_sha, "ios_sha256": ipa_sha}
+
+    monkeypatch.setenv("ENGINEVERSE_SIGNIN", "required")
+    monkeypatch.setenv("ENGINEVERSE_RELEASES_DIR", str(tmp_path))
+    reload_settings()
+    try:
+        with TestClient(create_app(), follow_redirects=False) as web:
+            install = web.get("/install")
+            assert install.status_code == 200
+            assert 'href="/downloads/Meridian-macOS.dmg"' in install.text
+            assert 'href="/downloads/Meridian-iOS.ipa"' in install.text
+            assert 'id="macos"' in install.text and 'id="ios"' in install.text and 'id="android"' in install.text
+
+            dmg_resp = web.get("/downloads/Meridian-macOS.dmg")
+            assert dmg_resp.status_code == 200
+            assert dmg_resp.content == dmg_bytes
+            assert "attachment" in dmg_resp.headers.get("content-disposition", "")
+
+            ipa_resp = web.get("/downloads/Meridian-iOS.ipa")
+            assert ipa_resp.status_code == 200
+            assert ipa_resp.content == ipa_bytes
+
+            # Disallowed filenames never resolve even when present in tmp_path.
+            (tmp_path / "secret.txt").write_text("nope")
+            assert web.get("/downloads/secret.txt").status_code == 404
+    finally:
+        monkeypatch.undo()
+        reload_settings()
+

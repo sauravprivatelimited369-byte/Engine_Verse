@@ -877,6 +877,23 @@ details:not(.panel) {
   font-weight: 520;
 }
 .mx-hero-aside:hover { color: var(--accent-ink); text-decoration: none; }
+.mx-hero-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.mx-hero-downloads .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+}
+.mx-hero-downloads .chip:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
 .mx-hero-facts {
   display: flex;
   flex-direction: column;

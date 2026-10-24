@@ -386,13 +386,15 @@ password, so it was removed rather than patched:
 - Pages that only make sense with an account (sign-in, OTP, password reset)
   are not exported; personal pages carry `noindex`.
 
-The native Android app (`android/`) stores its own progress and planner in
-app-private storage. Only that small preferences file is included in the user's
-own Android backup and device transfer; WebView cookies, storage and cache are
-not. Its web
-viewer loads only this site's HTTPS pages, adds no JavaScript bridge and refuses
-mixed content; see [android/README.md](../android/README.md). Release signing
-keys are supplied to CI as repository secrets and never committed. The optional
+The native Android app (`android/`) and native iOS & macOS apps (`apple/`)
+store their own progress and planner in app-private storage (`PrivacyInfo.xcprivacy`
+declares `NSPrivacyTracking = false` and `NSPrivacyCollectedDataTypes = []`).
+Only that small preferences record is kept locally; WebView cookies, storage
+and cache are separate. Both viewers (`WebViewerScreen.kt` and
+`WebViewerView.swift`) load only this site's HTTPS pages, expose no JavaScript
+bridge and refuse mixed content (`NSAllowsArbitraryLoads = false`); see
+[android/README.md](../android/README.md) and [apple/README.md](../apple/README.md).
+Release signing keys are supplied to CI as repository secrets and never committed. The optional
 TWA builder (`android/build-twa.cjs`) is for self-hosters with their own
 origin, where the certificate must match Digital Asset Links.
 

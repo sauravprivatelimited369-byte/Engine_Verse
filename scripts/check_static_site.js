@@ -252,7 +252,7 @@ function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (!["static", "pyodide", "runtimes"].includes(entry.name)) walk(full, out);
+      if (!["static", "pyodide", "runtimes", "downloads"].includes(entry.name)) walk(full, out);
     } else if (entry.name.endsWith(".html")) {
       out.push(full);
     }
@@ -280,10 +280,13 @@ function walk(dir, out = []) {
   for (const [name, list] of Object.entries(problems)) {
     check(`scan: no ${name}`, list.length === 0, list.slice(0, 8).join(", "));
   }
-  for (const route of ["planner", "opportunities", "support", "dashboard", "settings", "404.html"]) {
+  for (const route of ["planner", "opportunities", "support", "dashboard", "settings", "install", "404.html"]) {
     const file = route.endsWith(".html") ? path.join(SITE, route) : pageFile(`/${route}/`);
     check(`scan: ${route} exported`, fs.existsSync(file));
   }
+  const installHtml = fs.readFileSync(pageFile("/install/"), "utf8");
+  check("install: macOS, iOS and Android sections present",
+    /id="macos"/.test(installHtml) && /id="ios"/.test(installHtml) && /id="android"/.test(installHtml));
   const sitemap = fs.readFileSync(path.join(SITE, "sitemap.xml"), "utf8");
   check("sitemap: planner listed", /\/planner\/<\/loc>/.test(sitemap));
   check("sitemap: no private pages", !/\/(dashboard|settings|login)\/<\/loc>/.test(sitemap));
