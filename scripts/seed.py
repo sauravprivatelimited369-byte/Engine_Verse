@@ -59,7 +59,13 @@ from seed_data import language_book_js  # noqa: E402
 from seed_data import language_book_other  # noqa: E402
 from seed_data import language_book_py  # noqa: E402
 from seed_data import language_book_wave2  # noqa: E402
+from seed_data import language_book_wave3  # noqa: E402
+from seed_data import language_book_wave3_web  # noqa: E402
+from seed_data import language_book_wave3_native  # noqa: E402
+from seed_data import language_book_wave3_services  # noqa: E402
+from seed_data import language_book_wave3_data  # noqa: E402
 from seed_data import language_curriculum  # noqa: E402
+from seed_data import language_reference as reference_data  # noqa: E402
 from seed_data import language_projects  # noqa: E402
 from seed_data import academy  # noqa: E402
 
@@ -71,7 +77,9 @@ BOOK_MODULES_BY_LANGUAGE: dict[str, list[tuple]] = {}
 BOOK_PRACTICE: dict[str, str] = {}
 for _book in (language_book_py, language_book_java, language_book_c, language_book_cpp,
               language_book_csharp, language_book_js, language_book_other,
-              language_book_wave2):
+              language_book_wave2, language_book_wave3, language_book_wave3_web,
+              language_book_wave3_native, language_book_wave3_services,
+              language_book_wave3_data):
     for _language, _rows in _book.BOOK_MODULES.items():
         BOOK_MODULES_BY_LANGUAGE.setdefault(_language, []).extend(_rows)
     for _module, _problem in _book.MODULE_PRACTICE.items():
@@ -826,6 +834,53 @@ def seed_language_checkpoints(language_ids: dict[str, str], question_ids: dict[s
     return count
 
 
+def seed_language_references(language_ids: dict[str, str]) -> dict[str, int]:
+    """Write the deep reference page for each taught language.
+
+    The authored data is validated first: every language present, every section
+    populated, every source an https URL. A half-written reference is worse than
+    a missing one, because the page would look complete.
+    """
+    reference_data.validate()
+    stamp = now_ms()
+    with db.transaction():
+        # The authored file is the whole truth: drop tasks and languages the
+        # current data no longer defines, so an incremental seed cannot leave a
+        # stale page or comparison row behind.
+        db.execute("DELETE FROM language_reference_tasks")
+        placeholders = ",".join("?" for _ in reference_data.LANGUAGE_ORDER)
+        db.execute(
+            f"DELETE FROM language_references WHERE language_id NOT IN "
+            f"(SELECT id FROM programming_languages WHERE slug IN ({placeholders}))",
+            *reference_data.LANGUAGE_ORDER,
+        )
+        for slug in reference_data.LANGUAGE_ORDER:
+            language_id = language_ids.get(slug)
+            if not language_id:
+                raise SeedRefused(f"reference names unknown language {slug!r}")
+            entry = reference_data.REFERENCE[slug]
+            payload = {
+                key: entry[key]
+                for key in ("model", "facts", "syntax", "types", "stdlib",
+                            "errors", "idioms", "versions", "sources")
+            }
+            db.execute(
+                "INSERT INTO language_references (id,language_id,version,tagline,body,updated_at) "
+                "VALUES (?,?,?,?,?,?) ON CONFLICT(language_id) DO UPDATE SET version=excluded.version, "
+                "tagline=excluded.tagline, body=excluded.body, updated_at=excluded.updated_at",
+                f"ref-{slug}", language_id, entry["version"], entry["tagline"],
+                jdump(payload), stamp,
+            )
+        for order, row in enumerate(reference_data.ROSETTA):
+            db.execute(
+                "INSERT INTO language_reference_tasks (id,task,note,snippets,order_index) "
+                "VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET task=excluded.task, "
+                "note=excluded.note, snippets=excluded.snippets, order_index=excluded.order_index",
+                f"task-{order}", row["task"], row["note"], jdump(row["snippets"]), order,
+            )
+    return reference_data.totals()
+
+
 def _problem_bank() -> list[dict]:
     """Every problem the platform ships, from all four banks.
 
@@ -1458,7 +1513,8 @@ TABLES = [
     "modules", "topics", "notes", "note_sections", "diagrams", "models_3d", "formulas", "questions",
     "question_options",
     "dpp_sets", "dpp_questions", "programming_languages", "language_modules", "language_stages",
-    "language_checkpoints", "coding_problems", "coding_sheets", "coding_sheet_problems",
+    "language_checkpoints", "language_references", "language_reference_tasks",
+    "coding_problems", "coding_sheets", "coding_sheet_problems",
     "coding_problem_stubs", "coding_testcases", "projects", "project_steps", "project_resources", "videos",
     "books", "resources", "roadmaps", "roadmap_nodes", "flashcards", "plans", "site_config", "badges",
     "users", "user_progress", "xp_events", "submissions", "coding_submissions", "bookmarks",
@@ -1561,10 +1617,13 @@ def run(fresh: bool, *, demo: bool | None = None, destroy_users: bool = False) -
     problem_ids = seed_problems(language_ids)
     sheets = seed_sheets(problem_ids, branch_ids)
     checkpoints = seed_language_checkpoints(language_ids, question_ids)
+    reference_totals = seed_language_references(language_ids)
     staged_modules = int(db.scalar("SELECT count(*) AS c FROM language_modules") or 0)
     stages = int(db.scalar("SELECT count(*) AS c FROM language_stages") or 0)
     print(f"  {len(language_ids)} languages, {staged_modules} staged modules across {stages} stages, "
           f"{len(problem_ids)} problems in {sheets} sheets, {checkpoints} checkpoint questions")
+    print(f"  {reference_totals['languages']} language references "
+          f"({reference_totals['rows']} rows, {reference_totals['rosetta_tasks']} cross-language tasks)")
 
     print("Seeding projects ...")
     project_count = seed_projects(subject_ids, branch_ids, language_ids)

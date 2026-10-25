@@ -55,7 +55,7 @@ push either way.
 |---|---|---|
 | **Learn**: 45 branches, 93 subjects, 406 topics with notes at four depths, diagrams, interactive 3D models, formula sheets, videos and books | ✓ | ✓ |
 | **Practise**: 534 questions, daily problem sets, a mistake notebook and revision flashcards | ✓ (progress in the browser) | ✓ (progress in your account) |
-| **Code**: 105 judged problems in 14 sheets, 10 language paths and the CodeLab compiler | ✓ Runs in your browser through WebAssembly | ✓ Server judge, when the operator configures one |
+| **Code**: 105 judged problems in 14 sheets, 10 language paths, a 10-language reference and the CodeLab compiler | ✓ Runs in your browser through WebAssembly | ✓ Server judge, when the operator configures one |
 | **Plan**: study planner with tasks, exam countdowns and a focus timer | ✓ | ✓ |
 | **Track**: dashboard, streak heatmap and portfolio of completed work | ✓ On this device | ✓ Across devices |
 | **Opportunities**: internships, scholarships, olympiads and hackathons, linked to official pages | ✓ | ✓ |

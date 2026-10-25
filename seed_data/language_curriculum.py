@@ -89,6 +89,7 @@ MODULE_STAGES = {
         "working_practice": [
             "python-stdlib-os", "python-packaging",
             "python-oop", "python-errors", "python-modules", "python-testing",
+            "python-semantics-deep", "python-stdlib-deep",
         ],
         "advanced_engineering": [
             "python-fastapi-app", "python-sqlite-persistence",
@@ -98,6 +99,7 @@ MODULE_STAGES = {
             "python-stacks-queues", "python-linked-lists", "python-trees-heaps",
             "python-graphs", "python-dp", "python-interview-mastery",
             "python-gil-concurrency-deep", "python-typing-tooling-deep",
+            "python-diagnostics-deep",
         ],
     },
     "java": {
@@ -106,7 +108,10 @@ MODULE_STAGES = {
             "java-loops-from-scratch", "java-real-world-1", "java-methods",
             "java-basics", "java-control-flow", "java-oop",
         ],
-        "working_practice": ["java-interfaces", "java-exceptions", "java-testing", "java-build-test"],
+        "working_practice": [
+            "java-interfaces", "java-exceptions", "java-testing", "java-build-test",
+            "java-semantics-deep", "java-stdlib-deep",
+        ],
         "advanced_engineering": [
             "java-http-service", "java-jdbc-data", "java-concurrency",
             "java-agent-tools", "java-application-capstone",
@@ -115,6 +120,7 @@ MODULE_STAGES = {
             "java-stacks-queues", "java-linked-lists", "java-trees-heaps",
             "java-graphs", "java-dp", "java-interview-mastery",
             "java-jvm-memory-gc", "java-concurrency-jmm-deep",
+            "java-diagnostics-deep",
         ],
     },
     "javascript": {
@@ -122,12 +128,16 @@ MODULE_STAGES = {
             "js-why", "js-hello", "js-operators", "js-decisions-loops",
             "js-real-world-1", "js-functions-scratch", "js-basics", "js-objects", "js-dom",
         ],
-        "working_practice": ["js-async", "js-errors", "js-modules", "js-node-service", "js-testable-app"],
+        "working_practice": [
+            "js-async", "js-errors", "js-modules", "js-node-service", "js-testable-app",
+            "js-semantics-deep", "js-stdlib-deep",
+        ],
         "advanced_engineering": [
             "js-browser-security", "js-agent-tools", "js-fullstack-capstone",
             "js-complexity-big-o", "js-strings-arrays-deep", "js-recursion-sorting",
             "js-maps-sets", "js-trees-graphs", "js-interview-mastery",
             "js-event-loop-deep", "js-modules-bundling-deep",
+            "js-diagnostics-deep",
         ],
     },
     "typescript": {
@@ -135,12 +145,13 @@ MODULE_STAGES = {
             "ts-why", "ts-hello", "ts-decisions-loops", "ts-real-world-1",
             "ts-types-functions",
         ],
-        "working_practice": ["ts-web-app", "ts-http-validation"],
+        "working_practice": ["ts-web-app", "ts-http-validation", "ts-stdlib-deep"],
         "advanced_engineering": [
             "ts-node-service", "ts-agent-tools", "ts-test-release-capstone",
             "ts-complexity-big-o", "ts-collections-deep", "ts-recursion-sorting",
             "ts-generics-dsa", "ts-graphs-dp", "ts-interview-mastery",
             "ts-type-system-deep", "ts-runtime-validation-deep",
+            "ts-semantics-deep", "ts-diagnostics-deep",
         ],
     },
     "cpp": {
@@ -148,7 +159,10 @@ MODULE_STAGES = {
             "cpp-why", "cpp-hello", "cpp-variables-operators", "cpp-decisions-loops",
             "cpp-real-world-1", "cpp-functions-scratch", "cpp-basics", "cpp-memory",
         ],
-        "working_practice": ["cpp-classes", "cpp-containers", "cpp-raii-memory-safety", "cpp-build-test"],
+        "working_practice": [
+            "cpp-classes", "cpp-containers", "cpp-raii-memory-safety", "cpp-build-test",
+            "cpp-stdlib-deep",
+        ],
         "advanced_engineering": [
             "cpp-parse-safe-input", "cpp-professional", "cpp-safe-app-project",
             "cpp-complexity-big-o", "cpp-strings-deep", "cpp-vectors-arrays",
@@ -156,6 +170,7 @@ MODULE_STAGES = {
             "cpp-stacks-queues", "cpp-linked-lists", "cpp-trees-heaps",
             "cpp-graphs", "cpp-dp", "cpp-interview-mastery",
             "cpp-raii-move-deep", "cpp-templates-concepts-deep",
+            "cpp-semantics-deep", "cpp-diagnostics-deep",
         ],
     },
     "go": {
@@ -163,12 +178,16 @@ MODULE_STAGES = {
             "go-why", "go-hello", "go-variables-operators", "go-decisions-loops",
             "go-real-world-1", "go-types-errors",
         ],
-        "working_practice": ["go-packages-tests", "go-http-api", "go-sql-data"],
+        "working_practice": [
+            "go-packages-tests", "go-http-api", "go-sql-data",
+            "go-semantics-deep", "go-stdlib-deep",
+        ],
         "advanced_engineering": [
             "go-concurrency-context", "go-agent-capstone",
             "go-complexity-big-o", "go-slices-maps-deep", "go-recursion-sorting",
             "go-stacks-queues", "go-trees-graphs", "go-interview-mastery",
             "go-goroutines-channels-deep", "go-performance-deep",
+            "go-diagnostics-deep",
         ],
     },
     "rust": {
@@ -176,12 +195,16 @@ MODULE_STAGES = {
             "rust-why", "rust-hello", "rust-variables-operators", "rust-decisions-loops",
             "rust-real-world-1", "rust-ownership-errors",
         ],
-        "working_practice": ["rust-collections-iterators", "rust-tests-modules"],
+        "working_practice": [
+            "rust-collections-iterators", "rust-tests-modules",
+            "rust-semantics-deep", "rust-stdlib-deep",
+        ],
         "advanced_engineering": [
             "rust-http-service", "rust-agent-tools", "rust-application-capstone",
             "rust-complexity-big-o", "rust-strings-vec-deep", "rust-recursion-sorting",
             "rust-hash-collections", "rust-graphs-dp", "rust-interview-mastery",
             "rust-borrowing-lifetimes-deep", "rust-traits-generics-deep",
+            "rust-diagnostics-deep",
         ],
     },
     "c": {
@@ -189,7 +212,9 @@ MODULE_STAGES = {
             "c-why", "c-hello", "c-variables", "c-operators", "c-if-else", "c-loops",
             "c-arrays-scratch", "c-real-world-1", "c-basics", "c-pointers",
         ],
-        "working_practice": ["c-structs", "c-functions", "c-headers-modules"],
+        "working_practice": [
+            "c-structs", "c-functions", "c-headers-modules", "c-stdlib-deep",
+        ],
         "advanced_engineering": [
             "c-files",
             "c-complexity-big-o", "c-strings-deep", "c-arrays-deep",
@@ -197,6 +222,7 @@ MODULE_STAGES = {
             "c-stacks-queues", "c-hash-tables", "c-trees-heaps",
             "c-graphs", "c-dp-bitwise", "c-interview-mastery",
             "c-undefined-behaviour-deep", "c-build-debug-deep",
+            "c-semantics-deep", "c-diagnostics-deep",
         ],
     },
     "csharp": {
@@ -208,21 +234,24 @@ MODULE_STAGES = {
         "working_practice": [
             "csharp-oop", "csharp-collections-linq", "csharp-errors",
             "csharp-recursion-sorting", "csharp-stacks-queues",
+            "csharp-semantics-deep", "csharp-stdlib-deep",
         ],
         "advanced_engineering": [
             "csharp-trees-heaps", "csharp-graphs", "csharp-dp",
             "csharp-async-services", "csharp-interview-mastery",
             "csharp-memory-span-deep", "csharp-async-deep",
+            "csharp-diagnostics-deep",
         ],
     },
     "sql": {
         "foundations": ["sql-why", "sql-hello", "sql-select", "sql-filter", "sql-real-world-1"],
-        "working_practice": ["sql-joins", "sql-group", "sql-null"],
+        "working_practice": ["sql-joins", "sql-group", "sql-null", "sql-stdlib-deep"],
         "advanced_engineering": [
             "sql-professional",
             "sql-subqueries-cte", "sql-window-functions", "sql-optimization-explain",
             "sql-recursion-cte", "sql-data-modeling", "sql-interview-mastery",
             "sql-indexes-plans-deep", "sql-transactions-isolation-deep",
+            "sql-semantics-deep", "sql-diagnostics-deep",
         ],
     },
 }

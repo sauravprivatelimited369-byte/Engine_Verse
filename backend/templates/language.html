@@ -9,6 +9,14 @@
 <span class="lang-rule" style="background:{{ language.color }}" aria-hidden="true"></span>
 <h1>{{ language.name }}</h1>
 <p class="muted">{{ language.blurb }}</p>
+<div class="panel tight mt">
+  <h2 class="h-sub">{{ language.name }} reference</h2>
+  <p>The execution model, the syntax rules that decide behaviour, the type system, the standard library by
+    job, the errors people actually meet with their fixes, idioms and version history - on one page, with
+    official sources for every claim.</p>
+  <p><a class="btn btn-primary" href="/programming/{{ language.slug }}/reference">Open the reference →</a>
+    <a class="btn btn-soft" href="/programming/reference">Compare all languages</a></p>
+</div>
 <div class="callout"><span class="label">Academy coverage — work in progress</span>
   {{ academy_coverage.structured }} of {{ academy_coverage.total }} modules have structured learn–practice–prove units.
   The remaining modules use the legacy lesson format. A syllabus goal is not a completed lesson;

@@ -307,8 +307,50 @@ def _inline(text: str) -> str:
     return "".join(out)
 
 
+def _is_table_start(lines: list[str], index: int) -> bool:
+    """True when ``lines[index]`` is a table header.
+
+    The separator row decides it: a header row is only a table if the next line
+    is made of dashes, colons and pipes. Authored content sometimes puts the
+    table straight after a paragraph with no blank line, so the paragraph loop
+    also stops here rather than swallowing the table into a ``<p>``.
+    """
+    if "|" not in lines[index] or index + 1 >= len(lines):
+        return False
+    return bool(re.match(r"^\s*\|?[\s:|-]+\|[\s:|-]*$", lines[index + 1]))
+
+
 def _split_row(line: str) -> list[str]:
-    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+    """Split a table row on the pipes that are cell boundaries.
+
+    A pipe inside an inline code span is content, not a boundary: SQL's
+    concatenation operator is written ``||``, and splitting on it turned one
+    cell into three and pushed the rest of the row a column to the right. A
+    backslash-escaped ``\|`` is also content. Everything else splits as before.
+    """
+    cells: list[str] = []
+    current: list[str] = []
+    in_code = False
+    characters = line.strip().strip("|")
+    index = 0
+    while index < len(characters):
+        character = characters[index]
+        if character == "\\" and index + 1 < len(characters):
+            current.append(characters[index:index + 2])
+            index += 2
+            continue
+        if character == "`":
+            in_code = not in_code
+        elif character == "|" and not in_code:
+            cells.append("".join(current).strip())
+            current = []
+            index += 1
+            continue
+        current.append(character)
+        index += 1
+    cells.append("".join(current).strip())
+    # The escape was only needed to protect the pipe from the splitter.
+    return [cell.replace("\\|", "|") for cell in cells]
 
 
 def _heading_shift(source: str, base: int) -> int:
@@ -418,7 +460,7 @@ def render(source: str | None, *, base: int = 2) -> str:
             continue
 
         # Table: a header row followed by a |---|---| separator row.
-        if "|" in line and index + 1 < total and re.match(r"^\s*\|?[\s:|-]+\|[\s:|-]*$", lines[index +1]):
+        if _is_table_start(lines, index):
             head = _split_row(line)
             index += 2
             rows: list[list[str]] = []
@@ -465,6 +507,7 @@ def render(source: str | None, *, base: int = 2) -> str:
             index < total
             and lines[index].strip()
             and not re.match(r"^(#{1,6}\s|```|\$\$|\s*>\s?|\s*[-*+]\s|\s*\d+[.)]\s)", lines[index])
+            and not _is_table_start(lines, index)
         ):
             buffer.append(lines[index])
             index += 1

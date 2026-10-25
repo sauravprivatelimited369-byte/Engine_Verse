@@ -78,3 +78,30 @@ def test_math_renderer_does_not_emit_raw_angle_brackets():
     """The output goes into ``| safe``, so it must not be able to break out."""
     hostile = markdown._TeX("a < b > c").render()
     assert "<b >" not in hostile and "&lt;" in hostile
+
+
+# ---------------------------------------------------------------------------
+# Tables: a pipe inside inline code is content, not a column boundary
+# ---------------------------------------------------------------------------
+
+def test_a_table_cell_may_contain_a_double_pipe_inside_code():
+    """SQL's concatenation operator is ``||``; splitting on it broke columns."""
+    assert markdown._split_row("| Job | PostgreSQL | MySQL |") == ["Job", "PostgreSQL", "MySQL"]
+    assert markdown._split_row("| concat | `||` | `CONCAT()` | `||` |") == [
+        "concat", "`||`", "`CONCAT()`", "`||`",
+    ]
+
+
+def test_a_table_row_keeps_its_column_count_with_code_operators():
+    html = markdown.render(
+        "| Job | PostgreSQL | MySQL |\n| --- | --- | --- |\n| concat | `||` | `CONCAT()` |\n"
+    )
+    assert html.count("<th>") == 3
+    assert html.count("<td>") == 3
+    assert "<code>||</code>" in html
+
+
+def test_an_escaped_pipe_stays_inside_its_cell():
+    html = markdown.render("| a | b |\n| --- | --- |\n| one \\| two | three |")
+    assert html.count("<td>") == 2
+    assert "one | two" in html

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Language reference — {{ brand.site_name }}{% endblock %}
+{% block content %}
+<header class="section">
+  <p class="ev-eyebrow">Code · reference</p>
+  <h1>Language reference</h1>
+  <p class="lead">One page per language, built for the moment you arrive with a job rather than a
+    lesson number: which collection to use, why this error appears, what changed in the last release.
+    Each reference carries the execution model, the syntax rules that decide behaviour, the type
+    system, the standard library by job, errors with causes and fixes, idioms and upstream sources.</p>
+  <div class="tags">
+    <span class="chip">{{ references | length }} languages</span>
+    <span class="chip">{{ references | sum(attribute="entry_count") }} lookup rows</span>
+    <span class="chip">{{ tasks | length }} cross-language tasks</span>
+    <span class="chip">Every source is official documentation</span>
+  </div>
+</header>
+
+<section class="section">
+  <h2>Choose a language</h2>
+  <div class="grid g3">
+    {% for reference in references %}
+    <article class="panel tight">
+      <span class="lang-rule" style="background:{{ reference.color }}" aria-hidden="true"></span>
+      <h3><a href="/programming/{{ reference.slug }}/reference">{{ reference.name }}</a></h3>
+      <p class="small muted">{{ reference.version }}</p>
+      <p>{{ reference.tagline }}</p>
+      <p class="tags"><span class="chip">{{ reference.entry_count }} entries</span>
+        <span class="chip">{{ reference.sections.syntax | length }} syntax rules</span>
+        <span class="chip">{{ reference.sections.errors | length }} error fixes</span></p>
+      <p><a class="btn btn-primary btn-sm" href="/programming/{{ reference.slug }}/reference">Open the reference →</a>
+        <a class="btn btn-soft btn-sm" href="/programming/{{ reference.slug }}">Course path</a></p>
+    </article>
+    {% else %}
+    <div class="empty"><span class="em" aria-hidden="true">{{ icon("book", 26) }}</span>References are being written.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section" id="compare">
+  <h2>One task, {{ references | length }} languages</h2>
+  <p class="muted">The same everyday job written idiomatically in every taught language. Each row also
+    names the part that does <em>not</em> translate, which is usually the part that causes the bug when
+    code moves between languages.</p>
+  {% for task in tasks %}
+  <details class="panel mt">
+    <summary><strong>{{ task.task }}</strong> <span class="chip">{{ references | length }} languages</span></summary>
+    <p class="small muted">{{ task.note }}</p>
+    <div class="tablewrap">
+      <table>
+        <caption>{{ task.task }} — idiomatic form</caption>
+        <thead><tr><th scope="col">Language</th><th scope="col">Code</th></tr></thead>
+        <tbody>
+          {% for language in languages %}
+          {% if task.snippets.get(language.slug) %}
+          <tr>
+            <th scope="row"><a href="/programming/{{ language.slug }}/reference">{{ language.name }}</a></th>
+            <td><pre class="console"><code>{{ task.snippets[language.slug] }}</code></pre></td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endfor %}
+</section>
+
+<section class="section panel">
+  <h2>How to use a reference</h2>
+  <p>Read the execution model first. Most of the remaining differences - copying, equality, null,
+    concurrency, error handling - follow from how the runtime represents values. Then use the tables as
+    a lookup: the syntax table for the exact rule, the library table by job, and the error table when
+    something fails. The course paths teach in order; this page is the index you keep beside them.</p>
+  <p><a class="btn btn-primary" href="/programming">Browse the language paths →</a>
+    <a class="btn btn-ghost" href="/practice/problems">Practise the same ideas →</a></p>
+</section>
+{% endblock %}

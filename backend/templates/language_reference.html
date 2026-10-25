@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}{{ language.name }} reference — {{ brand.site_name }}{% endblock %}
+{% block description %}{{ language.name }} reference: execution model, syntax rules, types, standard library by job, errors and fixes, idioms and versions.{% endblock %}
+{% block content %}
+<p class="small"><a href="/programming/reference">← All language references</a> ·
+  <a href="/programming/{{ language.slug }}">{{ language.name }} course path</a></p>
+<span class="lang-rule" style="background:{{ language.color }}" aria-hidden="true"></span>
+<header class="section">
+  <h1>{{ language.name }} reference</h1>
+  <p class="lead">{{ reference.tagline }}</p>
+  <div class="tags">
+    <span class="chip">{{ reference.version }}</span>
+    <span class="chip">{{ entry_count }} entries</span>
+    <span class="chip">{{ reference.sections.errors | length }} error fixes</span>
+    <span class="chip">{{ reference.sections.sources | length }} upstream sources</span>
+  </div>
+</header>
+
+<nav class="panel tight" aria-label="On this page">
+  <h2 class="h-sub">On this page</h2>
+  <ul class="stack small">
+    <li><a href="#model">The execution model</a></li>
+    <li><a href="#syntax">Syntax that carries meaning</a></li>
+    <li><a href="#types">The type system in practice</a></li>
+    <li><a href="#stdlib">The standard library by job</a></li>
+    <li><a href="#errors">Errors, causes and fixes</a></li>
+    <li><a href="#idioms">Idioms for real tasks</a></li>
+    <li><a href="#versions">Version history</a></li>
+    <li><a href="#sources">Upstream sources</a></li>
+  </ul>
+</nav>
+
+<section class="panel" id="model">
+  <h2>The execution model</h2>
+  <div class="prose">
+    {% for paragraph in reference.sections.model %}<p>{{ paragraph }}</p>{% endfor %}
+  </div>
+  <div class="tablewrap mt">
+    <table>
+      <caption>Properties that decide design choices in {{ language.name }}</caption>
+      <tbody>
+        {% for fact in reference.sections.facts %}
+        <tr><th scope="row">{{ fact.label }}</th><td class="prose">{{ fact.value | md | safe }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mt" id="syntax">
+  <h2>Syntax that carries meaning</h2>
+  <p class="muted">The constructs whose exact semantics decide what a program does.</p>
+  <div class="tablewrap">
+    <table>
+      <caption>{{ language.name }} syntax rules</caption>
+      <thead><tr><th scope="col">Construct</th><th scope="col">Example</th><th scope="col">The rule behind it</th></tr></thead>
+      <tbody>
+        {% for row in reference.sections.syntax %}
+        <tr>
+          <th scope="row">{{ row.feature }}</th>
+          <td><pre class="console"><code>{{ row.code }}</code></pre></td>
+          <td class="prose">{{ row.note | md | safe }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mt" id="types">
+  <h2>The type system in practice</h2>
+  <p class="muted">What each type is, what it copies, and where the sharp edges are.</p>
+  <div class="tablewrap">
+    <table>
+      <caption>{{ language.name }} types</caption>
+      <thead><tr><th scope="col">Type</th><th scope="col">What it actually is</th></tr></thead>
+      <tbody>
+        {% for row in reference.sections.types %}
+        <tr><th scope="row"><code>{{ row.name }}</code></th><td class="prose">{{ row.detail | md | safe }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mt" id="stdlib">
+  <h2>The standard library by job</h2>
+  <p class="muted">Start from the task, not from a package name. The note says what to check once
+    you have the API in front of you.</p>
+  <div class="tablewrap">
+    <table>
+      <caption>{{ language.name }} standard library</caption>
+      <thead><tr><th scope="col">Job</th><th scope="col">API</th><th scope="col">Check</th></tr></thead>
+      <tbody>
+        {% for row in reference.sections.stdlib %}
+        <tr><th scope="row">{{ row.job }}</th><td class="prose">{{ row.api | md | safe }}</td><td class="prose">{{ row.note | md | safe }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mt" id="errors">
+  <h2>Errors, causes and fixes</h2>
+  <p class="muted">The failures people actually meet, the cause rather than the symptom, and the
+    change that removes it.</p>
+  <div class="tablewrap">
+    <table>
+      <caption>{{ language.name }} failures</caption>
+      <thead><tr><th scope="col">Message</th><th scope="col">Cause</th><th scope="col">Fix</th></tr></thead>
+      <tbody>
+        {% for row in reference.sections.errors %}
+        <tr><th scope="row"><code>{{ row.error }}</code></th><td class="prose">{{ row.cause | md | safe }}</td><td class="prose">{{ row.fix | md | safe }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mt" id="idioms">
+  <h2>Idioms for real tasks</h2>
+  <p class="muted">The short form experienced programmers write, and the reason it is written that way.</p>
+  <div class="tablewrap">
+    <table>
+      <caption>{{ language.name }} idioms</caption>
+      <thead><tr><th scope="col">Task</th><th scope="col">Code</th><th scope="col">Why</th></tr></thead>
+      <tbody>
+        {% for row in reference.sections.idioms %}
+        <tr><th scope="row">{{ row.task }}</th><td><pre class="console"><code>{{ row.code }}</code></pre></td><td class="prose">{{ row.note | md | safe }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mt" id="versions">
+  <h2>Version history that matters</h2>
+  <p class="muted">So a version claim in a lesson can be checked against the release that introduced it.</p>
+  <div class="tablewrap">
+    <table>
+      <caption>{{ language.name }} releases</caption>
+      <thead><tr><th scope="col">Release</th><th scope="col">What changed</th></tr></thead>
+      <tbody>
+        {% for row in reference.sections.versions %}
+        <tr><th scope="row">{{ row.release }}</th><td class="prose">{{ row.change | md | safe }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mt" id="sources">
+  <h2>Upstream sources</h2>
+  <p class="muted">Official documentation, specifications and the language's own tooling - not
+    commentary. Use these when this page is not precise enough.</p>
+  <ul class="stack">
+    {% for source in reference.sections.sources %}
+    <li><a href="{{ source.url }}" rel="noopener noreferrer">{{ source.title }}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel mt">
+  <h2>Compare with another language</h2>
+  <p class="muted">The same job in every taught language, with the part that does not translate named.</p>
+  <ul class="stack">
+    {% for task in tasks %}
+    <li><strong>{{ task.task }}</strong> — <a href="/programming/reference#compare">see all
+      {{ tasks | length }} comparisons</a>{% if task.snippets.get(language.slug) %} ·
+      <span class="small muted">this language: <code>{{ task.snippets[language.slug] | truncate(90, true) }}</code></span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<nav class="between section" aria-label="Next steps">
+  <a class="btn btn-soft" href="/programming/{{ language.slug }}">← {{ language.name }} course path</a>
+  <a class="btn btn-primary" href="/practice/problems">Practise coding problems →</a>
+</nav>
+{% endblock %}

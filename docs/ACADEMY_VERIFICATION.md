@@ -150,6 +150,35 @@ lesson still need broader manual review.
 - No exhaustive module mastery, per-language problem bank, adaptive persistence
   or expanded project ladder is claimed complete; see the follow-up checklist.
 
+## Depth wave 3 verification (2026-10-25)
+
+Thirty new modules, three per language, were added as book-depth lessons rather
+than A–O structured units: a semantics module, a standard-library-by-job module
+and a diagnostics module for each of the ten paths. They live in
+`seed_data/language_book_wave3.py` (Python, Java),
+`language_book_wave3_web.py` (JavaScript, TypeScript),
+`language_book_wave3_native.py` (C, C++),
+`language_book_wave3_services.py` (C#, Go) and
+`language_book_wave3_data.py` (Rust, SQL). The structured-unit count is still
+fifteen. The same change publishes the deep language reference
+(`/programming/reference` and one page per language); see
+[LANGUAGE_REFERENCE.md](LANGUAGE_REFERENCE.md).
+
+| Check | Observed result |
+|---|---|
+| Fresh seed, no demo accounts (`ENGINEVERSE_DB_PATH=/tmp/ev_wave3.sqlite python scripts/seed.py --fresh --no-demo`) | Completed in 9.5 s; `language_modules` 275, `language_stages` 30, `language_checkpoints` 90, `practice_slug` links 146, `language_references` 10, `language_reference_tasks` 10, search index 3891 |
+| Focused suite: `test_seed_coverage`, `test_links`, `test_academy`, `test_routes`, `test_crawl`, `test_navigation`, `test_seo`, plus `test_language_reference`, `test_static_export_contract` and `test_markdown` | 358 passed, 0 failed (existing Starlette/httpx deprecation warning only) |
+| Reference suite: `test_language_reference` | 29 passed, 0 failed (data contract, storage, hub, ten pages, 404, navigation, sitemap, search) |
+| Static export (`python scripts/export_pages.py --out /tmp/site_final --reading-copy`) | 1,199 pages and 996 search rows written; 214,954 local URL references checked with **0 broken links**; 1,201 heading outlines with 0 skipped levels |
+| Reference pages in the export | `/programming/reference/index.html` and all ten `/programming/{language}/reference/index.html` exist; the hub contains ten reference cards |
+| Examples executed: Python (`python-semantics-deep`, `python-stdlib-deep`, `python-diagnostics-deep`) | Ran with CPython 3.11; output matches the comments (default-argument sharing, closure late binding, float versus `Decimal`, traceback chaining) |
+| Examples executed: C (`c-semantics-deep`, `c-stdlib-deep`, `c-diagnostics-deep`) | `gcc 12.2.0 -std=c17 -Wall -Wextra -O2`; all three compile with no warnings and run as documented |
+| Whole backend suite (`pytest backend/tests`) | Passed, including the `shell`-mode scan, which rejects the literal shell flag in any source file outside tests |
+| Examples executed: C++ (`cpp-semantics-deep`, `cpp-stdlib-deep`, `cpp-diagnostics-deep`) | `g++ 12.2.0 -std=c++20 -Wall -Wextra -O2`; all three compile and run as documented |
+| Examples not compiled here: Java, C#, Go, Rust | No JDK, .NET, Go or Rust toolchain in this container. The examples were authored against the versions named in each module and reviewed by reading; they are not claimed compiler-verified. |
+| SQL examples | Written for PostgreSQL 16 with SQLite/MySQL differences called out. They were not executed against a live PostgreSQL server in this container; the reference pages state the same boundary. |
+| Reader spot check | `/programming/python/lessons/python-semantics-deep`, `/programming/sql/lessons/sql-diagnostics-deep` and `/programming/reference` all render (200) with their tables, examples and practice links |
+
 ## Depth wave 2 verification (2026-10-25)
 
 Twenty new modules (`seed_data/language_book_wave2.py`) were added to the

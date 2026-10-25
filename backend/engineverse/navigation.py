@@ -336,6 +336,12 @@ CODE = Section(
             match=("/programming",), icon="terminal",
         ),
         Destination(
+            "Language reference", "/programming/reference",
+            "One deep reference per language: execution model, syntax rules, types, library by job, "
+            "errors with fixes and version history.",
+            match=("/programming/reference",), icon="book",
+        ),
+        Destination(
             "Coding problems", "/practice/problems",
             "Problems with editor stubs and tests, run by the judge on this host.",
             icon="code",

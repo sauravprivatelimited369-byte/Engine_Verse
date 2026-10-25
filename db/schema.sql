@@ -522,6 +522,34 @@ CREATE TABLE IF NOT EXISTS language_checkpoints (
 );
 CREATE INDEX IF NOT EXISTS idx_langchk_stage ON language_checkpoints(language_id, stage, order_index);
 
+-- The deep reference for one language: the execution model, syntax rules, type
+-- system, standard library by job, errors with causes and fixes, idioms,
+-- version history and upstream sources. Stored as one JSON document because the
+-- page reads the whole reference at once and nothing joins against individual
+-- rows; ``seed_data/language_reference*.py`` is the authored copy, validated
+-- before the seed writes it. Separate from language_modules on purpose: a
+-- lesson teaches in order, a reference is looked up from any direction.
+CREATE TABLE IF NOT EXISTS language_references (
+  id          TEXT PRIMARY KEY,
+  language_id TEXT NOT NULL UNIQUE REFERENCES programming_languages(id) ON DELETE CASCADE,
+  version     TEXT NOT NULL,
+  tagline     TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
+-- The cross-language comparison rows: one task, the idiomatic form in every
+-- taught language, and a note on what does not translate. Kept in its own table
+-- because the row is about the *difference* between languages, not about one of
+-- them, and it must stay in step with the reference pages it links to.
+CREATE TABLE IF NOT EXISTS language_reference_tasks (
+  id          TEXT PRIMARY KEY,
+  task        TEXT NOT NULL,
+  note        TEXT NOT NULL,
+  snippets    TEXT NOT NULL,   -- JSON object: language slug -> code
+  order_index INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS coding_problems (
   id              TEXT PRIMARY KEY,
   slug            TEXT NOT NULL UNIQUE,

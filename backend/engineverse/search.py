@@ -49,6 +49,7 @@ ENTITY_URLS = {
     "resource": "/resources/offsite?slug={id}",
     "roadmap": "/roadmaps/{id}",
     "language": "/programming/{id}",
+    "reference": "/programming/{id}/reference",
     "branch": "/branches/{id}",
     "module": "/programming/{id}#{module}",
     "flashcard": "/flashcards?card={id}",
@@ -281,7 +282,7 @@ def indexed_count() -> int:
 # a body contains. The search index is derived data, so a deployment whose code
 # indexes more than its stored index holds must rebuild it; without this a site
 # upgraded in place silently keeps searching the old, narrower index.
-INDEX_SCHEMA_VERSION = 3
+INDEX_SCHEMA_VERSION = 4
 
 
 # The exact columns used to build each public search entity, in deterministic
@@ -311,6 +312,8 @@ _FINGERPRINT_TABLES = {
     "roadmaps": ("id", "slug", "title", "kind", "summary"),
     "programming_languages": ("id", "slug", "name", "blurb"),
     "language_modules": ("id", "language_id", "slug", "title", "summary", "body", "example", "exercise", "order_index"),
+    "language_references": ("id", "language_id", "version", "tagline", "body", "updated_at"),
+    "language_reference_tasks": ("id", "task", "note", "snippets", "order_index"),
     "flashcards": ("id", "subject_id", "front", "hint", "deck", "difficulty"),
     "users": ("id", "username", "status"),
     "profiles": ("user_id", "full_name", "headline", "branch_id", "privacy"),
@@ -531,6 +534,35 @@ def reindex_all() -> int:
                 title=f"{row['name']}: {module['title']}",
                 body=" ".join(filter(None, (
                     module["summary"], module["body"], module["example"], module["exercise"],
+                ))),
+                tags=row["name"],
+            )
+            count += 1
+
+        reference = db.query_one(
+            "SELECT version, tagline, body FROM language_references WHERE language_id = ?",
+            row["id"],
+        )
+        if reference:
+            try:
+                payload = json.loads(reference["body"] or "{}")
+            except (TypeError, ValueError):
+                payload = {}
+
+            def _prose(value: object) -> list[str]:
+                if isinstance(value, str):
+                    return [value]
+                if isinstance(value, dict):
+                    return [part for item in value.values() for part in _prose(item)]
+                if isinstance(value, list):
+                    return [part for item in value for part in _prose(item)]
+                return []
+
+            index_entity(
+                entity_type="reference", entity_id=row["slug"],
+                title=f"{row['name']} reference",
+                body=" ".join(filter(None, (
+                    reference["version"], reference["tagline"], *_prose(payload),
                 ))),
                 tags=row["name"],
             )

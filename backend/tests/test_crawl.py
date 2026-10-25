@@ -54,6 +54,7 @@ PARAM_SOURCES = {
     "/portfolio/{username}": "SELECT username FROM users",
     "/practice/problems/{slug}": "SELECT slug FROM coding_problems",
     "/programming/{language}": "SELECT slug AS language FROM programming_languages",
+    "/programming/{language}/reference": "SELECT slug AS language FROM programming_languages",
     "/programming/{language}/lessons/{module}": (
         "SELECT l.slug AS language, m.slug AS module FROM language_modules m "
         "JOIN programming_languages l ON l.id = m.language_id"
