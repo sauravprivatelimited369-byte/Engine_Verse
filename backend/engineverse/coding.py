@@ -261,6 +261,59 @@ def language_by_slug(slug: str) -> dict | None:
     return _with_runtime_availability(db.query_one("SELECT * FROM programming_languages WHERE slug = ?", slug))
 
 
+def reference_for_language(language_id: str) -> dict | None:
+    """The deep reference for one language, or ``None`` when it is not seeded.
+
+    The JSON document is validated by the seeder; this reads it defensively so a
+    manual database edit degrades to "no reference" rather than a 500.
+    """
+    row = db.query_one(
+        "SELECT version, tagline, body FROM language_references WHERE language_id = ?",
+        language_id,
+    )
+    if not row:
+        return None
+    try:
+        body = json.loads(row["body"] or "{}")
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(body, dict):
+        return None
+    return {"version": row["version"], "tagline": row["tagline"], "sections": body}
+
+
+def reference_languages() -> list[dict]:
+    """Every seeded reference with its language metadata, in catalogue order."""
+    rows = db.query(
+        "SELECT l.slug, l.name, l.icon, l.color, l.blurb, r.version, r.tagline, r.body "
+        "FROM language_references r JOIN programming_languages l ON l.id = r.language_id "
+        "ORDER BY l.order_index, l.name"
+    )
+    for row in rows:
+        try:
+            row["sections"] = json.loads(row.pop("body") or "{}")
+        except (TypeError, ValueError):
+            row["sections"] = {}
+        row["entry_count"] = sum(
+            len(value) for key, value in row["sections"].items()
+            if isinstance(value, list) and key != "model"
+        )
+    return rows
+
+
+def reference_tasks() -> list[dict]:
+    """The cross-language comparison rows, with snippets decoded."""
+    rows = db.query(
+        "SELECT task, note, snippets FROM language_reference_tasks ORDER BY order_index"
+    )
+    for row in rows:
+        try:
+            row["snippets"] = json.loads(row.pop("snippets") or "{}")
+        except (TypeError, ValueError):
+            row["snippets"] = {}
+    return rows
+
+
 def modules_for_language(language_id: str) -> list[dict]:
     return db.query("SELECT * FROM language_modules WHERE language_id = ? ORDER BY order_index", language_id)
 

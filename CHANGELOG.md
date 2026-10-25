@@ -9,6 +9,38 @@ release.
 
 ### Added
 
+- **Depth wave 3 for the programming academy: thirty new modules, three per
+  language.** `seed_data/language_book_wave3.py` (Python, Java),
+  `language_book_wave3_web.py` (JavaScript, TypeScript),
+  `language_book_wave3_native.py` (C, C++),
+  `language_book_wave3_services.py` (C#, Go) and the existing
+  `language_book_wave3_data.py` (Rust, SQL) give every path a semantics module,
+  a standard-library-by-job module and a diagnostics module. The semantics
+  modules cover the rules that decide behaviour (`==` versus identity, integer
+  promotion, slicing and aliasing, nullability, coercion); the library modules
+  map jobs to APIs with the traps named; the diagnostics modules teach
+  tracebacks, stack traces, sanitizers, `pprof`, Miri and `EXPLAIN`. That is 275
+  staged modules in total, up from 245, still across 30 stages and 90
+  checkpoint questions, and every new module ends in an existing judged
+  problem. Python and C/C++ examples were executed with CPython 3.11 and
+  gcc/g++ 12.2; Java, C#, Go and Rust examples are authored and reviewed but not
+  compiled in this environment, and SQL is written for PostgreSQL 16 with the
+  SQLite/MySQL differences called out. See
+  [docs/ACADEMY_VERIFICATION.md](docs/ACADEMY_VERIFICATION.md).
+
+- **A deep language reference beside the course paths.** `/programming/reference`
+  is a hub for ten languages, and `/programming/{language}/reference` is a
+  lookup page with the execution model, the properties that decide design
+  choices, syntax rules, the type system, the standard library by job, an
+  error/cause/fix table, idioms, version history and official sources. The hub
+  also renders ten cross-language tasks, each written in all ten languages with a
+  note naming what does not translate. The content is 555 authored rows plus the
+  comparison tasks, validated for shape and minimum depth at import and again
+  before seeding, stored in `language_references` and
+  `language_reference_tasks`, indexed for search, listed in the sitemap, and
+  exported into the static reading copy. See
+  [docs/LANGUAGE_REFERENCE.md](docs/LANGUAGE_REFERENCE.md).
+
 - **Depth wave 2 for the programming academy: twenty new advanced modules.**
   `seed_data/language_book_wave2.py` adds two modules per language to the
   advanced stage of all ten paths (245 modules total, up from 225), covering

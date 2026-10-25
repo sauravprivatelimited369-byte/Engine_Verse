@@ -140,6 +140,15 @@ CREATE TABLE IF NOT EXISTS programming_languages (
   PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS language_reference_tasks (
+  id                   TEXT NOT NULL,
+  task                 TEXT NOT NULL,
+  note                 TEXT NOT NULL,
+  snippets             TEXT NOT NULL,
+  order_index          BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS coding_problems (
   id                   TEXT NOT NULL,
   slug                 TEXT NOT NULL UNIQUE,
@@ -318,6 +327,16 @@ CREATE TABLE IF NOT EXISTS language_stages (
   summary              TEXT,
   order_index          BIGINT NOT NULL DEFAULT 0,
   UNIQUE (language_id, stage),
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS language_references (
+  id                   TEXT NOT NULL,
+  language_id          TEXT NOT NULL UNIQUE REFERENCES programming_languages(id) ON DELETE CASCADE,
+  version              TEXT NOT NULL,
+  tagline              TEXT NOT NULL,
+  body                 TEXT NOT NULL,
+  updated_at           BIGINT NOT NULL,
   PRIMARY KEY (id)
 );
 

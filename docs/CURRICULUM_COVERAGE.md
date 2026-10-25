@@ -28,7 +28,8 @@ production content unless you just generated it from that database.
 - Coding problems: 105
 - Curated coding sheets: 14 (135 problem slots; 0 problems in no sheet)
 - Programming languages: 10
-- Language modules: 245 (245 assigned to a stage)
+- Language modules: 275 (275 assigned to a stage)
+- Language reference rows: 555 across 10 languages (10 cross-language tasks)
 - Language stages: 30
 - Stage checkpoint links: 90 (90 pointing at active questions)
 - Published project briefs: 17

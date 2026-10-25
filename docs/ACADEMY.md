@@ -12,7 +12,7 @@ from unavailable toolchains and remaining review work.
   A seven-level syllabus names language-specific learning goals, explicitly
   labelled as expansion goals rather than completed coverage.
 - `/programming/{language}/lessons/{module}` reads one existing module, with
-  previous/next links. All 245 modules have readers; no existing ids or accounts
+  previous/next links. All 275 modules have readers; no existing ids or accounts
   were replaced. Search's old course-fragment URLs still resolve.
 - Fifteen existing modules now have complete **structured learning-unit fields**:
   objectives, intuition, technical reasoning, visual trace, syntax/version rules,
@@ -31,16 +31,16 @@ from unavailable toolchains and remaining review work.
 
 | Language | Structured modules | Legacy modules still awaiting expansion |
 |---|---|---:|
-| Python | `python-loops-from-scratch`, `python-complexity-big-o` | 35 |
-| C | `c-loops`, `c-complexity-big-o` | 26 |
-| C++ | `cpp-decisions-loops`, `cpp-complexity-big-o` | 27 |
-| Java | `java-loops-from-scratch`, `java-complexity-big-o` | 31 |
-| C# | `csharp-decisions-loops`, `csharp-complexity-big-o` | 18 |
-| JavaScript | `js-decisions-loops` | 24 |
-| TypeScript | `ts-decisions-loops` | 17 |
-| Go | `go-decisions-loops` | 18 |
-| Rust | `rust-decisions-loops` | 18 |
-| SQL | `sql-real-world-1` (relational filtering/aggregation, not an imperative-loop imitation) | 16 |
+| Python | `python-loops-from-scratch`, `python-complexity-big-o` | 38 |
+| C | `c-loops`, `c-complexity-big-o` | 29 |
+| C++ | `cpp-decisions-loops`, `cpp-complexity-big-o` | 30 |
+| Java | `java-loops-from-scratch`, `java-complexity-big-o` | 34 |
+| C# | `csharp-decisions-loops`, `csharp-complexity-big-o` | 21 |
+| JavaScript | `js-decisions-loops` | 27 |
+| TypeScript | `ts-decisions-loops` | 20 |
+| Go | `go-decisions-loops` | 21 |
+| Rust | `rust-decisions-loops` | 21 |
+| SQL | `sql-real-world-1` (relational filtering/aggregation, not an imperative-loop imitation) | 19 |
 
 ## Depth wave 2: runtime, memory, tooling and the query planner
 
@@ -93,6 +93,43 @@ linear scanning, and handle first duplicates and empty arrays. The C contract
 explicitly scopes integer/index widths rather than assuming all C targets are
 32-bit. C++ and managed-language library search contracts are not presented as
 identical to a first-duplicate search.
+
+## Depth wave 3: semantics, the standard library and diagnostics
+
+Wave 3 adds thirty modules - three per language - to the advanced stage of every
+path. Each path now has a module on the rules that decide behaviour, a module
+that maps jobs to standard-library APIs, and a module on reading failures. The
+data lives in `language_book_wave3.py` (Python, Java),
+`language_book_wave3_web.py` (JavaScript, TypeScript),
+`language_book_wave3_native.py` (C, C++),
+`language_book_wave3_services.py` (C#, Go) and `language_book_wave3_data.py`
+(Rust, SQL).
+
+| Language | Semantics | Standard library | Diagnostics |
+|---|---|---|---|
+| Python | `python-semantics-deep` | `python-stdlib-deep` | `python-diagnostics-deep` |
+| Java | `java-semantics-deep` | `java-stdlib-deep` | `java-diagnostics-deep` |
+| JavaScript | `js-semantics-deep` | `js-stdlib-deep` | `js-diagnostics-deep` |
+| TypeScript | `ts-semantics-deep` | `ts-stdlib-deep` | `ts-diagnostics-deep` |
+| C | `c-semantics-deep` | `c-stdlib-deep` | `c-diagnostics-deep` |
+| C++ | `cpp-semantics-deep` | `cpp-stdlib-deep` | `cpp-diagnostics-deep` |
+| C# | `csharp-semantics-deep` | `csharp-stdlib-deep` | `csharp-diagnostics-deep` |
+| Go | `go-semantics-deep` | `go-stdlib-deep` | `go-diagnostics-deep` |
+| Rust | `rust-semantics-deep` | `rust-stdlib-deep` | `rust-diagnostics-deep` |
+| SQL | `sql-semantics-deep` | `sql-stdlib-deep` | `sql-diagnostics-deep` |
+
+They are legacy-format modules, so the structured-unit count stays at fifteen.
+The Python, C and C++ examples were executed in this environment (CPython 3.11;
+gcc/g++ 12.2 with `-Wall -Wextra -O2`); the Java, C#, Go and Rust examples were
+authored and reviewed but not compiled here, and the SQL examples were written
+for PostgreSQL 16 without a live server. The [verification
+record](ACADEMY_VERIFICATION.md) states the same boundary.
+
+This wave also publishes the [language reference](LANGUAGE_REFERENCE.md): a hub
+at `/programming/reference`, one lookup page per language, and ten
+cross-language comparison tasks. The reference complements the courses rather
+than replacing them - it is a map of the rules, the library and the failure
+modes, with the official source named for each claim.
 
 ## Honest practice and persistence boundaries
 
@@ -224,7 +261,7 @@ catalogue ids and may overwrite CMS edits; it is broader than this update.
    and sign-in policy. Keep public code execution disabled unless independently
    provisioned and reviewed. No new environment setting is required.
 6. Without `ENGINEVERSE_APP_URL`, the Pages workflow makes a no-demo seed and
-   exports all 245 reader routes, asset URLs and sitemap links as a static
+   exports all 275 reader routes, asset URLs and sitemap links as a static
    reading copy (no accounts/judge). Once a verified full app is hosted, Pages
    becomes a gateway instead; those routes are served by the hosted app.
 
@@ -235,18 +272,30 @@ old whole database over newer learner submissions merely to undo content.
 
 ## Follow-up backlog (not completed)
 
-- [ ] Expand the remaining 230 legacy modules into substantive A–O units, with
+- [ ] Expand the remaining 260 legacy modules into substantive A–O units, with
   objective/exercise coverage review rather than module-count targets.
-- [ ] Priority-language mastery, partially delivered by depth wave 2: Python
-  descriptors/protocols (still open) alongside async (covered); C lifetime and
-  aliasing (covered); C++ move/RAII and templates (covered, atomics still open);
-  Java JVM and virtual threads (covered, generics still open); C# disposal and
-  cancellation (covered, LINQ/nullability depth still open). Remaining units need
-  versioned tests, which only a host with those toolchains can run.
+- [ ] Priority-language mastery, partially delivered by depth waves 2 and 3:
+  Python descriptors/protocols (still open) alongside async, object model and
+  diagnostics (covered); C lifetime and aliasing (covered, atomics still open);
+  C++ move/RAII, templates and sanitizer workflow (covered, atomics still open);
+  Java JVM, virtual threads and stack-trace reading (covered, generics still
+  open); C# disposal, cancellation and LINQ (covered, source-generated JSON
+  internals still open). Remaining units need versioned tests, which only a host
+  with those toolchains can run.
 - [x] Bring JavaScript, TypeScript, Go, Rust and SQL runtime/engineering units
   to the same depth - delivered as the twenty wave-2 modules above, including
   dialect-aware SQL plan and transaction lessons rather than translated pointer
-  lessons. Deepening them further (atomics, dialect matrices per engine) remains open.
+  lessons. Depth wave 3 then added a semantics, standard-library and diagnostics
+  module to every one of the ten languages, so each path now teaches the object
+  model, the library map and the failure modes rather than syntax alone.
+- [x] Publish a lookup reference beside the course paths: `/programming/reference`
+  and one page per language, with the execution model, syntax rules, types,
+  library-by-job, error/fix table, idioms, version history and official sources,
+  plus ten cross-language comparison tasks. See
+  [LANGUAGE_REFERENCE.md](LANGUAGE_REFERENCE.md).
+- [ ] Independently review the reference rows against the named upstream sources
+  and record a reviewer and date per language; the current rows are authored from
+  official documentation but not expert-signed-off.
 - [ ] Convert wave-2 modules to the A–O structured-unit format, starting with the
   SQL and Python concurrency units, which are the highest-traffic entry points.
 - [ ] Map language-specific stubs and explanations to each problem pattern;

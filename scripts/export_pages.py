@@ -263,6 +263,12 @@ def public_paths() -> list[str]:
         if slug:
             paths.append(f"/programming/{slug}")
             paths += [f"/programming/{slug}/lessons/{row['slug']}" for row in coding.modules_for_language(lang["id"])]
+    # The reference hub and every seeded per-language reference. Created from
+    # the database, not navigation alone, because the per-language pages are
+    # content rows rather than fixed destinations.
+    paths.append("/programming/reference")
+    paths += [f"/programming/{row['language_id']}/reference" for row in db.query(
+        "SELECT language_id FROM language_references ORDER BY language_id")]
     for roadmap in library.list_roadmaps():
         slug = roadmap.get("slug")
         if slug:
@@ -306,6 +312,13 @@ def search_index(base: str) -> list[dict[str, str]]:
         add("Project", row["title"], row["summary"] or "", f"/projects/{row['slug']}")
     for row in db.query("SELECT slug, title, statement FROM coding_problems"):
         add("Problem", row["title"], row["statement"] or "", f"/practice/problems/{row['slug']}")
+    for row in db.query(
+        "SELECT l.slug, l.name, r.version, r.tagline, r.body FROM language_references r "
+        "JOIN programming_languages l ON l.id = r.language_id ORDER BY l.order_index"
+    ):
+        add("Reference", f"{row['name']} reference",
+            f"{row['version']}. {row['tagline']}",
+            f"/programming/{row['slug']}/reference")
     for row in db.query("SELECT name, latex, meaning FROM formulas"):
         add("Formula", row["name"], row["meaning"] or row["latex"] or "", "/formulas")
     return rows

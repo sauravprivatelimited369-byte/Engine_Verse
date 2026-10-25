@@ -439,6 +439,22 @@ async def programming_home(request: Request):
     )
 
 
+@router.get("/programming/reference")
+async def language_reference_hub(request: Request):
+    """The reference index: ten languages, their models and a comparison table.
+
+    Declared before /programming/{language} so the literal path is not treated
+    as a language slug.
+    """
+    return render(
+        request, "programming_reference.html",
+        references=coding.reference_languages(),
+        tasks=coding.reference_tasks(),
+        languages=coding.list_languages(),
+        crumb_leaf="Language reference",
+    )
+
+
 @router.get("/programming/{language}")
 async def language_page(request: Request, language: str):
     lang = coding.language_by_slug(language)
@@ -466,6 +482,24 @@ async def language_page(request: Request, language: str):
         # stub renders an editor that cannot run in the page's language.
         problems=coding.problems_with_starter(lang["id"], limit=30),
         attempts=attempts,
+    )
+
+
+@router.get("/programming/{language}/reference")
+async def language_reference(request: Request, language: str):
+    lang = coding.language_by_slug(language)
+    if not lang:
+        raise HTTPException(status_code=404, detail="Unknown language")
+    reference = coding.reference_for_language(lang["id"])
+    if not reference:
+        raise HTTPException(status_code=404, detail="No reference for this language")
+    return render(
+        request, "language_reference.html", language=lang, reference=reference,
+        crumb_leaf=f"{lang['name']} reference",
+        languages=coding.list_languages(),
+        tasks=coding.reference_tasks(),
+        entry_count=sum(len(value) for key, value in reference["sections"].items()
+                        if isinstance(value, list) and key != "model"),
     )
 
 
@@ -1598,6 +1632,8 @@ async def sitemap():
         "SELECT slug FROM topics WHERE status = 'published' ORDER BY slug")]
     urls += [f"/sheets/{row['slug']}" for row in coding.list_sheets(limit=200)]
     urls += [f"/programming/{row['slug']}" for row in coding.list_languages()]
+    urls += [f"/programming/{row['language_id']}/reference" for row in db.query(
+        "SELECT language_id FROM language_references ORDER BY language_id")]
     urls += [f"/programming/{row['language_id']}/lessons/{row['slug']}" for row in db.query(
         "SELECT language_id, slug FROM language_modules")]
     urls += [f"/roadmaps/{row['slug']}" for row in library.list_roadmaps()]
