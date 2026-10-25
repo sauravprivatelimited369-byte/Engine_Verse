@@ -28,7 +28,7 @@ production content unless you just generated it from that database.
 - Coding problems: 105
 - Curated coding sheets: 14 (135 problem slots; 0 problems in no sheet)
 - Programming languages: 10
-- Language modules: 225 (225 assigned to a stage)
+- Language modules: 245 (245 assigned to a stage)
 - Language stages: 30
 - Stage checkpoint links: 90 (90 pointing at active questions)
 - Published project briefs: 17
@@ -62,16 +62,16 @@ Each path progresses through Foundations, Working Practice and Advanced Engineer
 
 | Language | Modules | Foundations | Working Practice | Advanced Engineering | Checkpoints | Capstone |
 |---|---:|---:|---:|---:|---:|---|
-| Python | 35 | 13 | 6 | 16 | 9 | [python-field-notes-api](/projects/python-field-notes-api) |
-| Java | 31 | 10 | 4 | 17 | 9 | [java-room-booking-service](/projects/java-room-booking-service) |
-| JavaScript | 23 | 9 | 5 | 9 | 9 | [js-revision-dashboard](/projects/js-revision-dashboard) |
-| TypeScript | 16 | 5 | 2 | 9 | 9 | [ts-task-api-client](/projects/ts-task-api-client) |
-| C++ | 27 | 8 | 4 | 15 | 9 | [cpp-text-index-cli](/projects/cpp-text-index-cli) |
-| Go | 17 | 6 | 3 | 8 | 9 | [go-healthcheck-service](/projects/go-healthcheck-service) |
-| Rust | 17 | 6 | 2 | 9 | 9 | [rust-logscan-cli](/projects/rust-logscan-cli) |
-| C | 26 | 10 | 3 | 13 | 9 | [c-sensor-ringlog](/projects/c-sensor-ringlog) |
-| C# | 18 | 8 | 5 | 5 | 9 | [csharp-tasks-api](/projects/csharp-tasks-api) |
-| SQL | 15 | 5 | 3 | 7 | 9 | [sql-ops-reporting-db](/projects/sql-ops-reporting-db) |
+| Python | 37 | 13 | 6 | 18 | 9 | [python-field-notes-api](/projects/python-field-notes-api) |
+| Java | 33 | 10 | 4 | 19 | 9 | [java-room-booking-service](/projects/java-room-booking-service) |
+| JavaScript | 25 | 9 | 5 | 11 | 9 | [js-revision-dashboard](/projects/js-revision-dashboard) |
+| TypeScript | 18 | 5 | 2 | 11 | 9 | [ts-task-api-client](/projects/ts-task-api-client) |
+| C++ | 29 | 8 | 4 | 17 | 9 | [cpp-text-index-cli](/projects/cpp-text-index-cli) |
+| Go | 19 | 6 | 3 | 10 | 9 | [go-healthcheck-service](/projects/go-healthcheck-service) |
+| Rust | 19 | 6 | 2 | 11 | 9 | [rust-logscan-cli](/projects/rust-logscan-cli) |
+| C | 28 | 10 | 3 | 15 | 9 | [c-sensor-ringlog](/projects/c-sensor-ringlog) |
+| C# | 20 | 8 | 5 | 7 | 9 | [csharp-tasks-api](/projects/csharp-tasks-api) |
+| SQL | 17 | 5 | 3 | 9 | 9 | [sql-ops-reporting-db](/projects/sql-ops-reporting-db) |
 
 ## By branch
 

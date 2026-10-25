@@ -149,3 +149,32 @@ lesson still need broader manual review.
   or certified. Do not enable a public runner based on these content tests.
 - No exhaustive module mastery, per-language problem bank, adaptive persistence
   or expanded project ladder is claimed complete; see the follow-up checklist.
+
+## Depth wave 2 verification (2026-10-25)
+
+Twenty new modules (`seed_data/language_book_wave2.py`) were added to the
+advanced stage of all ten paths. These are book-depth lessons, not A–O
+structured units, so the structured-unit count is unchanged. What was actually
+observed in this environment:
+
+| Check | Observed result |
+|---|---|
+| Fresh seed, no demo accounts (`ENGINEVERSE_DB_PATH=/tmp/ev_wave2.sqlite python scripts/seed.py --fresh --no-demo`) | Completed in 5.7 s; `language_modules` 245, `language_stages` 30, `language_checkpoints` 90, search index 3851 |
+| Targeted Python suite: `test_academy`, `test_seed_coverage`, `test_links`, `test_static_export_contract`, `test_crawl`, `test_routes`, `test_navigation`, `test_seo` | 465 passed, 0 failed (existing Starlette/httpx deprecation warning only) |
+| Static export (`python scripts/export_pages.py --out /tmp/site_wave2 --reading-copy`) | 1158 pages written, 202827 local URL references checked, **0 broken links**, 1160 heading outlines with 0 skipped levels |
+| Reader rendering spot check | `/programming/python/lessons/python-gil-concurrency-deep` renders the Markdown body, the example block and the `word-ladder` practice link |
+| Examples executed: Python (`python-gil-concurrency-deep`, `python-typing-tooling-deep`) | Ran with CPython 3.11.2; timings printed as documented (threaded I/O ≈ 4× faster, threaded CPU no gain) |
+| Examples executed: JavaScript (`js-event-loop-deep`, `js-modules-bundling-deep`) | Ran with Node 22.22.3; microtask ordering matches the comment in the lesson |
+| Examples executed: TypeScript (`ts-type-system-deep`, `ts-runtime-validation-deep`) | Ran with `node --experimental-strip-types`; both print the documented results |
+| Examples executed: C (`c-undefined-behaviour-deep`) | `gcc 12.2.0 -std=c17 -Wall -Wextra -Werror -fsanitize=address,undefined`; clean |
+| Examples executed: C++ (`cpp-raii-move-deep`, `cpp-templates-concepts-deep`) | `g++ 12.2.0 -std=c++20 -Wall -Wextra -Werror`; clean, output as documented |
+| Examples executed: SQL (`sql-indexes-plans-deep`, `sql-transactions-isolation-deep`) | Ran against SQLite 3.40 via Python's `sqlite3`; `EXPLAIN QUERY PLAN` shows SEARCH/COVERING INDEX for the sargable query and SCAN for the non-sargable ones; the savepoint, optimistic-lock and idempotency blocks produce the documented rows |
+
+**Not verified here:** the Java, C#, Go and Rust examples were not compiled
+because `javac`, `dotnet`, `go` and `rustc` are not installed in this container.
+They were reviewed against the language specifications, and they are examples,
+not graded references. Run them on a host with those toolchains before
+presenting them as compiler-verified. The stage-2 placement, practice links and
+counts *are* covered by the suite above: `test_seed_coverage` fails if a module
+has no stage, if a practice link names an unseeded problem, or if the seeded
+counts drift from the catalogue.

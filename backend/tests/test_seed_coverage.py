@@ -1015,7 +1015,7 @@ def test_fresh_seed_reproduces_the_expected_curriculum_counts(seeded):
     """One number per acceptance criterion, so a regression in any seeder is
     named by count rather than discovered by a broken page."""
     assert int(db.scalar("SELECT count(*) FROM programming_languages") or 0) == 10
-    assert int(db.scalar("SELECT count(*) FROM language_modules") or 0) == 225
+    assert int(db.scalar("SELECT count(*) FROM language_modules") or 0) == 245
     assert int(db.scalar("SELECT count(*) FROM language_stages") or 0) == 30
     assert int(db.scalar("SELECT count(*) FROM language_checkpoints") or 0) == 90
     assert int(db.scalar("SELECT count(*) FROM questions WHERE is_active = 1") or 0) == 534
@@ -1031,17 +1031,17 @@ def test_every_module_practice_link_resolves_to_a_seeded_problem(seeded):
     from seed_data import (language_book_c, language_book_cpp,
                            language_book_csharp, language_book_java,
                            language_book_js, language_book_other,
-                           language_book_py)
+                           language_book_py, language_book_wave2)
 
     books = (language_book_py, language_book_java, language_book_c,
              language_book_cpp, language_book_csharp, language_book_js,
-             language_book_other)
+             language_book_other, language_book_wave2)
     authored = {}
     for book in books:
         for module_slug, problem_slug in book.MODULE_PRACTICE.items():
             assert module_slug not in authored, f"two books map {module_slug!r}"
             authored[module_slug] = problem_slug
-    assert len(authored) == 96, f"{len(authored)} book modules mapped, expected 96"
+    assert len(authored) == 116, f"{len(authored)} book modules mapped, expected 116"
 
     stored = {
         row["slug"]: row["practice_slug"]

@@ -12,7 +12,7 @@ from unavailable toolchains and remaining review work.
   A seven-level syllabus names language-specific learning goals, explicitly
   labelled as expansion goals rather than completed coverage.
 - `/programming/{language}/lessons/{module}` reads one existing module, with
-  previous/next links. All 225 modules have readers; no existing ids or accounts
+  previous/next links. All 245 modules have readers; no existing ids or accounts
   were replaced. Search's old course-fragment URLs still resolve.
 - Fifteen existing modules now have complete **structured learning-unit fields**:
   objectives, intuition, technical reasoning, visual trace, syntax/version rules,
@@ -31,16 +31,56 @@ from unavailable toolchains and remaining review work.
 
 | Language | Structured modules | Legacy modules still awaiting expansion |
 |---|---|---:|
-| Python | `python-loops-from-scratch`, `python-complexity-big-o` | 33 |
-| C | `c-loops`, `c-complexity-big-o` | 24 |
-| C++ | `cpp-decisions-loops`, `cpp-complexity-big-o` | 25 |
-| Java | `java-loops-from-scratch`, `java-complexity-big-o` | 29 |
-| C# | `csharp-decisions-loops`, `csharp-complexity-big-o` | 16 |
-| JavaScript | `js-decisions-loops` | 22 |
-| TypeScript | `ts-decisions-loops` | 15 |
-| Go | `go-decisions-loops` | 16 |
-| Rust | `rust-decisions-loops` | 16 |
-| SQL | `sql-real-world-1` (relational filtering/aggregation, not an imperative-loop imitation) | 14 |
+| Python | `python-loops-from-scratch`, `python-complexity-big-o` | 35 |
+| C | `c-loops`, `c-complexity-big-o` | 26 |
+| C++ | `cpp-decisions-loops`, `cpp-complexity-big-o` | 27 |
+| Java | `java-loops-from-scratch`, `java-complexity-big-o` | 31 |
+| C# | `csharp-decisions-loops`, `csharp-complexity-big-o` | 18 |
+| JavaScript | `js-decisions-loops` | 24 |
+| TypeScript | `ts-decisions-loops` | 17 |
+| Go | `go-decisions-loops` | 18 |
+| Rust | `rust-decisions-loops` | 18 |
+| SQL | `sql-real-world-1` (relational filtering/aggregation, not an imperative-loop imitation) | 16 |
+
+## Depth wave 2: runtime, memory, tooling and the query planner
+
+`seed_data/language_book_wave2.py` adds twenty modules - two per language - to
+the advanced stage of each path. They are written at the same book depth as
+wave 1 (why it matters, the mechanism, the failure modes, the interview
+framing, a runnable example and a judged exercise) and they cover material a
+syntax reference tends to list without explaining:
+
+| Language | Module | Subject |
+|---|---|---|
+| Python | `python-gil-concurrency-deep` | The GIL, threads versus processes, asyncio and blocking-in-a-coroutine |
+| Python | `python-typing-tooling-deep` | Annotations versus runtime validation, mypy strictness, pyproject, CI |
+| Java | `java-jvm-memory-gc` | Heap versus stack, generations, collectors, leaks in a managed runtime |
+| Java | `java-concurrency-jmm-deep` | Happens-before, volatile, atomics, executors, virtual threads |
+| JavaScript | `js-event-loop-deep` | Task and microtask queues, rendering, why blocking freezes the UI |
+| JavaScript | `js-modules-bundling-deep` | ESM versus CJS, resolution, tree shaking and supply-chain risk |
+| TypeScript | `ts-type-system-deep` | Narrowing, discriminated unions, generics, conditional types, `satisfies` |
+| TypeScript | `ts-runtime-validation-deep` | Parse-don't-validate, branded types, errors as data |
+| C | `c-undefined-behaviour-deep` | Object lifetime, aliasing, overflow and the sanitizers that find them |
+| C | `c-build-debug-deep` | Translation units, linkage, static/shared libraries, make and gdb |
+| C++ | `cpp-raii-move-deep` | Rule of zero/five, value categories, `std::move`, dangling views |
+| C++ | `cpp-templates-concepts-deep` | Instantiation, specialisation, concepts, static versus dynamic dispatch |
+| C# | `csharp-memory-span-deep` | Boxing, `Span<T>`/`Memory<T>`, pooling, generations and the LOH |
+| C# | `csharp-async-deep` | The generated state machine, `ConfigureAwait`, cancellation, starvation |
+| Go | `go-goroutines-channels-deep` | The G-M-P scheduler, channel rules, context cancellation, leaks |
+| Go | `go-performance-deep` | Benchmarks, pprof, escape analysis, preallocation and pooling |
+| Rust | `rust-borrowing-lifetimes-deep` | Move, borrow, lifetimes, interior mutability and the four restructurings |
+| Rust | `rust-traits-generics-deep` | Monomorphisation versus vtables, associated types, error composition |
+| SQL | `sql-indexes-plans-deep` | B-trees, leftmost prefix, sargability, reading `EXPLAIN` |
+| SQL | `sql-transactions-isolation-deep` | Isolation anomalies, optimistic locking, idempotency, deadlocks |
+
+These are **legacy-format modules**: body, example and exercise, with a judged
+practice link, not A–O structured units. The structured-unit count therefore
+stays at fifteen. Every example was executed where this environment has the
+toolchain - Python, JavaScript, TypeScript (Node type stripping), C, C++ and
+SQLite - and the examples for Java, C#, Go and Rust are authored and reviewed
+but were not compiled here, because those compilers are not installed in this
+container. Treat them as unverified examples until a host with those toolchains
+runs them, exactly like the wave-1 examples in the same position.
 
 The common accumulator algorithm is intentionally shared, with language-specific
 syntax, arithmetic rules, tool commands, errors and idioms. SQL instead teaches
@@ -184,7 +224,7 @@ catalogue ids and may overwrite CMS edits; it is broader than this update.
    and sign-in policy. Keep public code execution disabled unless independently
    provisioned and reviewed. No new environment setting is required.
 6. Without `ENGINEVERSE_APP_URL`, the Pages workflow makes a no-demo seed and
-   exports all 225 reader routes, asset URLs and sitemap links as a static
+   exports all 245 reader routes, asset URLs and sitemap links as a static
    reading copy (no accounts/judge). Once a verified full app is hosted, Pages
    becomes a gateway instead; those routes are served by the hosted app.
 
@@ -195,14 +235,20 @@ old whole database over newer learner submissions merely to undo content.
 
 ## Follow-up backlog (not completed)
 
-- [ ] Expand the remaining 210 legacy modules into substantive A–O units, with
+- [ ] Expand the remaining 230 legacy modules into substantive A–O units, with
   objective/exercise coverage review rather than module-count targets.
-- [ ] Priority-language mastery: Python descriptors/protocols/async; C lifetime,
-  aliasing and portability; C++ move/RAII/templates/atomics; Java generics/JVM/
-  virtual threads; C# LINQ/nullability/disposal/cancellation, all with versioned tests.
-- [ ] Bring JavaScript, TypeScript, Go, Rust and SQL mastery/software-engineering
-  units to the same depth. SQL needs dialect-specific plan/transaction exercises,
-  not forced syntax translations of pointer or loop lessons.
+- [ ] Priority-language mastery, partially delivered by depth wave 2: Python
+  descriptors/protocols (still open) alongside async (covered); C lifetime and
+  aliasing (covered); C++ move/RAII and templates (covered, atomics still open);
+  Java JVM and virtual threads (covered, generics still open); C# disposal and
+  cancellation (covered, LINQ/nullability depth still open). Remaining units need
+  versioned tests, which only a host with those toolchains can run.
+- [x] Bring JavaScript, TypeScript, Go, Rust and SQL runtime/engineering units
+  to the same depth - delivered as the twenty wave-2 modules above, including
+  dialect-aware SQL plan and transaction lessons rather than translated pointer
+  lessons. Deepening them further (atomics, dialect matrices per engine) remains open.
+- [ ] Convert wave-2 modules to the A–O structured-unit format, starting with the
+  SQL and Python concurrency units, which are the highest-traffic entry points.
 - [ ] Map language-specific stubs and explanations to each problem pattern;
   add brute-force versus optimized references, adversarial tests and progression
   metadata. Preserve original problem descriptions and licensing policy.
