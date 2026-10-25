@@ -58,6 +58,7 @@ from seed_data import language_book_java  # noqa: E402
 from seed_data import language_book_js  # noqa: E402
 from seed_data import language_book_other  # noqa: E402
 from seed_data import language_book_py  # noqa: E402
+from seed_data import language_book_wave2  # noqa: E402
 from seed_data import language_curriculum  # noqa: E402
 from seed_data import language_projects  # noqa: E402
 from seed_data import academy  # noqa: E402
@@ -69,7 +70,8 @@ from seed_data import academy  # noqa: E402
 BOOK_MODULES_BY_LANGUAGE: dict[str, list[tuple]] = {}
 BOOK_PRACTICE: dict[str, str] = {}
 for _book in (language_book_py, language_book_java, language_book_c, language_book_cpp,
-              language_book_csharp, language_book_js, language_book_other):
+              language_book_csharp, language_book_js, language_book_other,
+              language_book_wave2):
     for _language, _rows in _book.BOOK_MODULES.items():
         BOOK_MODULES_BY_LANGUAGE.setdefault(_language, []).extend(_rows)
     for _module, _problem in _book.MODULE_PRACTICE.items():

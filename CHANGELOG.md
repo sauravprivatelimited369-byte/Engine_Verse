@@ -9,6 +9,26 @@ release.
 
 ### Added
 
+- **Depth wave 2 for the programming academy: twenty new advanced modules.**
+  `seed_data/language_book_wave2.py` adds two modules per language to the
+  advanced stage of all ten paths (245 modules total, up from 225), covering
+  runtime and systems material that a syntax reference only lists: Python's GIL
+  with threads/processes/asyncio and typing/packaging/CI; the JVM heap and GC
+  plus the Java Memory Model and executors; JavaScript's task and microtask
+  queues plus ESM/bundling/supply-chain risk; TypeScript's type system and
+  runtime validation; C undefined behaviour and the build/debug toolchain; C++
+  RAII/value categories/moves and templates/concepts; C# `Span<T>`/GC and
+  `async`/cancellation internals; Go's scheduler/channels/context and
+  benchmark/profiling work; Rust borrowing/lifetimes and trait dispatch; SQL
+  index/plan reading and transaction isolation anomalies. Every module ends in
+  a judged problem that already exists in the bank. Examples were executed with
+  the available toolchains (Python, JavaScript, TypeScript via Node type
+  stripping, C, C++, SQLite); Java, C#, Go and Rust examples are authored and
+  reviewed but not compiled in this environment. These are book-depth lessons,
+  not A–O structured units, so the structured-unit count stays at fifteen. See
+  [docs/ACADEMY.md](docs/ACADEMY.md) for the module table and the honest
+  verification boundary.
+
 - **Native macOS and iOS apps (`apple/`) and website downloads.** Added a Swift
   5.10 multiplatform SwiftUI + WebKit project targeting macOS 14+ (Universal
   `arm64` + `x86_64`) and iOS / iPadOS 17+ (`arm64`) with offline subject and

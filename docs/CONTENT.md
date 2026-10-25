@@ -91,12 +91,12 @@ universities 10 · colleges 13 · branches 45 · semesters 9 · curricula 180
 curriculum_subjects 2836 · subjects 93 · modules 93 · topics 406 · notes 1624
 note_sections 10556 · diagrams 406 · models_3d 406 · formulas 365 · questions 534
 question_options 2136 · dpp_sets 107 · dpp_questions 535 · programming_languages 10
-language_modules 225 · language_stages 30 · language_checkpoints 90
+language_modules 245 · language_stages 30 · language_checkpoints 90
 coding_problems 105 · coding_sheets 14 · coding_sheet_problems 135 ·
 coding_problem_stubs 108 · coding_testcases 461 · projects 17
 project_steps 98 · project_resources 30 · videos 400 · books 395 · resources 544
 roadmaps 5 · roadmap_nodes 57 · flashcards 281 · plans 3 · site_config 12
-badges 12 · search index 3836
+badges 12 · search index 3851
 ```
 
 Every active branch has at least one published subject, every published subject
@@ -127,7 +127,7 @@ of being templated from its name. All 350 generated topics are marked
 not imply expert sign-off, and three generated lessons per subject is starter
 depth, not exhaustive coverage.
 
-The ten programming paths are staged — 225 modules assigned across 30
+The ten programming paths are staged — 245 modules assigned across 30
 Foundations / Working Practice / Advanced Engineering stages — and each stage
 ends with three checkpoint questions (90 total). Checkpoints are ordinary bank
 questions linked through `language_checkpoints`, so they run through the normal
@@ -138,7 +138,7 @@ the mistake notebook. Their correct-answer
 positions are rotated deterministically, so a reseed reproduces the same bank.
 Legacy book modules store a `practice_slug` linking related coding practice;
 this does not prove language-specific exercise coverage. Fifteen existing modules
-now have validated `lesson_data` with A–O sections; 210 remain legacy format.
+now have validated `lesson_data` with A–O sections; 230 remain in the legacy body/example/exercise format.
 Every module has a focused reader. See [Academy authoring and scope](ACADEMY.md)
 for coverage, validation and deployment instructions. The seventeen project briefs span hardware and engineering
 tools as well as

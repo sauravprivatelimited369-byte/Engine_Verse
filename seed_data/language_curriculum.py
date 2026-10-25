@@ -68,7 +68,8 @@ CHECKPOINT_SUBJECT = "programming-fundamentals"
 #: language -> stage -> module slugs, in reading order. Together these lists
 #: must be exactly the merged module set (language_foundations, then
 #: library_data.LANGUAGE_MODULES, then language_paths.EXTRA_MODULES, then the
-#: language_book_*.BOOK_MODULES depth modules) for that language -
+#: language_book_*.BOOK_MODULES and language_book_wave2 depth modules) for
+#: that language -
 #: ``validate()`` fails the seed otherwise.
 #:
 #: Staging rule for the book-depth modules: they are interview-grade DSA and
@@ -96,6 +97,7 @@ MODULE_STAGES = {
             "python-dicts-sets", "python-recursion", "python-sorting-searching",
             "python-stacks-queues", "python-linked-lists", "python-trees-heaps",
             "python-graphs", "python-dp", "python-interview-mastery",
+            "python-gil-concurrency-deep", "python-typing-tooling-deep",
         ],
     },
     "java": {
@@ -112,6 +114,7 @@ MODULE_STAGES = {
             "java-hashmap-hashset", "java-recursion", "java-sorting-searching",
             "java-stacks-queues", "java-linked-lists", "java-trees-heaps",
             "java-graphs", "java-dp", "java-interview-mastery",
+            "java-jvm-memory-gc", "java-concurrency-jmm-deep",
         ],
     },
     "javascript": {
@@ -124,6 +127,7 @@ MODULE_STAGES = {
             "js-browser-security", "js-agent-tools", "js-fullstack-capstone",
             "js-complexity-big-o", "js-strings-arrays-deep", "js-recursion-sorting",
             "js-maps-sets", "js-trees-graphs", "js-interview-mastery",
+            "js-event-loop-deep", "js-modules-bundling-deep",
         ],
     },
     "typescript": {
@@ -136,6 +140,7 @@ MODULE_STAGES = {
             "ts-node-service", "ts-agent-tools", "ts-test-release-capstone",
             "ts-complexity-big-o", "ts-collections-deep", "ts-recursion-sorting",
             "ts-generics-dsa", "ts-graphs-dp", "ts-interview-mastery",
+            "ts-type-system-deep", "ts-runtime-validation-deep",
         ],
     },
     "cpp": {
@@ -150,6 +155,7 @@ MODULE_STAGES = {
             "cpp-hash-unordered", "cpp-recursion", "cpp-sorting-searching",
             "cpp-stacks-queues", "cpp-linked-lists", "cpp-trees-heaps",
             "cpp-graphs", "cpp-dp", "cpp-interview-mastery",
+            "cpp-raii-move-deep", "cpp-templates-concepts-deep",
         ],
     },
     "go": {
@@ -162,6 +168,7 @@ MODULE_STAGES = {
             "go-concurrency-context", "go-agent-capstone",
             "go-complexity-big-o", "go-slices-maps-deep", "go-recursion-sorting",
             "go-stacks-queues", "go-trees-graphs", "go-interview-mastery",
+            "go-goroutines-channels-deep", "go-performance-deep",
         ],
     },
     "rust": {
@@ -174,6 +181,7 @@ MODULE_STAGES = {
             "rust-http-service", "rust-agent-tools", "rust-application-capstone",
             "rust-complexity-big-o", "rust-strings-vec-deep", "rust-recursion-sorting",
             "rust-hash-collections", "rust-graphs-dp", "rust-interview-mastery",
+            "rust-borrowing-lifetimes-deep", "rust-traits-generics-deep",
         ],
     },
     "c": {
@@ -188,6 +196,7 @@ MODULE_STAGES = {
             "c-recursion-stack", "c-sorting-searching", "c-linked-lists",
             "c-stacks-queues", "c-hash-tables", "c-trees-heaps",
             "c-graphs", "c-dp-bitwise", "c-interview-mastery",
+            "c-undefined-behaviour-deep", "c-build-debug-deep",
         ],
     },
     "csharp": {
@@ -203,6 +212,7 @@ MODULE_STAGES = {
         "advanced_engineering": [
             "csharp-trees-heaps", "csharp-graphs", "csharp-dp",
             "csharp-async-services", "csharp-interview-mastery",
+            "csharp-memory-span-deep", "csharp-async-deep",
         ],
     },
     "sql": {
@@ -212,6 +222,7 @@ MODULE_STAGES = {
             "sql-professional",
             "sql-subqueries-cte", "sql-window-functions", "sql-optimization-explain",
             "sql-recursion-cte", "sql-data-modeling", "sql-interview-mastery",
+            "sql-indexes-plans-deep", "sql-transactions-isolation-deep",
         ],
     },
 }
