@@ -103,8 +103,11 @@ jobs:
         run: |
           if [ -z "$ENGINEVERSE_MACOS_URL" ] || [ -z "$ENGINEVERSE_IOS_URL" ]; then
             if RELEASES_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases" 2>/dev/null)"; then
-              MAC_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".dmg")), ""))')"
-              IOS_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".ipa")), ""))')"
+              # Rolling "latest build" releases are prereleases: they are for
+              # direct download, not the versioned asset the site advertises
+              # (verify_apple_release.py accepts only versioned tags).
+              MAC_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft") and not r.get("prerelease")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".dmg")), ""))')"
+              IOS_ASSET="$(printf '%s' "$RELEASES_JSON" | python -c 'import json,sys; rs=[r for r in json.load(sys.stdin) if not r.get("draft") and not r.get("prerelease")]; print(next((a["browser_download_url"] for r in rs for a in r.get("assets",[]) if a.get("name","").endswith(".ipa")), ""))')"
               [ -z "$ENGINEVERSE_MACOS_URL" ] && [ -n "$MAC_ASSET" ] && echo "ENGINEVERSE_MACOS_URL=$MAC_ASSET" >> "$GITHUB_ENV" && ENGINEVERSE_MACOS_URL="$MAC_ASSET"
               [ -z "$ENGINEVERSE_IOS_URL" ] && [ -n "$IOS_ASSET" ] && echo "ENGINEVERSE_IOS_URL=$IOS_ASSET" >> "$GITHUB_ENV" && ENGINEVERSE_IOS_URL="$IOS_ASSET"
             fi
