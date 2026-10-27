@@ -61,14 +61,24 @@ jobs:
           sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           [ -n "$sdk" ] || { echo "::error::ANDROID_HOME is not set on this runner"; exit 1; }
           if [ ! -d "$sdk/platforms/android-37" ]; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo mkdir -p "$sdk/platforms" "$sdk/licenses"
+              sudo chown "$(id -u):$(id -g)" "$sdk" "$sdk/platforms"
+              sudo chown -R "$(id -u):$(id -g)" "$sdk/licenses" "$sdk/.knownPackages" "$sdk/.temp" "$sdk/temp" 2>/dev/null || true
+            fi
             if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
               sdkmanager_bin="$sdk/cmdline-tools/latest/bin/sdkmanager"
             else
               sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
             fi
             [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
-            (yes || true) | "$sdkmanager_bin" --licenses >/dev/null
-            (yes || true) | "$sdkmanager_bin" "platforms;android-37"
+            if ! out=$({ (yes || true) | "$sdkmanager_bin" --licenses >/dev/null && (yes || true) | "$sdkmanager_bin" "platforms;android-37"; } 2>&1); then
+              printf '%s\n' "$out" | tail -n 15 | while IFS= read -r line; do
+                esc=$(printf '%s' "$line" | sed 's/%/%25/g')
+                echo "::error title=sdkmanager::${esc}"
+              done
+              exit 1
+            fi
           fi
 
       # Also validates gradle/wrapper/gradle-wrapper.jar against known checksums.
@@ -207,14 +217,24 @@ jobs:
           sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           [ -n "$sdk" ] || { echo "::error::ANDROID_HOME is not set on this runner"; exit 1; }
           if [ ! -d "$sdk/platforms/android-37" ]; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo mkdir -p "$sdk/platforms" "$sdk/licenses"
+              sudo chown "$(id -u):$(id -g)" "$sdk" "$sdk/platforms"
+              sudo chown -R "$(id -u):$(id -g)" "$sdk/licenses" "$sdk/.knownPackages" "$sdk/.temp" "$sdk/temp" 2>/dev/null || true
+            fi
             if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
               sdkmanager_bin="$sdk/cmdline-tools/latest/bin/sdkmanager"
             else
               sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
             fi
             [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
-            (yes || true) | "$sdkmanager_bin" --licenses >/dev/null
-            (yes || true) | "$sdkmanager_bin" "platforms;android-37"
+            if ! out=$({ (yes || true) | "$sdkmanager_bin" --licenses >/dev/null && (yes || true) | "$sdkmanager_bin" "platforms;android-37"; } 2>&1); then
+              printf '%s\n' "$out" | tail -n 15 | while IFS= read -r line; do
+                esc=$(printf '%s' "$line" | sed 's/%/%25/g')
+                echo "::error title=sdkmanager::${esc}"
+              done
+              exit 1
+            fi
           fi
 
       - uses: gradle/actions/setup-gradle@v6
