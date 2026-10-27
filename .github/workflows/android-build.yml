@@ -134,6 +134,45 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  publish:
+    name: Publish the installable APK
+    # Every push gets an APK anyone can download from GitHub Releases without
+    # signing in to GitHub. It is debug-signed, so it is for trying the app on a
+    # real phone; a store-grade build comes from the signed release job below.
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: engineverse-debug-apk
+          path: dist
+
+      - name: Attach Meridian.apk to the android-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk=$(find dist -name '*.apk' -print -quit)
+          [ -n "$apk" ] || { echo "::error::no APK in the build artifact"; exit 1; }
+          cp "$apk" dist/Meridian.apk
+          (cd dist && sha256sum Meridian.apk > Meridian.apk.sha256)
+          tag=android-latest
+          notes="Installable Meridian APK built from ${GITHUB_SHA:0:7} on ${GITHUB_REF_NAME}. Debug-signed: allow installs from unknown sources, and uninstall any older Meridian build if the signature differs. Compare the SHA-256 in Meridian.apk.sha256 before installing."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/Meridian.apk dist/Meridian.apk.sha256 --clobber
+            gh release edit "$tag" --notes "$notes"
+          else
+            gh release create "$tag" dist/Meridian.apk dist/Meridian.apk.sha256 \
+              --target "$GITHUB_SHA" --title "Meridian for Android (latest build)" \
+              --latest=false --notes "$notes"
+          fi
+
   release:
     name: Signed release APK
     needs: build

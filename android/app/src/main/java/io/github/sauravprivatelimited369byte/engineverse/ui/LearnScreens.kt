@@ -43,6 +43,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.sauravprivatelimited369byte.engineverse.R
 import io.github.sauravprivatelimited369byte.engineverse.core.Catalog
+import io.github.sauravprivatelimited369byte.engineverse.core.LessonLibrary
 import io.github.sauravprivatelimited369byte.engineverse.core.CatalogSearch
 import io.github.sauravprivatelimited369byte.engineverse.core.Subject
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
@@ -167,7 +168,16 @@ fun SubjectScreen(store: AppStore, catalog: Catalog, slug: String, onBack: () ->
 }
 
 @Composable
-fun TopicScreen(store: AppStore, catalog: Catalog, slug: String, onBack: () -> Unit, openWeb: (String) -> Unit) {
+fun TopicScreen(
+    store: AppStore,
+    catalog: Catalog,
+    library: LessonLibrary,
+    slug: String,
+    onBack: () -> Unit,
+    openNotes: (String) -> Unit,
+    openPractise: (String) -> Unit,
+    openWeb: (String) -> Unit,
+) {
     val entry = catalog.topic(slug)
     ScreenScaffold(title = entry?.second?.title ?: "Topic", onBack = onBack) { inner ->
         if (entry == null) {
@@ -218,15 +228,24 @@ fun TopicScreen(store: AppStore, catalog: Catalog, slug: String, onBack: () -> U
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { openWeb("topics/${topic.slug}/") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Read full notes and practise")
+                    val questionCount = library.questionsForTopic(topic.slug).size
+                    Button(onClick = { openNotes("") }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Read the notes")
+                    }
+                    if (questionCount > 0) {
+                        OutlinedButton(onClick = { openPractise(topic.slug) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Practise $questionCount question${if (questionCount == 1) "" else "s"}")
+                        }
                     }
                     OutlinedButton(onClick = { store.toggleTopic(topic.slug) }, modifier = Modifier.fillMaxWidth()) {
                         Text(if (done) "Mark as not done" else "Mark complete")
                     }
+                    OutlinedButton(onClick = { openWeb("topics/${topic.slug}/") }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Open diagrams on the website")
+                    }
                     Text(
-                        "Full notes, diagrams and checkpoint questions load from the website and need a connection. " +
-                            "Your completion is saved on this phone.",
+                        "The notes and practice questions are built into the app and work offline; your completion " +
+                            "and answers stay on this phone.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

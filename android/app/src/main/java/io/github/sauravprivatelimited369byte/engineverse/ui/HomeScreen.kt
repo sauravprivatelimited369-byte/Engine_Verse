@@ -32,7 +32,13 @@ import io.github.sauravprivatelimited369byte.engineverse.core.Streak
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
 
 @Composable
-fun HomeScreen(store: AppStore, catalog: Catalog, navigate: (String) -> Unit, openWeb: (String) -> Unit) {
+fun HomeScreen(
+    store: AppStore,
+    catalog: Catalog,
+    navigate: (String) -> Unit,
+    openWeb: (String) -> Unit,
+    openNotes: (String, String) -> Unit,
+) {
     val streak = store.streak
     val next = PlannerRules.nextUp(store.tasks)
     val recent = store.completedTopics.takeLast(3).reversed().mapNotNull { catalog.topic(it) }
@@ -64,8 +70,8 @@ fun HomeScreen(store: AppStore, catalog: Catalog, navigate: (String) -> Unit, op
                             modifier = Modifier.semantics { heading() },
                         )
                         Text(
-                            "${catalog.subjects.size} subjects and ${catalog.topicCount} topics are on this phone and " +
-                                "work offline. Full notes, practice questions and the code playground open from the website.",
+                            "${catalog.subjects.size} subjects, ${catalog.topicCount} topics and their full notes are " +
+                                "built into this app, with practice questions, and all of it works offline.",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -103,6 +109,9 @@ fun HomeScreen(store: AppStore, catalog: Catalog, navigate: (String) -> Unit, op
                 ActionCard(R.drawable.ic_book, "Browse subjects", "Search the offline catalogue and track topics", { navigate(Routes.LEARN) })
             }
             item {
+                ActionCard(R.drawable.ic_quiz, "Practise questions", "Multiple-choice practice, saved on this phone", { navigate(Routes.PRACTICE) })
+            }
+            item {
                 ActionCard(R.drawable.ic_code, "Code playground", "Write and run code in the browser runtimes", { navigate(Routes.PLAYGROUND) })
             }
             item {
@@ -114,7 +123,7 @@ fun HomeScreen(store: AppStore, catalog: Catalog, navigate: (String) -> Unit, op
             if (recent.isNotEmpty()) {
                 item { SectionTitle("Recently completed", Modifier.padding(top = 4.dp)) }
                 items(recent, key = { it.second.slug }) { (subject, topic) ->
-                    ActionCard(R.drawable.ic_check, topic.title, subject.name, { navigate(Routes.topic(topic.slug)) })
+                    ActionCard(R.drawable.ic_check, topic.title, subject.name, { openNotes(topic.slug, "") })
                 }
             }
         }

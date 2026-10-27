@@ -39,6 +39,13 @@ class AppStore private constructor(context: Context) {
     var themeMode by mutableStateOf(readTheme())
         private set
 
+    /** Practice answers already given: question slug -> whether it was correct. */
+    var answers by mutableStateOf(readAnswers())
+        private set
+
+    val answeredCount: Int get() = answers.size
+    val correctCount: Int get() = answers.count { it.value }
+
     val streak: Streak.Result get() = Streak.compute(activityDays, Streak.today())
 
     fun isCompleted(slug: String): Boolean = slug in completedTopics
@@ -51,6 +58,19 @@ class AppStore private constructor(context: Context) {
             completedTopics + slug
         }
         prefs.edit { putString(KEY_COMPLETED, JSONArray(completedTopics).toString()) }
+    }
+
+    fun isAnswered(slug: String): Boolean = answers.containsKey(slug)
+
+    fun wasCorrect(slug: String): Boolean = answers[slug] == true
+
+    /** Remembers the latest answer to a practice question and counts the day. */
+    fun answer(slug: String, correct: Boolean) {
+        answers = answers + (slug to correct)
+        val json = JSONObject()
+        answers.forEach { (question, wasRight) -> json.put(question, wasRight) }
+        prefs.edit { putString(KEY_ANSWERS, json.toString()) }
+        recordActivity()
     }
 
     fun recordActivity() {
@@ -86,6 +106,7 @@ class AppStore private constructor(context: Context) {
         completedTopics = emptyList()
         activityDays = emptySet()
         tasks = emptyList()
+        answers = emptyMap()
         themeMode = ThemeMode.SYSTEM
     }
 
@@ -132,6 +153,16 @@ class AppStore private constructor(context: Context) {
         emptyList()
     }
 
+    private fun readAnswers(): Map<String, Boolean> = try {
+        val stored = prefs.getString(KEY_ANSWERS, null) ?: return emptyMap()
+        val json = JSONObject(stored)
+        json.keys().asSequence()
+            .filter { SLUG.matches(it) }
+            .associateWith { key -> json.optBoolean(key) }
+    } catch (e: JSONException) {
+        emptyMap()
+    }
+
     private fun readTheme(): ThemeMode =
         ThemeMode.entries.firstOrNull { it.name == prefs.getString(KEY_THEME, null) } ?: ThemeMode.SYSTEM
 
@@ -141,6 +172,7 @@ class AppStore private constructor(context: Context) {
         private const val KEY_DAYS = "activity_days"
         private const val KEY_TASKS = "planner_tasks"
         private const val KEY_THEME = "theme"
+        private const val KEY_ANSWERS = "practice_answers"
         private val SLUG = Regex("^[a-z0-9][a-z0-9-]{0,120}$")
 
         @Volatile

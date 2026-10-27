@@ -14,9 +14,11 @@ import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import io.github.sauravprivatelimited369byte.engineverse.core.Catalog
+import io.github.sauravprivatelimited369byte.engineverse.core.LessonLibrary
 import io.github.sauravprivatelimited369byte.engineverse.core.UrlPolicy
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
 import io.github.sauravprivatelimited369byte.engineverse.data.CatalogRepository
+import io.github.sauravprivatelimited369byte.engineverse.data.ContentRepository
 import io.github.sauravprivatelimited369byte.engineverse.ui.MeridianApp
 import io.github.sauravprivatelimited369byte.engineverse.ui.theme.MeridianTheme
 import io.github.sauravprivatelimited369byte.engineverse.ui.theme.isDarkTheme
@@ -26,6 +28,7 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private var catalog by mutableStateOf<Catalog?>(null)
+    private var library by mutableStateOf(LessonLibrary.EMPTY)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -34,6 +37,11 @@ class MainActivity : ComponentActivity() {
         splash.setKeepOnScreenCondition { catalog == null }
         lifecycleScope.launch {
             catalog = withContext(Dispatchers.IO) { CatalogRepository.load(applicationContext) }
+        }
+        // The lesson library is large (every topic at four depths), so it loads
+        // in the background while the app is already usable.
+        lifecycleScope.launch {
+            library = withContext(Dispatchers.IO) { ContentRepository.load(applicationContext) }
         }
         // Remote debugging of the in-app web viewer only in debug builds.
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
@@ -60,7 +68,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             MeridianTheme(dark) {
-                MeridianApp(store, catalog ?: Catalog.EMPTY, policy)
+                MeridianApp(store, catalog ?: Catalog.EMPTY, library, policy)
             }
         }
     }
