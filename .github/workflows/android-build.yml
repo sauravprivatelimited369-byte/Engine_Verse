@@ -56,6 +56,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Install Android SDK platform 37
+        run: |
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          [ -n "$sdk" ] || { echo "::error::ANDROID_HOME is not set on this runner"; exit 1; }
+          if [ ! -d "$sdk/platforms/android-37" ]; then
+            if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
+              sdkmanager_bin="$sdk/cmdline-tools/latest/bin/sdkmanager"
+            else
+              sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
+            fi
+            [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
+            (yes || true) | "$sdkmanager_bin" --licenses >/dev/null
+            (yes || true) | "$sdkmanager_bin" "platforms;android-37"
+          fi
+
       # Also validates gradle/wrapper/gradle-wrapper.jar against known checksums.
       - uses: gradle/actions/setup-gradle@v6
 
@@ -186,6 +201,21 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Install Android SDK platform 37
+        run: |
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          [ -n "$sdk" ] || { echo "::error::ANDROID_HOME is not set on this runner"; exit 1; }
+          if [ ! -d "$sdk/platforms/android-37" ]; then
+            if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
+              sdkmanager_bin="$sdk/cmdline-tools/latest/bin/sdkmanager"
+            else
+              sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
+            fi
+            [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
+            (yes || true) | "$sdkmanager_bin" --licenses >/dev/null
+            (yes || true) | "$sdkmanager_bin" "platforms;android-37"
+          fi
 
       - uses: gradle/actions/setup-gradle@v6
 
