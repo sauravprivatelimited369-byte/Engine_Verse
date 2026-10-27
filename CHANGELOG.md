@@ -28,6 +28,38 @@ release.
 
 ### Fixed
 
+- **Choosing a topic's MCQs in the question bank now works.** The bank's
+  filter form offered Subject, Difficulty and Kind but no Topic at all: the
+  handler honoured `?topic=` only when a link elsewhere supplied it, so "the
+  MCQs for this part" could not be asked for on the page itself. Worse, on
+  the GitHub Pages copy the whole form was decorative - the exported page is
+  one static file, a static host ignores the query string, and nothing in
+  the browser runtime filtered the list, so every selection submitted,
+  reloaded and showed the same first screen. The form now has a real Topic
+  selector (`practice.question_topics()`): every topic with at least one
+  question, grouped under its subject, labelled with its MCQ count, plus the
+  stem search the handler already supported. A chosen topic wins over a
+  mismatched subject instead of AND-ing into an empty page, an unknown topic
+  is named in the banner instead of leaving a hole in it, and every card
+  shows (and links) its topic. With JavaScript the selects apply on change
+  and choosing a subject narrows the topic list to that subject's topics
+  (`app.js` hosted, `pages-live.js` static). On the static copy the bank now
+  filters the exported `quiz-bank.json` in the browser - subject, topic,
+  difficulty, kind, search and `?slug=` deep links, 24 at a time with Show
+  more standing in for the server pager - and writes the choice back into
+  the URL, so a filtered bank is a shareable link. `write_quiz_bank()`
+  exports each question's `subjectId`/`subjectSlug` (the form submits ids;
+  only the display name was exported, so a browser filter could never have
+  matched) in the same order as `list_questions()`, whose ORDER BY gained
+  the `q.id` tiebreak the shared seed timestamps need. Two neighbouring
+  dead-ends went with it: static grading looked for `.option` where every
+  card says `.opt`, so picking an answer never lit the right/wrong option
+  up, and every practice card on a subject page linked to the whole subject
+  list instead of the question it named (now `?slug=`); topic pages link to
+  their topic's bank view. Covered by `test_question_bank_topics.py` and the
+  new jsdom check `scripts/check_question_bank.js`, wired into CI and the
+  Pages workflow next to `check_stream_filter.js`.
+
 - **The Android app never produced an APK.** Two configuration bugs, both
   introduced in the wave-3 merge: the Gradle wrapper pinned 9.4.1 while AGP
   9.4.1 refuses to run below 9.6.0, and the AndroidX/Compose versions were

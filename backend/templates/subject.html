@@ -57,7 +57,10 @@
         <a class="btn btn-sm btn-soft" href="/practice/questions?subject={{ subject.id }}">All {{ questions | length }}+</a></div>
       <div class="stack mt">
         {% for q in questions[:8] %}
-          <a class="card" href="/practice/questions?subject={{ subject.id }}">
+          {#- Each card names one question, so it links to that question
+              (?slug= narrows the bank to it) - not, as before, to the whole
+              subject list that every card on this shelf also pointed at. -#}
+          <a class="card" href="/practice/questions?slug={{ q.slug }}">
             <span class="desc">{{ q.stem | excerpt(160) }}</span>
             <span class="chip diff-{{ q.difficulty }}">{{ q.difficulty }}</span>
           </a>

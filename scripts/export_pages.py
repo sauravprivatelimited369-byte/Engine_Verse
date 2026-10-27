@@ -811,11 +811,17 @@ def write_quiz_bank(site: Path, base: str) -> None:
 
     questions = db.query(
         "SELECT q.id, q.slug, q.kind, q.difficulty, q.stem, q.explanation, q.answer_text, "
-        "t.slug AS topic_slug, t.title AS topic_title, s.name AS subject_name "
+        "t.slug AS topic_slug, t.title AS topic_title, "
+        "s.id AS subject_id, s.slug AS subject_slug, s.name AS subject_name "
         "FROM questions q "
         "LEFT JOIN topics t ON t.id = q.topic_id "
         "LEFT JOIN subjects s ON s.id = q.subject_id "
-        "WHERE q.is_active = 1"
+        "WHERE q.is_active = 1 "
+        # Same order practice.list_questions uses, id tiebreak included: the
+        # static question bank renders its first screen from this file, and
+        # it should be the same first screen the hosted bank shows, not a
+        # reshuffle that depends on row storage order.
+        "ORDER BY q.difficulty, q.created_at DESC, q.id"
     )
     options_rows = db.query(
         "SELECT question_id, label, body, is_correct, rationale, order_index "
@@ -856,6 +862,13 @@ def write_quiz_bank(site: Path, base: str) -> None:
             "topicSlug": q.get("topic_slug") or "",
             "topicTitle": q.get("topic_title") or "",
             "topicUrl": topic_url,
+            # The question bank's Subject select submits subject *ids*, so the
+            # browser-side filter needs the id (and slug, for links) as well
+            # as the display name. With only the name exported, choosing a
+            # subject or topic on the static copy could never match a
+            # question to it - the form looked alive and changed nothing.
+            "subjectId": q.get("subject_id") or "",
+            "subjectSlug": q.get("subject_slug") or "",
             "subjectName": q.get("subject_name") or "",
             "options": pub_opts,
         }
