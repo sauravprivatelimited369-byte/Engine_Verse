@@ -15,7 +15,9 @@ val canSignRelease = listOf(releaseKeystore, releaseStorePassword, releaseKeyAli
 
 android {
     namespace = "io.github.sauravprivatelimited369byte.engineverse"
-    compileSdk = 36
+    // AndroidX 2.10 / Compose BOM 2026.09 are compiled against API 37; the
+    // target stays 36 because that is what Google Play requires.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.sauravprivatelimited369byte.engineverse"

@@ -4,6 +4,7 @@ import SwiftUI
 enum AppSection: String, CaseIterable, Hashable, Identifiable {
     case home
     case learn
+    case practice
     case playground
     case planner
     case portfolio
@@ -15,6 +16,7 @@ enum AppSection: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .home: return "Home"
         case .learn: return "Learn"
+        case .practice: return "Practice"
         case .playground: return "Code"
         case .planner: return "Planner"
         case .portfolio: return "Record"
@@ -26,6 +28,7 @@ enum AppSection: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .home: return "house"
         case .learn: return "book.closed"
+        case .practice: return "checklist"
         case .playground: return "chevron.left.forwardslash.chevron.right"
         case .planner: return "calendar"
         case .portfolio: return "person.text.rectangle"
@@ -42,6 +45,7 @@ struct WebDestination: Identifiable, Equatable {
 struct RootView: View {
     @ObservedObject var store: AppStore
     let catalog: Catalog
+    let library: LessonLibrary
     let policy: UrlPolicy
 
     @State private var selection: AppSection = .home
@@ -107,7 +111,7 @@ struct RootView: View {
 
     private func compactTabs(palette: MeridianPalette) -> some View {
         TabView(selection: $selection) {
-            ForEach([AppSection.home, .learn, .playground, .planner, .portfolio]) { section in
+            ForEach([AppSection.home, .learn, .practice, .planner, .portfolio]) { section in
                 detailContent(for: section)
                     .background(palette.background.ignoresSafeArea())
                     .tabItem {
@@ -126,13 +130,24 @@ struct RootView: View {
                 HomeView(
                     store: store,
                     catalog: catalog,
+                    library: library,
                     selectSection: { selection = $0 },
                     openWeb: openWeb
                 )
             }
         case .learn:
             NavigationStack {
-                LearnView(store: store, catalog: catalog, openWeb: openWeb)
+                LearnView(store: store, catalog: catalog, library: library, openWeb: openWeb)
+            }
+        case .practice:
+            NavigationStack {
+                PracticeView(
+                    store: store,
+                    catalog: catalog,
+                    library: library,
+                    topicFilter: nil,
+                    openWeb: openWeb
+                )
             }
         case .playground:
             NavigationStack {
@@ -144,7 +159,7 @@ struct RootView: View {
             }
         case .portfolio:
             NavigationStack {
-                PortfolioView(store: store, catalog: catalog, openWeb: openWeb)
+                PortfolioView(store: store, catalog: catalog, library: library, openWeb: openWeb)
             }
         case .settings:
             NavigationStack {

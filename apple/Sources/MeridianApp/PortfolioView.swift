@@ -10,6 +10,7 @@ private struct SubjectTopicGroup: Identifiable {
 struct PortfolioView: View {
     @ObservedObject var store: AppStore
     let catalog: Catalog
+    let library: LessonLibrary
     let openWeb: (String) -> Void
     @Environment(\.colorScheme) private var scheme
 
@@ -61,7 +62,14 @@ struct PortfolioView: View {
                             }
                             ForEach(group.topics) { topic in
                                 NavigationLink {
-                                    TopicDetailView(store: store, subject: group.subject, topic: topic, openWeb: openWeb)
+                                    TopicDetailView(
+                                        store: store,
+                                        catalog: catalog,
+                                        subject: group.subject,
+                                        topic: topic,
+                                        library: library,
+                                        openWeb: openWeb
+                                    )
                                 } label: {
                                     HStack {
                                         Image(systemName: "checkmark.circle.fill")

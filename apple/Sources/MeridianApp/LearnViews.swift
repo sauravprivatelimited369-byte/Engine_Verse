@@ -4,6 +4,7 @@ import SwiftUI
 struct LearnView: View {
     @ObservedObject var store: AppStore
     let catalog: Catalog
+    let library: LessonLibrary
     let openWeb: (String) -> Void
 
     @State private var query = ""
@@ -44,7 +45,13 @@ struct LearnView: View {
                     ForEach(filtered) { subject in
                         let doneCount = subject.topics.filter { store.isCompleted($0.slug) }.count
                         NavigationLink {
-                            SubjectDetailView(store: store, subject: subject, openWeb: openWeb)
+                            SubjectDetailView(
+                                store: store,
+                                catalog: catalog,
+                                subject: subject,
+                                library: library,
+                                openWeb: openWeb
+                            )
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
@@ -111,7 +118,9 @@ private struct GroupChip: View {
 
 struct SubjectDetailView: View {
     @ObservedObject var store: AppStore
+    let catalog: Catalog
     let subject: Subject
+    let library: LessonLibrary
     let openWeb: (String) -> Void
     @Environment(\.colorScheme) private var scheme
 
@@ -128,7 +137,14 @@ struct SubjectDetailView: View {
                 ForEach(subject.topics) { topic in
                     let done = store.isCompleted(topic.slug)
                     NavigationLink {
-                        TopicDetailView(store: store, subject: subject, topic: topic, openWeb: openWeb)
+                        TopicDetailView(
+                            store: store,
+                            catalog: catalog,
+                            subject: subject,
+                            topic: topic,
+                            library: library,
+                            openWeb: openWeb
+                        )
                     } label: {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: done ? "checkmark.circle.fill" : "circle")
@@ -191,8 +207,10 @@ struct SubjectDetailView: View {
 
 struct TopicDetailView: View {
     @ObservedObject var store: AppStore
+    let catalog: Catalog
     let subject: Subject
     let topic: Topic
+    let library: LessonLibrary
     let openWeb: (String) -> Void
     @Environment(\.colorScheme) private var scheme
 
@@ -260,15 +278,43 @@ struct TopicDetailView: View {
                     }
                 }
 
-                HStack(spacing: 12) {
-                    Button {
-                        openWeb("topics/\(topic.slug)/")
+                let questionCount = library.questions(forTopic: topic.slug).count
+
+                VStack(spacing: 10) {
+                    NavigationLink {
+                        NotesView(
+                            store: store,
+                            catalog: catalog,
+                            library: library,
+                            slug: topic.slug,
+                            openWeb: openWeb
+                        )
                     } label: {
-                        Label("Read full notes", systemImage: "book")
+                        Label("Read the notes", systemImage: "book")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
+
+                    if questionCount > 0 {
+                        NavigationLink {
+                            PracticeView(
+                                store: store,
+                                catalog: catalog,
+                                library: library,
+                                topicFilter: topic.slug,
+                                openWeb: openWeb
+                            )
+                        } label: {
+                            Label(
+                                "Practise \(questionCount) question\(questionCount == 1 ? "" : "s")",
+                                systemImage: "checklist"
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                    }
 
                     Button {
                         store.toggleTopic(topic.slug)
@@ -278,6 +324,20 @@ struct TopicDetailView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
+
+                    Button {
+                        openWeb("topics/\(topic.slug)/")
+                    } label: {
+                        Label("Open diagrams on the website", systemImage: "safari")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+
+                    Text("Notes and practice questions are built into the app and work offline; your completion and answers stay on this device.")
+                        .font(.caption)
+                        .foregroundStyle(palette.mutedInk)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(16)
