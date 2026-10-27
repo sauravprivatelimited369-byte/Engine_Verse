@@ -32,14 +32,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.sauravprivatelimited369byte.engineverse.R
+import androidx.compose.runtime.LaunchedEffect
 import io.github.sauravprivatelimited369byte.engineverse.core.Catalog
-import io.github.sauravprivatelimited369byte.engineverse.core.LessonLibrary
 import io.github.sauravprivatelimited369byte.engineverse.core.PracticeQuestion
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
+import io.github.sauravprivatelimited369byte.engineverse.data.ContentRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * The practice bank is bundled with the app: 500+ multiple-choice questions
@@ -50,14 +54,19 @@ import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
 fun PracticeScreen(
     store: AppStore,
     catalog: Catalog,
-    library: LessonLibrary,
     topicFilter: String?,
     openQuestion: (String) -> Unit,
     clearTopicFilter: () -> Unit,
 ) {
+    val context = LocalContext.current
     var query by rememberSaveable { mutableStateOf("") }
-    val all = remember(library, topicFilter) {
-        if (topicFilter.isNullOrBlank()) library.questions else library.questionsForTopic(topicFilter)
+    var bank by remember { mutableStateOf<List<PracticeQuestion>?>(null) }
+    LaunchedEffect(Unit) {
+        bank = withContext(Dispatchers.IO) { ContentRepository.practice(context) }
+    }
+    val all = remember(bank, topicFilter) {
+        val questions = bank.orEmpty()
+        if (topicFilter.isNullOrBlank()) questions else questions.filter { it.topic == topicFilter }
     }
     val visible = remember(all, query) {
         val needle = query.trim().lowercase()
@@ -73,7 +82,7 @@ fun PracticeScreen(
         }
     }
     val topicName = topicFilter?.let { slug -> catalog.topic(slug)?.second?.title }
-    val topicCounts = remember(library) { library.questions.groupingBy { it.topic }.eachCount() }
+    val topicCounts = remember(bank) { bank.orEmpty().groupingBy { it.topic }.eachCount() }
 
     ScreenScaffold(title = if (topicName != null) "Practice: $topicName" else "Practice") { inner ->
         LazyColumn(
@@ -89,7 +98,7 @@ fun PracticeScreen(
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            "${library.questions.size} questions are built into the app and work offline.",
+                            "${bank?.size ?: 0} questions are built into the app and work offline.",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -120,8 +129,8 @@ fun PracticeScreen(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 )
             }
-            if (library.isEmpty) {
-                item { EmptyText("The offline question bank is still loading. It is bundled with the app.") }
+            if (bank == null) {
+                item { EmptyText("Loading the question bank stored on this phone.") }
             } else if (visible.isEmpty()) {
                 item { EmptyText("No question matches \"$query\".") }
             }
@@ -175,13 +184,17 @@ private fun QuestionRow(
 fun QuestionScreen(
     store: AppStore,
     catalog: Catalog,
-    library: LessonLibrary,
     slug: String,
     onBack: () -> Unit,
     openQuestion: (String) -> Unit,
     openNotes: (String) -> Unit,
 ) {
-    val question = library.question(slug)
+    val context = LocalContext.current
+    var bank by remember { mutableStateOf<List<PracticeQuestion>?>(null) }
+    LaunchedEffect(Unit) {
+        bank = withContext(Dispatchers.IO) { ContentRepository.practice(context) }
+    }
+    val question = bank?.firstOrNull { it.slug == slug }
     val title = question?.let { catalog.topic(it.topic)?.second?.title } ?: "Question"
     var chosen by rememberSaveable(slug) { mutableStateOf("") }
     var checked by rememberSaveable(slug) { mutableStateOf(false) }
@@ -189,13 +202,16 @@ fun QuestionScreen(
     ScreenScaffold(title = title, onBack = onBack) { inner ->
         if (question == null) {
             Column(Modifier.padding(inner).padding(16.dp)) {
-                EmptyText("This question is not in the bundled bank.")
+                EmptyText(
+                    if (bank == null) "Opening the question from the bank stored on this phone."
+                    else "This question is not in the bundled bank.",
+                )
             }
             return@ScreenScaffold
         }
         val correctOption = question.options.firstOrNull { it.correct }
         val isRight = chosen.isNotEmpty() && question.options.firstOrNull { it.label == chosen }?.correct == true
-        val next = library.questions.let { list ->
+        val next = bank.orEmpty().let { list ->
             val index = list.indexOfFirst { it.slug == question.slug }
             if (index >= 0 && index + 1 < list.size) list[index + 1] else null
         }

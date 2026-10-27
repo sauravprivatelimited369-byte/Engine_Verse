@@ -1,14 +1,16 @@
 # Meridian for iOS & macOS
 
 A native multiplatform SwiftUI app (`apple/`) for **iPhone, iPad and Mac**.
-Like the Android app in [`android/`](../android/README.md), the core study
-workspace works completely offline: the 93-subject / 406-topic catalogue,
-study streaks, planner tasks, learning record and appearance settings. Full
-notes, daily practice and the multi-language WebAssembly playground open the
-Meridian website inside a hardened `WKWebView`.
+Like the Android app in [`android/`](../android/README.md), the study workspace
+works completely offline: the 93-subject / 406-topic catalogue, the full notes
+for every topic at four depths, the 534-question practice bank with
+explanations, study streaks, planner tasks, learning record and appearance
+settings. Only the interactive diagrams, 3D models and the WebAssembly code
+playground open the Meridian website inside a hardened `WKWebView`.
 
 | | |
 |---|---|
+| Download | `Meridian-iOS.ipa` and `Meridian-macOS.dmg` from the [apple-latest release](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/tag/apple-latest), rebuilt on every push |
 | Bundle identifier | `io.github.sauravprivatelimited369byte.engineverse` |
 | Platforms | iOS / iPadOS 17.0+ (`arm64`) and macOS 14.0 Sonoma+ (Universal `arm64` + `x86_64`) |
 | Toolchain | Swift 5.10 / 6.0, SwiftUI + WebKit, Swift Package Manager (`Package.swift`) |
@@ -19,8 +21,9 @@ Meridian website inside a hardened `WKWebView`.
 | Screen | Works offline | What it does |
 |---|---|---|
 | Home | Yes | Streak, topic completion and open planner counts, next task and quick actions |
-| Learn | Yes | 93 subjects and 406 topic summaries bundled in `Resources/catalog.json`, with group filters and multi-word search |
-| Topic → "Read full notes" | No | Opens the topic's HTTPS page on the Meridian website in the hardened viewer |
+| Learn | Yes | 93 subjects and 406 topics bundled in `Resources/catalog.json`, with group filters and multi-word search |
+| Notes | Yes | All four note depths for every topic rendered natively from `Resources/content.json`: definitions, formulas, derivations, worked examples, exam and interview notes, tables and equations |
+| Practice | Yes | The 534-question multiple-choice bank with explanations; answers are marked and kept on the device |
 | Code playground | No | Opens CodeLab, the compilers and judged problems (WebAssembly workers) |
 | Study planner | Yes | Tasks with optional due dates, overdue/today/upcoming badges, completion tracking |
 | Learning record | Yes | Completed topics grouped by subject, with native `ShareLink` export |
@@ -52,9 +55,11 @@ On macOS and iPadOS (`regular` horizontal size class), navigation uses a native
 Open `apple/Package.swift` in Xcode 16+, or build from the terminal:
 
 ```bash
-# Regenerate or verify the offline catalogue from the repository root
+# Regenerate or verify the offline catalogue and lesson library
 python3 scripts/export_apple_catalog.py
+python3 scripts/export_mobile_content.py          # writes Resources/content.json (and the Android copy)
 python3 scripts/export_apple_catalog.py --check
+python3 scripts/export_mobile_content.py --check
 
 # Run Swift unit tests, build universal Meridian-macOS.dmg and Meridian-iOS.ipa
 bash apple/scripts/build_apple.sh --all

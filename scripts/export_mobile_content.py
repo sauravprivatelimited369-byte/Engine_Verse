@@ -452,6 +452,7 @@ def _read_library(connection: sqlite3.Connection) -> dict:
         formulas.setdefault(topic["slug"], []).append({
             "name": row["name"],
             "latex": row["latex"] or "",
+            "plain": tex_plain(row["latex"]) or (row["latex"] or ""),
             "meaning": row["meaning"] or "",
             "application": row["application"] or "",
         })

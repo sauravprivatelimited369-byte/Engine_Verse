@@ -211,7 +211,7 @@ private struct FormulaCardView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(palette.ink)
             ScrollView(.horizontal, showsIndicators: false) {
-                Text(verbatim: formula.latex)
+                Text(verbatim: formula.plain)
                     .font(.system(.callout, design: .monospaced))
                     .foregroundStyle(palette.ink)
                     .padding(10)

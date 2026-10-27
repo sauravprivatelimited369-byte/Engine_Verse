@@ -3,6 +3,7 @@
 package io.github.sauravprivatelimited369byte.engineverse.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,10 +45,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.sauravprivatelimited369byte.engineverse.R
 import io.github.sauravprivatelimited369byte.engineverse.core.Catalog
-import io.github.sauravprivatelimited369byte.engineverse.core.LessonLibrary
 import io.github.sauravprivatelimited369byte.engineverse.core.CatalogSearch
 import io.github.sauravprivatelimited369byte.engineverse.core.Subject
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
+import io.github.sauravprivatelimited369byte.engineverse.data.ContentRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LearnScreen(store: AppStore, catalog: Catalog, openSubject: (String) -> Unit) {
@@ -171,13 +175,17 @@ fun SubjectScreen(store: AppStore, catalog: Catalog, slug: String, onBack: () ->
 fun TopicScreen(
     store: AppStore,
     catalog: Catalog,
-    library: LessonLibrary,
     slug: String,
     onBack: () -> Unit,
     openNotes: (String) -> Unit,
     openPractise: (String) -> Unit,
     openWeb: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    var questionCount by remember(slug) { mutableStateOf(0) }
+    LaunchedEffect(slug) {
+        questionCount = withContext(Dispatchers.IO) { ContentRepository.questionCount(context, slug) }
+    }
     val entry = catalog.topic(slug)
     ScreenScaffold(title = entry?.second?.title ?: "Topic", onBack = onBack) { inner ->
         if (entry == null) {
@@ -228,7 +236,6 @@ fun TopicScreen(
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val questionCount = library.questionsForTopic(topic.slug).size
                     Button(onClick = { openNotes("") }, modifier = Modifier.fillMaxWidth()) {
                         Text("Read the notes")
                     }

@@ -45,6 +45,8 @@ public struct LessonSection: Equatable, Sendable {
 public struct Formula: Equatable, Sendable {
     public let name: String
     public let latex: String
+    /// A readable form of `latex` for display.
+    public let plain: String
     public let meaning: String
     public let application: String
 }
@@ -179,9 +181,11 @@ public final class LessonLibrary: Sendable {
                 let parsed = rows.compactMap { row -> Formula? in
                     guard let row = row as? [String: Any] else { return nil }
                     let latex = row["latex"] as? String ?? ""
+                    let plain = row["plain"] as? String ?? ""
                     return Formula(
                         name: row["name"] as? String ?? "",
                         latex: latex,
+                        plain: plain.isEmpty ? latex : plain,
                         meaning: row["meaning"] as? String ?? "",
                         application: row["application"] as? String ?? ""
                     )

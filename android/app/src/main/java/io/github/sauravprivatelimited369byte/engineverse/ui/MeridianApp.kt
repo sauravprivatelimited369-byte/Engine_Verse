@@ -26,7 +26,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.sauravprivatelimited369byte.engineverse.R
 import io.github.sauravprivatelimited369byte.engineverse.core.Catalog
-import io.github.sauravprivatelimited369byte.engineverse.core.LessonLibrary
 import io.github.sauravprivatelimited369byte.engineverse.core.UrlPolicy
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
 
@@ -67,7 +66,6 @@ private val TABS = listOf(
 fun MeridianApp(
     store: AppStore,
     catalog: Catalog,
-    library: LessonLibrary,
     policy: UrlPolicy,
 ) {
     val nav = rememberNavController()
@@ -117,7 +115,6 @@ fun MeridianApp(
                 PracticeScreen(
                     store = store,
                     catalog = catalog,
-                    library = library,
                     topicFilter = null,
                     openQuestion = openQuestion,
                     clearTopicFilter = {},
@@ -130,7 +127,6 @@ fun MeridianApp(
                 PracticeScreen(
                     store = store,
                     catalog = catalog,
-                    library = library,
                     topicFilter = e.arguments?.getString("slug").orEmpty(),
                     openQuestion = openQuestion,
                     clearTopicFilter = {
@@ -160,7 +156,6 @@ fun MeridianApp(
                 TopicScreen(
                     store = store,
                     catalog = catalog,
-                    library = library,
                     slug = e.arguments?.getString("slug").orEmpty(),
                     onBack = back,
                     openNotes = { level -> openNotes(e.arguments?.getString("slug").orEmpty(), level) },
@@ -182,7 +177,6 @@ fun MeridianApp(
                 NotesScreen(
                     store = store,
                     catalog = catalog,
-                    library = library,
                     slug = slug,
                     initialLevel = e.arguments?.getString("level").orEmpty(),
                     onBack = back,
@@ -194,7 +188,6 @@ fun MeridianApp(
                 QuestionScreen(
                     store = store,
                     catalog = catalog,
-                    library = library,
                     slug = e.arguments?.getString("slug").orEmpty(),
                     onBack = back,
                     openQuestion = openQuestion,

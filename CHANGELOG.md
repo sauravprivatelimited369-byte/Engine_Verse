@@ -9,6 +9,34 @@ release.
 
 ### Added
 
+- **The native apps are now real offline apps, and they are downloadable.**
+  Every push publishes `Meridian.apk` to the
+  [android-latest](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/tag/android-latest)
+  release and `Meridian-iOS.ipa` plus `Meridian-macOS.dmg` to
+  [apple-latest](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/tag/apple-latest),
+  each with a SHA-256 sidecar, so a phone can install the app from a link
+  without a GitHub login, an App Store account or a developer machine.
+  `scripts/export_mobile_content.py` bundles the whole lesson library —
+  406 topics at all four note depths, 350 formulas and the 534-question
+  practice bank — into `content.json` for both apps (`android/app/src/main/assets/`,
+  `apple/Resources/`). Markdown is parsed once, at export, into blocks and runs,
+  so both apps render notes natively and need no web page to read them. Android
+  gained a notes reader with a depth switcher, a practice tab with explanations
+  and saved answers, and lost its "notes open in the browser" path; the Apple
+  apps gained the same screens. The website is now used only for interactive
+  diagrams, 3D models and the WebAssembly code playground.
+
+### Fixed
+
+- **The Android app never produced an APK.** Two configuration bugs, both
+  introduced in the wave-3 merge: the Gradle wrapper pinned 9.4.1 while AGP
+  9.4.1 refuses to run below 9.6.0, and the AndroidX/Compose versions were
+  compiled against API 37 while the app compiled against 36, so the AAR
+  metadata check failed with 14 issues. The wrapper is now 9.6.0 and
+  `compileSdk` is 37 (`targetSdk` stays 36 for Google Play). The backend test
+  that pinned the old wrapper string now asserts the Gradle/AGP pair instead,
+  and a new test keeps the workflow publishing an installable APK.
+
 - **Depth wave 3 for the programming academy: thirty new modules, three per
   language.** `seed_data/language_book_wave3.py` (Python, Java),
   `language_book_wave3_web.py` (JavaScript, TypeScript),

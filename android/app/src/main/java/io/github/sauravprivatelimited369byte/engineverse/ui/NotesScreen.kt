@@ -25,45 +25,56 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.sauravprivatelimited369byte.engineverse.core.Catalog
-import io.github.sauravprivatelimited369byte.engineverse.core.LessonLibrary
 import io.github.sauravprivatelimited369byte.engineverse.core.LessonSection
+import io.github.sauravprivatelimited369byte.engineverse.core.NoteLevel
+import io.github.sauravprivatelimited369byte.engineverse.core.TopicNotes
 import io.github.sauravprivatelimited369byte.engineverse.data.AppStore
+import io.github.sauravprivatelimited369byte.engineverse.data.ContentRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Full notes, on the device. Every topic is bundled at four depths, so reading
  * needs no connection and opens no web page; the website stays available for
- * diagrams and the code playground.
+ * interactive diagrams and the code playground.
  */
 @Composable
 fun NotesScreen(
     store: AppStore,
     catalog: Catalog,
-    library: LessonLibrary,
     slug: String,
     initialLevel: String,
     onBack: () -> Unit,
     onPractise: (String) -> Unit,
     openWeb: (String) -> Unit,
 ) {
+    val context = LocalContext.current
     val entry = catalog.topic(slug)
     val title = entry?.second?.title ?: "Notes"
-    val available = library.availableLevels(slug)
-    var level by rememberSaveable(slug) {
-        mutableStateOf(
-            initialLevel.takeIf { it in available }
-                ?: available.firstOrNull()
-                ?: "standard",
-        )
+    var notes by remember(slug) { mutableStateOf<TopicNotes?>(null) }
+    LaunchedEffect(slug) {
+        notes = withContext(Dispatchers.IO) { ContentRepository.topicNotes(context, slug) }
     }
-    val sections = library.sections(slug, level)
-    val questions = library.questionsForTopic(slug)
+    val available = notes?.availableLevels.orEmpty()
+    var level by rememberSaveable(slug) {
+        mutableStateOf(initialLevel.takeIf { it in NoteLevel.ORDER } ?: "standard")
+    }
+    val activeLevel = if (level in available) level else available.firstOrNull() ?: "standard"
+    val sections = notes?.sections(activeLevel).orEmpty()
+    var questionCount by remember(slug) { mutableStateOf(0) }
+    LaunchedEffect(slug) {
+        questionCount = withContext(Dispatchers.IO) { ContentRepository.questionCount(context, slug) }
+    }
 
     ScreenScaffold(title = title, onBack = onBack) { inner ->
         LazyColumn(
@@ -74,7 +85,11 @@ fun NotesScreen(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     entry?.let { (subject, topic) ->
-                        Text(subject.name, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            subject.name,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                         Text(topic.title, style = MaterialTheme.typography.headlineSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Tag(topic.difficulty)
@@ -92,17 +107,17 @@ fun NotesScreen(
                     ) {
                         available.forEach { option ->
                             FilterChip(
-                                selected = option == level,
+                                selected = option == activeLevel,
                                 onClick = { level = option },
-                                label = { Text(LessonLibrary.levelName(option)) },
+                                label = { Text(NoteLevel.name(option)) },
                             )
                         }
                     }
                 }
             }
             when {
-                library.isEmpty -> item {
-                    EmptyText("The offline lesson library is still loading. It is bundled with the app, so no connection is needed.")
+                notes == null -> item {
+                    EmptyText("Opening this topic's notes from the copy stored on this phone.")
                 }
                 sections.isEmpty() -> item {
                     EmptyText(
@@ -111,7 +126,7 @@ fun NotesScreen(
                 }
                 else -> items(sections) { section -> SectionCard(section) }
             }
-            library.formulas[slug]?.takeIf { it.isNotEmpty() }?.let { formulas ->
+            notes?.formulas?.takeIf { it.isNotEmpty() }?.let { formulas ->
                 item { SectionTitle("Formulas") }
                 items(formulas.size) { index ->
                     val formula = formulas[index]
@@ -123,7 +138,7 @@ fun NotesScreen(
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(
-                                    formula.plain.ifBlank { formula.latex },
+                                    formula.plain,
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier
                                         .padding(10.dp)
@@ -146,12 +161,9 @@ fun NotesScreen(
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (questions.isNotEmpty()) {
-                        Button(
-                            onClick = { onPractise(slug) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Practise ${questions.size} question${if (questions.size == 1) "" else "s"} on this topic")
+                    if (questionCount > 0) {
+                        Button(onClick = { onPractise(slug) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Practise $questionCount question${if (questionCount == 1) "" else "s"} on this topic")
                         }
                     }
                     OutlinedButton(onClick = { store.toggleTopic(slug) }, modifier = Modifier.fillMaxWidth()) {
@@ -180,9 +192,7 @@ private fun SectionCard(section: LessonSection) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(section.title, style = MaterialTheme.typography.titleMedium)
-            }
+            Text(section.title, style = MaterialTheme.typography.titleMedium)
             if (section.callout.isNotBlank()) {
                 val (container, content) = calloutColors(section.callout)
                 Surface(color = container, contentColor = content) {

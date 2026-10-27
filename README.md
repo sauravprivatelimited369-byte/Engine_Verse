@@ -14,9 +14,30 @@ links to internships and scholarships. You can use it in three ways:
 | | What it is | Accounts | Where your progress lives |
 |---|---|---|---|
 | **Website on GitHub Pages** | A static copy of the site, rebuilt and deployed by Actions from this repository | None | Your browser (export and import as JSON) |
-| **iOS & macOS apps** | Native SwiftUI apps (`apple/`) with an offline catalogue, planner, streaks and progress, opening the website in a restricted `WKWebView` | None | The app's local storage |
-| **Android app** | A native Kotlin app (`android/`) with an offline catalogue, planner and progress, which opens the website for full notes and code | None | The app's private storage |
+| **iOS & macOS apps** | Native SwiftUI apps (`apple/`) with the whole lesson library, practice bank, planner, streaks and progress on the device | None | The app's local storage |
+| **Android app** | A native Kotlin app (`android/`) with the whole lesson library, practice bank, planner and progress on the device | None | The app's private storage |
 | **Self-hosted full website** | The FastAPI application with accounts, a server-side judge and PostgreSQL | Yes | Your server's database |
+
+## Download the apps
+
+The apps are real native packages, built from this repository by GitHub Actions
+on every push. They are not a website wrapped in a browser: the full notes for
+all 406 topics at four depths, the 534-question practice bank, the planner,
+streaks and progress are bundled inside the app and work offline. The website
+is only used for interactive diagrams, 3D models and the code playground.
+
+| Phone or computer | Download | Notes |
+|---|---|---|
+| **Android** 7.0+ | [Meridian.apk](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-latest/Meridian.apk) · [SHA-256](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/android-latest/Meridian.apk.sha256) | Debug-signed build of the latest commit. Allow installs from unknown sources; uninstall an older Meridian build first if the signature differs. |
+| **iPhone / iPad** 17+ | [Meridian-iOS.ipa](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/apple-latest/Meridian-iOS.ipa) · [SHA-256](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/apple-latest/Meridian-iOS.ipa.sha256) | Ad-hoc signed. Install with AltStore, SideStore, Sideloadly or Xcode, which re-sign it for your own Apple ID. |
+| **macOS** 14+ | [Meridian-macOS.dmg](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/apple-latest/Meridian-macOS.dmg) · [SHA-256](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/download/apple-latest/Meridian-macOS.dmg.sha256) | Universal (Apple silicon + Intel). Drag Meridian to Applications, then open it once with right-click > Open. |
+| Any browser | [The website](https://sauravprivatelimited369-byte.github.io/Engine_Verse/) | Needs no install; progress stays in your browser. |
+
+Both the `android-latest` and `apple-latest` releases are rebuilt on every push,
+so the links above always serve the newest build. Their SHA-256 sidecars let you
+check the download. A versioned, maintainer-signed release is produced by the
+manual **Android app** workflow (see [android/README.md](android/README.md)) and
+by tagging an Apple release (see [apple/README.md](apple/README.md)).
 
 **Website address:** `https://sauravprivatelimited369-byte.github.io/Engine_Verse/`.
 It is served once GitHub Pages is enabled for this repository (Settings > Pages >
@@ -37,6 +58,7 @@ push either way.
 
 ## Contents
 
+- [Download the apps](#download-the-apps)
 - [What you can do](#what-you-can-do)
 - [The study assistant (n8n)](#the-study-assistant-n8n)
 - [Architecture](#architecture)
