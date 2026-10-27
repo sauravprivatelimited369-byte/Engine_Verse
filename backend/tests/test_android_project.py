@@ -93,13 +93,34 @@ class TestBuildConfiguration:
         # Assert the major version, not one patch release: the file has already
         # moved 9.1.1 -> 9.4.1 while the toolchain stayed AGP 9, and a pinned
         # patch turned every dependency bump into a red build.
-        agp = re.search(r'^agp\s*=\s*"([^"]+)"', versions, re.M)
+        agp = re.search(r'^agp\s*=\s*"(\d+)\.(\d+)(?:\.(\d+))?"', versions, re.M)
         assert agp, "libs.versions.toml must pin the Android Gradle plugin"
-        assert agp.group(1).split(".")[0] == "9", f"expected AGP 9.x, found {agp.group(1)}"
+        agp_version = tuple(int(part or 0) for part in agp.groups())
+        assert agp_version[0] == 9, f"expected AGP 9.x, found {agp_version}"
+        if agp_version >= (9, 4, 0):
+            assert version >= (9, 6, 0), f"AGP {agp_version} requires Gradle >= 9.6.0, found {version}"
         gradle = _read(APP / "build.gradle.kts")
+        compile_sdk_match = re.search(r"compileSdk\s*=\s*(\d+)", gradle)
+        assert compile_sdk_match, "app/build.gradle.kts must set compileSdk"
+        compile_sdk = int(compile_sdk_match.group(1))
+        assert compile_sdk >= 37, (
+            f"AndroidX 2.10 / Compose BOM 2026.09+ require compileSdk >= 37, found {compile_sdk}"
+        )
         assert "targetSdk = 36" in gradle and "minSdk = 24" in gradle
         # AGP 9 compiles Kotlin itself; applying kotlin-android as well breaks the build.
         assert not re.search(r'id\s*=\s*"org\.jetbrains\.kotlin\.android"|kotlin\("android"\)', versions + gradle)
+        # Keep android/README.md aligned with the minimum Gradle wrapper and compileSdk
+        # without pinning exact patch releases that would block Dependabot bumps.
+        readme = _read(ANDROID / "README.md")
+        readme_gradle = re.search(r"Gradle (\d+)\.(\d+)(?:\.(\d+))? wrapper", readme)
+        assert readme_gradle, "android/README.md must document the Gradle wrapper version"
+        assert tuple(int(part or 0) for part in readme_gradle.groups()) >= (9, 6, 0), (
+            f"android/README.md still documents an outdated Gradle wrapper: {readme_gradle.group(0)}"
+        )
+        assert "AGP 9." in readme
+        assert f"platform {compile_sdk}" in readme, (
+            f"android/README.md must mention Android SDK platform {compile_sdk}"
+        )
 
 
 class TestManifestAndWebViewer:
@@ -172,9 +193,13 @@ class TestResourcesAndWorkflow:
 
     def test_ci_workflow_builds_tests_lints_and_uploads_debug_apk(self):
         wf = _read(ROOT / ".github" / "workflows" / "android-build.yml")
+        gradle = _read(APP / "build.gradle.kts")
+        compile_sdk = re.search(r"compileSdk\s*=\s*(\d+)", gradle).group(1)
         for needle in (
             "working-directory: android",
             "actions/setup-java@v6",
+            "sdkmanager",
+            f"platforms;android-{compile_sdk}",
             "gradle/actions/setup-gradle@v6",
             "testDebugUnitTest",
             "lintDebug",

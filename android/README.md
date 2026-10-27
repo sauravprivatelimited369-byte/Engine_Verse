@@ -11,8 +11,8 @@ open the Meridian website.
 |---|---|
 | Download | `Meridian.apk` from the [android-latest release](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/tag/android-latest), rebuilt on every push |
 | Package | `io.github.sauravprivatelimited369byte.engineverse` (debug builds add `.debug`) |
-| Android | 7.0 (API 24) and newer; targets API 36 |
-| Toolchain | AGP 9.1.1 (built-in Kotlin), Gradle 9.4.1 wrapper, Compose BOM 2026.06.01, Java 17 |
+| Android | 7.0 (API 24) and newer; compiles against API 37, targets API 36 |
+| Toolchain | AGP 9.4.1 (built-in Kotlin), Gradle 9.6.0 wrapper, Compose BOM 2026.09.00, Java 17 |
 | Website it opens | `BuildConfig.SITE_URL`, the GitHub Pages copy of this repository |
 
 ## What is in the app
@@ -62,7 +62,7 @@ with a certificate problem does not load.
 
 ## Build
 
-You need JDK 17 and the Android SDK (platform 36). Android Studio provides both;
+You need JDK 17 and the Android SDK (platform 37). Android Studio provides both;
 open the `android/` folder.
 
 ```bash
@@ -97,7 +97,7 @@ the seed data and that every page the app opens exists on the site.
 [`.github/workflows/android-build.yml`](../.github/workflows/android-build.yml)
 runs on every push and pull request that touches `android/`:
 
-1. Validates the Gradle wrapper, then runs the unit tests, lint and `assembleDebug`.
+1. Ensures Android SDK platform 37 is installed, validates the Gradle wrapper, then runs the unit tests, lint and `assembleDebug`.
 2. Uploads **engineverse-debug-apk**, the debug-signed APK and its SHA-256, and
    **engineverse-android-reports**, the test and lint reports, as workflow
    artifacts. Download them from the run page while signed in to GitHub.

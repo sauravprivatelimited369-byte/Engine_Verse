@@ -56,6 +56,43 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Install Android SDK platform 37
+        run: |
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          [ -n "$sdk" ] || { echo "::error::ANDROID_HOME is not set on this runner"; exit 1; }
+          if ! ls -d "$sdk"/platforms/android-37* >/dev/null 2>&1; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo mkdir -p "$sdk/platforms" "$sdk/licenses"
+              sudo chown "$(id -u):$(id -g)" "$sdk" "$sdk/platforms"
+              sudo chown -R "$(id -u):$(id -g)" "$sdk/licenses" "$sdk/.knownPackages" "$sdk/.temp" "$sdk/temp" 2>/dev/null || true
+            fi
+            if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
+              sdkmanager_bin="$sdk/cmdline-tools/latest/bin/sdkmanager"
+            else
+              sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
+            fi
+            [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
+            install_platform() {
+              printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --sdk_root="$sdk" --licenses >/dev/null
+              pkg="platforms;android-37"
+              if ! "$sdkmanager_bin" --sdk_root="$sdk" --list 2>/dev/null | awk '{print $1}' | grep -qx "platforms;android-37"; then
+                alt=$("$sdkmanager_bin" --sdk_root="$sdk" --channel=3 --list 2>/dev/null | awk '{print $1}' | grep -E '^platforms;android-37(\.[0-9]+)?$' | sort -V | tail -n 1 || true)
+                [ -n "$alt" ] && pkg="$alt"
+              fi
+              printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" --sdk_root="$sdk" "$pkg" || {
+                printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --sdk_root="$sdk" --channel=3 --licenses >/dev/null
+                printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" --sdk_root="$sdk" --channel=3 "$pkg"
+              }
+            }
+            if ! out=$(install_platform 2>&1); then
+              printf '%s\n' "$out" | tr '\r' '\n' | grep -vE '^\s*$|^\[[= ]*\]|Loading (local|package)|Fetch remote|Computing updates' | tail -n 8 | while IFS= read -r line; do
+                esc=$(printf '%s' "$line" | sed 's/%/%25/g')
+                echo "::error title=sdkmanager::${esc}"
+              done
+              exit 1
+            fi
+          fi
+
       # Also validates gradle/wrapper/gradle-wrapper.jar against known checksums.
       - uses: gradle/actions/setup-gradle@v6
 
@@ -186,6 +223,43 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Install Android SDK platform 37
+        run: |
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          [ -n "$sdk" ] || { echo "::error::ANDROID_HOME is not set on this runner"; exit 1; }
+          if ! ls -d "$sdk"/platforms/android-37* >/dev/null 2>&1; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo mkdir -p "$sdk/platforms" "$sdk/licenses"
+              sudo chown "$(id -u):$(id -g)" "$sdk" "$sdk/platforms"
+              sudo chown -R "$(id -u):$(id -g)" "$sdk/licenses" "$sdk/.knownPackages" "$sdk/.temp" "$sdk/temp" 2>/dev/null || true
+            fi
+            if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
+              sdkmanager_bin="$sdk/cmdline-tools/latest/bin/sdkmanager"
+            else
+              sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
+            fi
+            [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
+            install_platform() {
+              printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --sdk_root="$sdk" --licenses >/dev/null
+              pkg="platforms;android-37"
+              if ! "$sdkmanager_bin" --sdk_root="$sdk" --list 2>/dev/null | awk '{print $1}' | grep -qx "platforms;android-37"; then
+                alt=$("$sdkmanager_bin" --sdk_root="$sdk" --channel=3 --list 2>/dev/null | awk '{print $1}' | grep -E '^platforms;android-37(\.[0-9]+)?$' | sort -V | tail -n 1 || true)
+                [ -n "$alt" ] && pkg="$alt"
+              fi
+              printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" --sdk_root="$sdk" "$pkg" || {
+                printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --sdk_root="$sdk" --channel=3 --licenses >/dev/null
+                printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" --sdk_root="$sdk" --channel=3 "$pkg"
+              }
+            }
+            if ! out=$(install_platform 2>&1); then
+              printf '%s\n' "$out" | tr '\r' '\n' | grep -vE '^\s*$|^\[[= ]*\]|Loading (local|package)|Fetch remote|Computing updates' | tail -n 8 | while IFS= read -r line; do
+                esc=$(printf '%s' "$line" | sed 's/%/%25/g')
+                echo "::error title=sdkmanager::${esc}"
+              done
+              exit 1
+            fi
+          fi
 
       - uses: gradle/actions/setup-gradle@v6
 

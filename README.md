@@ -294,7 +294,7 @@ turns the Pages site into a gateway to it. See
 ## Android app
 
 The app in [`android/`](android/README.md) is native Kotlin with Jetpack Compose
-(AGP 9.1.1, minSdk 24, targetSdk 36):
+(AGP 9.4.1, Gradle 9.6.0, minSdk 24, compileSdk 37, targetSdk 36):
 
 - **Works offline:** the subject catalogue, topic summaries, progress and
   streaks, the planner, the portfolio and settings.
