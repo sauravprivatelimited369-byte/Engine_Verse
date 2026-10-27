@@ -129,12 +129,18 @@ async def explore(
     semester: str | None = None,
     q: str | None = None,
     year: str | None = None,
+    show_all: str | None = None,
 ):
     first_year = year == "1"
     semester_id = int(semester) if semester and semester.isdecimal() and len(semester) <= 3 else None
     q = q[:200] if q else None
     total = catalog.count_subjects(branch=branch, semester=semester_id, first_year=first_year, q=q)
-    pager = _pager(request, total)
+    # ``show_all`` renders the whole catalogue on one page. The static GitHub
+    # Pages copy is a single rendered document, so a learner who filters it by
+    # stream would otherwise only ever see the first page's subjects - and a
+    # branch whose subjects start on page two would look empty. The live app
+    # keeps its pagination and only honours this when it is asked for it.
+    pager = _pager(request, total, size=LIBRARY_PAGE_SIZE * 40 if show_all else LIBRARY_PAGE_SIZE)
     return render(
         request, "explore.html",
         branches=catalog.branch_groups(),
@@ -1029,22 +1035,39 @@ async def resources_page(request: Request):
 
 
 @router.get("/resources/offsite")
-async def offsite_resources_page(request: Request, kind: str | None = None, slug: str | None = None):
+async def offsite_resources_page(
+    request: Request, kind: str | None = None, slug: str | None = None, branch: str | None = None,
+):
     """The optional external shelf, kept but marked as optional.
 
     These are host roots and long-lived index pages rather than deep links, and
     ``scripts/check_links.py`` verifies them in CI. Nothing in the learning
     path requires visiting any of them.
+
+    ``branch`` narrows the shelf to one stream (plus the resources no branch
+    owns), which is how a learner reaches "the optional reading for *my*
+    stream" from the hub. A branch slug that is not in the catalogue is ignored
+    rather than answered with an empty page that looks like a bug.
     """
     slug = deep_link_slug(slug)
-    total = library.count_resources(kind=kind, slug=slug)
+    branch_id = None
+    active_branch = ""
+    if branch:
+        found = catalog.get_branch(branch)
+        if found:
+            branch_id = found["id"]
+            active_branch = branch
+    total = library.count_resources(kind=kind, slug=slug, branch_id=branch_id)
     pager = _pager(request, total)
     return render(
         request, "resources_offsite.html",
         resources=library.list_resources(
-            kind=kind, slug=slug, limit=pager["size"], offset=(pager["page"] - 1) * pager["size"],
+            kind=kind, slug=slug, branch_id=branch_id,
+            limit=pager["size"], offset=(pager["page"] - 1) * pager["size"],
         ),
         kinds=library.resource_kinds(), active_kind=kind, active_slug=slug, pager=pager,
+        branches=catalog.branch_groups(), active_branch=active_branch,
+        branch_name=(catalog.get_branch(active_branch) or {}).get("name", ""),
     )
 
 

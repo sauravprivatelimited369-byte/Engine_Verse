@@ -1081,24 +1081,35 @@ def seed_books(subject_ids: dict[str, str]) -> None:
 
 
 def _subject_rows() -> list[dict]:
-    """Every subject with its branch category, for per-discipline expansion."""
+    """Every subject with its branch, for per-discipline expansion.
+
+    The branch travels with the subject because a resource belongs to a *stream*
+    as much as to a subject: the same open textbook serves a mechanical and a
+    civil learner, and both should find it under their own hub. Without it every
+    resource in the table had ``branch_id IS NULL`` and the per-stream shelves
+    had nothing to show.
+    """
     return db.query(
-        "SELECT s.slug AS slug, s.name AS name, COALESCE(b.category, 'core') AS category "
-        "FROM subjects s LEFT JOIN branches b ON b.id = s.branch_id ORDER BY s.slug"
+        "SELECT s.slug AS slug, s.name AS name, COALESCE(b.category, 'core') AS category, "
+        "b.id AS branch_id FROM subjects s LEFT JOIN branches b ON b.id = s.branch_id ORDER BY s.slug"
     )
 
 
 def seed_resources(subject_ids: dict[str, str]) -> None:
     with db.transaction():
-        rows = list(library_data.RESOURCES) + resource_sources.build(_subject_rows())
+        subject_rows = _subject_rows()
+        rows = list(library_data.RESOURCES) + resource_sources.build(subject_rows)
+        branch_by_subject = {row["slug"]: row["branch_id"] for row in subject_rows}
         for title, url, kind, category, subject_slug, level, description in rows:
             slug = slugify(title)
+            subject_id = subject_ids.get(subject_slug) if subject_slug else None
             db.execute(
                 "INSERT INTO resources (id,slug,title,url,kind,category,branch_id,subject_id,level,format,language,"
-                "is_free,description,created_at) VALUES (?,?,?,?,?,?,NULL,?,?,'web','en',1,?,?) "
+                "is_free,description,created_at) VALUES (?,?,?,?,?,?,?,?,?,'web','en',1,?,?) "
                 "ON CONFLICT(slug) DO NOTHING",
-                slug, slug, title, url, kind, category, subject_ids.get(subject_slug) if subject_slug else None,
-                level, description, now_ms(),
+                slug, slug, title, url, kind, category,
+                branch_by_subject.get(subject_slug) if subject_slug else None,
+                subject_id, level, description, now_ms(),
             )
 
 

@@ -422,6 +422,63 @@ def _public_url(path: str) -> str:
     return _site_root() + clean
 
 
+def stream_base() -> str:
+    """The path prefix stream.js must prefix its own links with.
+
+    The static GitHub Pages copy is served from ``<owner>.github.io/<repo>``, so
+    a link built in the browser has to carry that prefix - the same one the
+    export applies to every URL written into the HTML. The live app serves from
+    the origin root and returns an empty prefix. A failure here is not fatal:
+    an empty prefix is the live-app answer and the switcher still works.
+    """
+    try:
+        from urllib.parse import urlsplit
+
+        return urlsplit(_site_root()).path.rstrip("/")
+    except Exception:
+        return ""
+
+
+def stream_list() -> list[dict[str, Any]]:
+    """The branch catalogue the top-bar stream switcher offers.
+
+    Small and read-only, so it is computed for every page render rather than
+    passed in per route: a route that forgot to pass it would quietly lose the
+    switcher, and the switcher is the one control every page shares. A database
+    that has not been migrated yet (an error page rendered during startup) gets
+    an empty list rather than an exception - the switcher then simply does not
+    appear.
+    """
+    try:
+        from engineverse import catalog
+
+        rows = catalog.list_branches()
+    except Exception:
+        return []
+    out = []
+    for row in rows:
+        name = str(row.get("name") or "").strip()
+        # A label that fits the button on a phone: "Computer Science
+        # Engineering" -> "Computer Science", "Electronics & Communication"
+        # already fits and is left alone.
+        short = name
+        for suffix in (" Engineering", " Engineering&", " Engineering &"):
+            if short.endswith(suffix):
+                short = short[: -len(suffix)].strip()
+                break
+        out.append({
+            "slug": row.get("slug"),
+            "name": name,
+            "short": short or name,
+            "category": row.get("category"),
+            "color": row.get("color"),
+            "icon": row.get("icon"),
+            "description": row.get("description"),
+            "subject_count": row.get("subject_count"),
+        })
+    return out
+
+
 def base_context(request: Request, **extra: Any) -> dict[str, Any]:
     viewer = current_user(request)
     context: dict[str, Any] = {
@@ -481,6 +538,12 @@ def base_context(request: Request, **extra: Any) -> dict[str, Any]:
         # never offer a dialling code the validator would refuse. See
         # templates/_country_codes.html.
         "phone_countries": validators.COUNTRY_PLANS,
+        # The branch catalogue the global stream switcher renders from. Kept
+        # out of the per-route kwargs on purpose: every page shares the switcher,
+        # so every page needs the list, and a route that forgot to pass it would
+        # lose the control rather than fall back to something else.
+        "streams": stream_list(),
+        "stream_base": stream_base(),
         "due_cards": 0,
         "unread": 0,
         # ``stats`` is the page's own counter bag and pages overwrite it (a

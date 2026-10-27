@@ -112,6 +112,35 @@
     {% endif %}
 
     <div class="topbar-right">
+      {# The global stream switcher.
+
+         The links are real anchors rather than controls built by script, so the
+         GitHub Pages export can rewrite every ``/stream/...`` URL to the
+         deployment's base prefix, and a reader without JavaScript still reaches
+         a stream hub by following one. app.js opens the dropdown from the same
+         generic ``[data-menu]`` handler the account menu uses; ``stream.js``
+         adds what neither can - the remembered selection and the site-wide
+         filter that hides every ``data-ev-stream`` element of a different
+         branch. #}
+      <div class="menu ev-stream-menu" data-menu>
+        <button class="iconbtn ev-stream-btn" id="ev-stream-btn" type="button"
+                aria-haspopup="true" aria-expanded="false" aria-controls="ev-stream-pop"
+                aria-label="Choose your stream" title="Choose your stream">
+          <span class="ev-stream-ico" aria-hidden="true">{{ icon("compass", 18) }}</span>
+          <span class="ev-stream-label">Stream</span>
+        </button>
+        <div class="menu-pop" id="ev-stream-pop" role="menu" hidden>
+          <div class="menu-head">
+            <strong>Your stream</strong>
+            <span>Only this stream shows</span>
+          </div>
+          <a role="menuitem" href="/streams" data-ev-stream-all>All streams</a>
+          {% for stream in streams %}
+          <a role="menuitem" href="/stream/{{ stream.slug }}"
+             data-ev-stream-slug="{{ stream.slug }}">{{ stream.name }}</a>
+          {% endfor %}
+        </div>
+      </div>
       <button class="iconbtn theme-toggle" id="theme-toggle" type="button" aria-label="Switch colour theme"
               title="Switch colour theme">
         <svg class="ico-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -233,6 +262,12 @@
 <script type="application/json" id="ev-voice-config" nonce="{{ request.state.csp_nonce }}">
   {"apiBase": "{{ voice_api_base }}", "staticCopy": {{ 'true' if static_export else 'false' }}}
 </script>
+{# The branch catalogue the top-bar stream switcher renders from, as data rather
+   than inline script. Static and harmless: it carries no credential and no
+   per-learner state - the *choice* of stream lives in the browser, not here.
+   ``base`` is the path prefix stream.js puts in front of the links it builds
+   itself; the links written into the markup are rewritten by the export. #}
+<script type="application/json" id="ev-streams" nonce="{{ request.state.csp_nonce }}">{{ {"base": stream_base, "streams": streams} | tojson }}</script>
 {# The assistant's browser configuration, as data rather than inline script.
    In proxy mode this contains no endpoint other than the same-origin API path:
    the n8n webhook URL is server-side only. export_pages.py replaces this block
@@ -256,6 +291,7 @@
 <script src="/static/js/i18n.js" defer></script>
 <script src="/static/js/engine3d.js" defer></script>
 <script src="/static/js/app.js" defer></script>
+<script src="/static/js/stream.js" defer></script>
 <script src="/static/js/voice.js" defer></script>
 <script src="/static/js/assistant.js" defer></script>
 <script src="/static/js/pages-live.js" defer></script>

@@ -136,7 +136,11 @@ def _resources_where(
         clauses.append("r.kind = ?")
         args.append(kind)
     if branch_id:
-        clauses.append("r.branch_id = ?")
+        # A stream's shelf is its own resources plus the ones no branch owns -
+        # the shared first-year core a mechanical learner still needs - which is
+        # the same rule the roadmaps apply. Callers that want only the branch's
+        # own rows can filter on subject_id instead.
+        clauses.append("(r.branch_id = ? OR r.branch_id IS NULL)")
         args.append(branch_id)
     if subject_id:
         clauses.append("r.subject_id = ?")
