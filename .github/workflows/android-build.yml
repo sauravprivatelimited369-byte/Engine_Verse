@@ -137,10 +137,12 @@ jobs:
             if ! out=$(gh release upload "$tag" ../dist/Meridian.apk ../dist/Meridian.apk.sha256 --clobber 2>&1); then
               fail "gh release upload failed: $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
             fi
+            # Rolling builds are prereleases: the site only advertises versioned ones.
+            gh release edit "$tag" --prerelease --notes "$notes" >/dev/null 2>&1 || true
           else
             if ! out=$(gh release create "$tag" ../dist/Meridian.apk ../dist/Meridian.apk.sha256 \
                 --target "$GITHUB_SHA" --title "Meridian for Android (latest build)" \
-                --latest=false --notes "$notes" 2>&1); then
+                --latest=false --prerelease --notes "$notes" 2>&1); then
               fail "gh release create failed: $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
             fi
           fi
