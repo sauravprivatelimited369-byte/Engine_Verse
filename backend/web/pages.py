@@ -348,20 +348,48 @@ async def question_bank(request: Request, subject: str | None = None, kind: str 
         # question": this id cannot match a row, whereas omitting the filter
         # would quietly widen the page back to the full bank.
         filters["topic_id"] = active_topic["id"] if active_topic else NO_SUCH_TOPIC
+        if active_topic:
+            # A topic belongs to exactly one subject, so the topic is the more
+            # specific thing the reader asked for. When a link (or an old
+            # bookmark) pairs it with a different subject, applying both
+            # filters would AND them into an empty page that looks like the
+            # topic has no MCQs. The topic wins instead, and the subject
+            # select is re-pointed at the topic's own subject so the form
+            # still describes what is on screen.
+            filters["subject_id"] = active_topic["subject_id"]
+            subject = active_topic["subject_id"]
     total = practice.list_questions(**filters, limit=1)[1]
     pager = _pager(request, total)
     questions = practice.list_questions(
         **filters, limit=pager["size"], offset=(pager["page"] - 1) * pager["size"],
     )[0]
+    # The Topic selector's options: every topic with at least one active
+    # question, grouped under its subject. Grouped here rather than in the
+    # template so question_bank.html stays a dumb loop, and so the order the
+    # SQL produced (subject, then topic title) is the order on screen.
+    topic_groups: list[dict[str, Any]] = []
+    for row in practice.question_topics():
+        if not topic_groups or topic_groups[-1]["subject_id"] != row["subject_id"]:
+            topic_groups.append({
+                "subject_id": row["subject_id"],
+                "subject_name": row["subject_name"],
+                "topics": [],
+            })
+        topic_groups[-1]["topics"].append(row)
     return render(
         request, "question_bank.html",
         questions=questions,
         attempts=_attempts(current_user(request), questions),
         kinds=practice.question_kinds(),
         subjects=catalog.list_subjects(limit=200),
+        topic_groups=topic_groups,
         active_subject=subject, active_kind=kind, active_difficulty=difficulty,
         active_topic=active_topic, active_slug=slug if filters.get("slug") else None,
         active_q=q if filters.get("q") else None,
+        # A ?topic= that names nothing is still a filter the page applied; the
+        # banner needs the raw slug so it can say so instead of printing
+        # "Filtered to ." with a hole where the topic should be.
+        active_topic_missing=bool(topic) and active_topic is None,
         filtered=bool(filters.get("slug") or filters.get("q") or topic),
         pager=pager,
     )

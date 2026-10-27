@@ -185,6 +185,11 @@ jobs:
           # The global stream switcher: the picker, the base-prefixed links and
           # the filter that hides every other branch's content.
           node scripts/check_stream_filter.js site
+          # The question bank's topic filter: on this copy there is no server
+          # to filter, so choosing a subject/topic must filter quiz-bank.json
+          # in the browser - this is the check that keeps it from going back
+          # to a form that submits and changes nothing.
+          node scripts/check_question_bank.js site
           node scripts/check_planner.js site/planner/index.html site/static/js/planner.js
           # The assistant widget: launcher, n8n chat contract, error and retry
           # states, Esc, offline mode, the reload guard and HTML escaping.

@@ -134,6 +134,49 @@
     });
   });
 
+  // ---------------------------------------------- question bank topic filter
+  // The bank's filter form works without this (the Filter button submits it
+  // and the server applies subject/topic/difficulty/kind/q). What this adds
+  // is the part a plain form cannot do: choosing a subject narrows the Topic
+  // select to that subject's topics - all 400-plus topics in one list is a
+  // wall, one subject's is a menu - and every select applies on change, so
+  // picking "the MCQs for this topic" shows them immediately instead of
+  // waiting for a second click on a button the reader may never notice.
+  // On the static copy (#ev-live) pages-live.js owns this form instead: it
+  // filters quiz-bank.json in the browser, because that copy has no server.
+  const qbForm = $("#qb-filter");
+  if (qbForm && !document.getElementById("ev-live")) {
+    const qbSubject = $("#subject", qbForm);
+    const qbTopic = $("#topic", qbForm);
+    const applyQb = () => {
+      if (typeof qbForm.requestSubmit === "function") qbForm.requestSubmit();
+      else qbForm.submit();
+    };
+    const narrowQbTopics = () => {
+      if (!qbSubject || !qbTopic) return;
+      const chosen = qbSubject.value;
+      $$("optgroup[data-subject]", qbTopic).forEach((group) => {
+        const keep = !chosen || group.dataset.subject === chosen;
+        group.hidden = !keep;
+        group.disabled = !keep;
+      });
+      // A topic left selected from another subject would AND the two filters
+      // into an empty page. Clear it; the subject the reader just picked is
+      // the choice they meant.
+      const picked = qbTopic.selectedOptions && qbTopic.selectedOptions[0];
+      if (picked && picked.value && picked.dataset.subject && chosen && picked.dataset.subject !== chosen) {
+        qbTopic.value = "";
+      }
+    };
+    narrowQbTopics();
+    $$("select", qbForm).forEach((select) => {
+      select.addEventListener("change", () => {
+        if (select === qbSubject) narrowQbTopics();
+        applyQb();
+      });
+    });
+  }
+
   // --------------------------------------------------------- live search box
   const searchInput = $("#global-search");
   const suggestBox = $("#suggest");

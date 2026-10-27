@@ -633,7 +633,12 @@
 
     let isCorrect = false;
     let correctLabel = item?.correctLabel || "";
-    const optionNodes = Array.from(form.querySelectorAll(".option"));
+    // The card markup (templates/_quiz.html, and the cards the question bank
+    // below builds) calls an option ".opt" - the same class app.js and the
+    // stylesheet use. This said ".option", matched nothing on any page, and
+    // so choosing an answer on the static copy never lit the right/wrong
+    // option up: the click looked like it did nothing.
+    const optionNodes = Array.from(form.querySelectorAll(".opt"));
     optionNodes.forEach((n) => n.classList.remove("correct", "wrong"));
 
     if (item && chosenRadio) {
@@ -720,6 +725,319 @@
     });
     safely("hydrateNavigation", hydrateNavigation);
   };
+
+  // ---------------------------------------------------------------------------
+  // 4b. Question Bank Filtering (/practice/questions)
+  //
+  // The exported bank page is one pre-rendered HTML file holding the first
+  // screen of questions, and a static host ignores "?subject=...&topic=..."
+  // entirely - so the filter form submitted, the page reloaded, and the same
+  // questions came back. Choosing a topic changed nothing; the form was a
+  // demo. The whole bank is already exported as quiz-bank.json for grading,
+  // so here the same file drives the list itself: subject, topic, difficulty,
+  // kind and the stem search filter it in the browser, the chosen filters
+  // are written back into the URL (a filtered bank is a link someone can
+  // share or bookmark, and ?topic=/?slug= deep links from search results and
+  // the mistake notebook land filtered), and the rendered cards are ordinary
+  // quiz cards graded by EV_GRADE_QUIZ above.
+  //
+  // The rules mirror the server handler in web/pages.py one for one: a topic
+  // belongs to one subject and wins over a mismatched subject, an unknown
+  // topic slug matches nothing rather than everything, and the page size is
+  // the server's 24 (LIBRARY_PAGE_SIZE), with a Show-more button standing in
+  // for the server pager. If the bank cannot be loaded the server-rendered
+  // cards stay exactly as they are - a shorter list, never a broken one.
+  // ---------------------------------------------------------------------------
+  const QB_PAGE_SIZE = 24;
+
+  function qbMatches(item, f) {
+    if (f.slug && item.slug !== f.slug) return false;
+    if (f.subject && item.subjectId !== f.subject) return false;
+    if (f.topic && item.topicSlug !== f.topic) return false;
+    if (f.difficulty && item.difficulty !== f.difficulty) return false;
+    if (f.kind && item.kind !== f.kind) return false;
+    if (f.q && !String(item.stem || "").toLowerCase().includes(f.q.toLowerCase())) return false;
+    return true;
+  }
+
+  function buildQbCard(item) {
+    // The same card templates/_quiz.html renders, built with DOM nodes and
+    // textContent throughout: a stem is authored content, and this path
+    // stays injection-proof even if that ever changes.
+    const card = document.createElement("div");
+    card.className = "q-card";
+    card.id = `q-${item.id}`;
+    card.setAttribute("data-quiz", item.id);
+
+    const head = document.createElement("div");
+    head.className = "row";
+    const diff = document.createElement("span");
+    diff.className = `chip diff-${item.difficulty || "medium"}`;
+    diff.textContent = item.difficulty || "medium";
+    head.appendChild(diff);
+    const kind = document.createElement("span");
+    kind.className = "chip";
+    kind.textContent = item.kind || "mcq";
+    head.appendChild(kind);
+    if (item.topicTitle && item.topicUrl) {
+      const topicChip = document.createElement("a");
+      topicChip.className = "chip";
+      topicChip.href = item.topicUrl;
+      topicChip.textContent = item.topicTitle;
+      head.appendChild(topicChip);
+    }
+    if (item.subjectName) {
+      const subjectChip = document.createElement("span");
+      subjectChip.className = "chip";
+      subjectChip.textContent = item.subjectName;
+      head.appendChild(subjectChip);
+    }
+    card.appendChild(head);
+
+    const stem = document.createElement("div");
+    stem.className = "q-stem mt";
+    stem.textContent = item.stem || "";
+    card.appendChild(stem);
+
+    const options = Array.isArray(item.options) ? item.options : [];
+    if (options.length) {
+      const form = document.createElement("form");
+      form.method = "post";
+      options.forEach((opt, idx) => {
+        const label = document.createElement("label");
+        label.className = "opt";
+        label.setAttribute("data-index", String(idx));
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "option";
+        radio.value = String(idx);
+        radio.required = true;
+        const key = document.createElement("span");
+        key.className = "k";
+        key.textContent = opt.label || "";
+        const body = document.createElement("span");
+        body.textContent = opt.body || "";
+        label.append(radio, key, body);
+        form.appendChild(label);
+      });
+      const row = document.createElement("div");
+      row.className = "row";
+      const submit = document.createElement("button");
+      submit.type = "submit";
+      submit.className = "btn btn-primary btn-sm";
+      submit.textContent = "Check answer";
+      const badge = document.createElement("span");
+      badge.className = "verdict-inline chip";
+      badge.style.display = "none";
+      row.append(submit, badge);
+      form.appendChild(row);
+      // The export's mirror script only ever bound the forms baked into the
+      // page; cards rendered here bind themselves to the same grader.
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof window.EV_GRADE_QUIZ === "function") window.EV_GRADE_QUIZ(form);
+      });
+      card.appendChild(form);
+    } else {
+      const none = document.createElement("p");
+      none.className = "small muted";
+      none.textContent = "This question has no answer options yet, so it cannot be checked here.";
+      card.appendChild(none);
+    }
+
+    const explain = document.createElement("div");
+    explain.className = "explain";
+    explain.setAttribute("aria-live", "polite");
+    explain.setAttribute("data-speak", "");
+    explain.setAttribute("data-speak-title", "Explanation");
+    explain.setAttribute("data-speak-dynamic", "");
+    card.appendChild(explain);
+    return card;
+  }
+
+  function initQuestionBank() {
+    const form = document.getElementById("qb-filter");
+    const list = document.getElementById("qb-list");
+    if (!form || !list) return;
+    const subjectSel = document.getElementById("subject");
+    const topicSel = document.getElementById("topic");
+    const difficultySel = document.getElementById("difficulty");
+    const kindSel = document.getElementById("kind");
+    const qInput = document.getElementById("qb-q");
+    const countNode = document.getElementById("qb-count");
+
+    let entries = [];
+    let shownLimit = QB_PAGE_SIZE;
+    let moreWrap = null;
+    let moreBtn = null;
+    let active = { subject: "", topic: "", difficulty: "", kind: "", q: "", slug: "" };
+
+    const fromUrl = () => {
+      const p = new URLSearchParams(location.search);
+      const get = (k, max) => String(p.get(k) || "").trim().slice(0, max);
+      return {
+        subject: get("subject", 128), topic: get("topic", 128),
+        difficulty: get("difficulty", 32), kind: get("kind", 64),
+        q: get("q", 120), slug: get("slug", 128),
+      };
+    };
+
+    const topicSubject = (slug) => {
+      if (!topicSel || !slug) return "";
+      const opt = Array.from(topicSel.options).find((o) => o.value === slug);
+      return opt ? (opt.getAttribute("data-subject") || "") : "";
+    };
+
+    const narrowTopics = () => {
+      if (!subjectSel || !topicSel) return;
+      const chosen = subjectSel.value;
+      Array.from(topicSel.querySelectorAll("optgroup[data-subject]")).forEach((group) => {
+        const keep = !chosen || group.getAttribute("data-subject") === chosen;
+        group.hidden = !keep;
+        group.disabled = !keep;
+      });
+      const picked = topicSel.selectedOptions && topicSel.selectedOptions[0];
+      if (picked && picked.value && chosen
+          && (picked.getAttribute("data-subject") || "") !== chosen) {
+        topicSel.value = "";
+      }
+    };
+
+    const setControls = (f) => {
+      const setIf = (sel, value) => {
+        if (!sel) return;
+        sel.value = Array.from(sel.options).some((o) => o.value === value) ? value : "";
+      };
+      setIf(subjectSel, f.subject);
+      setIf(topicSel, f.topic);
+      setIf(difficultySel, f.difficulty);
+      setIf(kindSel, f.kind);
+      if (qInput) qInput.value = f.q || "";
+    };
+
+    const readControls = () => ({
+      subject: subjectSel ? subjectSel.value : "",
+      topic: topicSel ? topicSel.value : "",
+      difficulty: difficultySel ? difficultySel.value : "",
+      kind: kindSel ? kindSel.value : "",
+      q: qInput ? qInput.value.trim().slice(0, 120) : "",
+      slug: "",
+    });
+
+    const writeUrl = (f, push) => {
+      const p = new URLSearchParams();
+      if (f.subject) p.set("subject", f.subject);
+      if (f.topic) p.set("topic", f.topic);
+      if (f.difficulty) p.set("difficulty", f.difficulty);
+      if (f.kind) p.set("kind", f.kind);
+      if (f.q) p.set("q", f.q);
+      if (f.slug) p.set("slug", f.slug);
+      const qs = p.toString();
+      try {
+        history[push ? "pushState" : "replaceState"](null, "", qs ? `${location.pathname}?${qs}` : location.pathname);
+      } catch (_) { /* the filter still applied; only the address bar is stale */ }
+    };
+
+    const render = () => {
+      const filtered = entries.filter((item) => qbMatches(item, active));
+      if (countNode) {
+        const anyFilter = Boolean(active.subject || active.topic || active.difficulty
+          || active.kind || active.q || active.slug);
+        countNode.textContent = anyFilter
+          ? `${filtered.length} matching question${filtered.length === 1 ? "" : "s"}.`
+          : `${filtered.length} questions across the complete subject catalogue.`;
+      }
+      list.replaceChildren();
+      if (!filtered.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No questions match that filter.";
+        list.appendChild(empty);
+      } else {
+        filtered.slice(0, shownLimit).forEach((item) => list.appendChild(buildQbCard(item)));
+      }
+      if (moreWrap && moreBtn) {
+        const remaining = filtered.length - Math.min(shownLimit, filtered.length);
+        moreWrap.hidden = remaining <= 0;
+        if (remaining > 0) moreBtn.textContent = `Show more questions (${remaining} more)`;
+      }
+      return filtered.length;
+    };
+
+    const apply = (f, { push = false, url = true } = {}) => {
+      // The topic wins over a mismatched subject, as on the server, and the
+      // Subject select is re-pointed so the form describes the screen.
+      if (f.topic) {
+        const ts = topicSubject(f.topic);
+        if (ts) {
+          f.subject = ts;
+          if (subjectSel) subjectSel.value = ts;
+        }
+      }
+      active = f;
+      narrowTopics();
+      render();
+      if (url) writeUrl(f, push);
+    };
+
+    loadQuizBank().then((bank) => {
+      entries = Object.values(bank || {})
+        .filter((item) => item && typeof item === "object" && item.id && item.stem);
+      if (!entries.length) return; // keep the server-rendered first screen
+
+      // The server pager links to ?page=2 of a file that only has page 1;
+      // Show-more is this copy's pager, so the baked one goes away.
+      const pager = document.querySelector(".pager");
+      if (pager) pager.hidden = true;
+      moreWrap = document.createElement("div");
+      moreWrap.className = "center mt";
+      moreBtn = document.createElement("button");
+      moreBtn.type = "button";
+      moreBtn.className = "btn btn-soft";
+      moreBtn.addEventListener("click", () => {
+        shownLimit += QB_PAGE_SIZE;
+        render();
+      });
+      moreWrap.appendChild(moreBtn);
+      list.after(moreWrap);
+
+      const initial = fromUrl();
+      setControls(initial);
+      apply(initial, { url: false });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        shownLimit = QB_PAGE_SIZE;
+        apply(readControls(), { push: true });
+      });
+      [subjectSel, topicSel, difficultySel, kindSel].forEach((sel) => {
+        if (!sel) return;
+        sel.addEventListener("change", () => {
+          if (sel === subjectSel) narrowTopics();
+          shownLimit = QB_PAGE_SIZE;
+          apply(readControls(), { push: true });
+        });
+      });
+      if (qInput) {
+        let timer = null;
+        qInput.addEventListener("input", () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            shownLimit = QB_PAGE_SIZE;
+            apply(readControls());
+          }, 250);
+        });
+      }
+      window.addEventListener("popstate", () => {
+        const f = fromUrl();
+        setControls(f);
+        shownLimit = QB_PAGE_SIZE;
+        apply(f, { url: false });
+      });
+    }).catch((error) => reportRuntimeProblem("questionBank", error));
+  }
+  safely("questionBank", initQuestionBank);
 
   // ---------------------------------------------------------------------------
   // 5. Topic Completion, Bookmarks & Flashcards in the Browser

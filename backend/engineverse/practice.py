@@ -101,7 +101,12 @@ def list_questions(
     rows = db.query(
         "SELECT q.*, t.slug AS topic_slug, t.title AS topic_title, s.name AS subject_name, s.slug AS subject_slug "
         f"FROM questions q LEFT JOIN topics t ON t.id = q.topic_id LEFT JOIN subjects s ON s.id = q.subject_id "
-        f"WHERE {where} ORDER BY q.difficulty, q.created_at DESC LIMIT ? OFFSET ?",
+        # q.id breaks created_at ties (seeded rows share a timestamp to the
+        # millisecond). Without it the order within a difficulty is whatever
+        # the storage engine feels like, so page 1 of the hosted bank and the
+        # first screen the static copy renders from quiz-bank.json - which is
+        # exported in this same order - would disagree for no reason.
+        f"WHERE {where} ORDER BY q.difficulty, q.created_at DESC, q.id LIMIT ? OFFSET ?",
         *args, limit, offset,
     )
     return [public_question(row) for row in rows], total
@@ -455,3 +460,29 @@ def mistake_cards(user_id: str, *, limit: int = 50) -> list[dict]:
 
 def question_kinds() -> list[dict]:
     return db.query("SELECT kind, count(*) AS count FROM questions WHERE is_active=1 GROUP BY kind ORDER BY count DESC")
+
+
+def question_topics() -> list[dict]:
+    """Published topics that actually have practice questions, with counts.
+
+    This feeds the question bank's Topic selector. The bank handler has
+    honoured ``?topic=<slug>`` for a long time, but the filter form never
+    offered a topic to pick, so "the MCQs for this part" was reachable only
+    by hand-editing the URL or by following the one link on /mistakes. A
+    selector built from every published topic would be just as dishonest in
+    the other direction - it would offer topics whose honest answer is an
+    empty page - so only topics with at least one active question are
+    listed, each with the number of MCQs choosing it will show.
+
+    Rows are ordered by subject then topic title so the template can group
+    them under one ``<optgroup>`` per subject without sorting again. The 90
+    language-checkpoint questions have no topic and stay reachable through
+    the subject/kind filters, exactly as before.
+    """
+    return db.query(
+        "SELECT t.slug, t.title, t.subject_id, s.name AS subject_name, count(q.id) AS count "
+        "FROM topics t JOIN subjects s ON s.id = t.subject_id "
+        "JOIN questions q ON q.topic_id = t.id AND q.is_active = 1 "
+        "WHERE t.status = 'published' "
+        "GROUP BY t.id ORDER BY s.name, t.title"
+    )
