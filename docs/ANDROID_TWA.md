@@ -13,7 +13,11 @@ sign-in. The browser/PWA uses the same account and private server database as a
 desktop browser; it is not a second site. Only previously cached *public* pages
 may work offline. Sign-in, saved practice and code judging require a connection.
 
-An APK is optional. This repository can build a **Trusted Web Activity (TWA)**
+An installable APK of the native app — with the notes, practice bank and
+planner bundled inside it — is published on every push at
+[android-latest](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/tag/android-latest).
+This page is about a different thing: hosting the full website and wrapping it.
+This repository can build a **Trusted Web Activity (TWA)**
 which opens that *hosted full app*, **not** the GitHub Pages reading copy. An APK
 cannot run PostgreSQL, a Python API or Judge0 on a phone. It does not make
 backend-disabled operations available. A GitHub Release is not a Play Store

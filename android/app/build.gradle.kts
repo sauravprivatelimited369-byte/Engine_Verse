@@ -15,14 +15,16 @@ val canSignRelease = listOf(releaseKeystore, releaseStorePassword, releaseKeyAli
 
 android {
     namespace = "io.github.sauravprivatelimited369byte.engineverse"
-    compileSdk = 36
+    // AndroidX 2.10 / Compose BOM 2026.09 are compiled against API 37; the
+    // target stays 36 because that is what Google Play requires.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.sauravprivatelimited369byte.engineverse"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         // The public website this app opens for full notes and the playground.
         buildConfigField("String", "SITE_URL", "\"https://sauravprivatelimited369-byte.github.io/Engine_Verse/\"")
         buildConfigField("String", "REPO_URL", "\"https://github.com/sauravprivatelimited369-byte/Engine_Verse\"")

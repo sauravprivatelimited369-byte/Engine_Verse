@@ -37,8 +37,10 @@ jobs:
     name: Build & test macOS (.dmg) and iOS (.ipa)
     runs-on: macos-15
     timeout-minutes: 30
+    # Packages are attached to a public release below, so anyone can download
+    # them without a GitHub login.
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -141,6 +143,37 @@ jobs:
             security delete-keychain "$KEYCHAIN_PATH" || true
           fi
           rm -f "$RUNNER_TEMP/certificate.p12" "$RUNNER_TEMP/Meridian.mobileprovision"
+
+      - name: Publish the installable packages to the apple-latest release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+          assets=(
+            apple/build/out/Meridian-macOS.dmg
+            apple/build/out/Meridian-macOS.dmg.sha256
+            apple/build/out/Meridian-iOS.ipa
+            apple/build/out/Meridian-iOS.ipa.sha256
+          )
+          for asset in "${assets[@]}"; do
+            [ -f "$asset" ] || fail "expected package $asset was not built"
+          done
+          tag=apple-latest
+          notes="Installable Meridian apps built from ${GITHUB_SHA:0:7} on ${GITHUB_REF_NAME}. Meridian-macOS.dmg is a universal (arm64 + x86_64) disk image: drag Meridian to Applications, then open it once with right-click > Open. Meridian-iOS.ipa is ad-hoc signed, so install it with AltStore, SideStore, Sideloadly or Xcode, which re-sign it for your own Apple ID. Verify the SHA-256 sidecars before installing."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if ! out=$(gh release upload "$tag" "${assets[@]}" --clobber 2>&1); then
+              fail "gh release upload failed: $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
+            fi
+          else
+            if ! out=$(gh release create "$tag" "${assets[@]}" \
+                --target "$GITHUB_SHA" --title "Meridian for iOS & macOS (latest build)" \
+                --latest=false --notes "$notes" 2>&1); then
+              fail "gh release create failed: $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
+            fi
+          fi
+          echo "::notice title=Apple downloads::https://github.com/${GITHUB_REPOSITORY}/releases/tag/$tag"
 
       - name: Upload macOS disk image (.dmg)
         uses: actions/upload-artifact@v7

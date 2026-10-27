@@ -44,6 +44,10 @@ if [ ! -f "$APPLE_DIR/Resources/catalog.json" ]; then
   echo "error: apple/Resources/catalog.json is missing; run scripts/export_apple_catalog.py" >&2
   exit 1
 fi
+if [ ! -f "$APPLE_DIR/Resources/content.json" ]; then
+  echo "error: apple/Resources/content.json is missing; run scripts/export_mobile_content.py" >&2
+  exit 1
+fi
 if [ ! -f "$ICON_SRC" ]; then
   echo "error: icon source missing at $ICON_SRC" >&2
   exit 1
@@ -96,6 +100,7 @@ if [ "$run_macos" = true ]; then
   chmod 0755 "$MAC_APP/Contents/MacOS/Meridian"
   cp "$APPLE_DIR/Resources/macOS/Info.plist" "$MAC_APP/Contents/Info.plist"
   cp "$APPLE_DIR/Resources/catalog.json" "$MAC_APP/Contents/Resources/catalog.json"
+  cp "$APPLE_DIR/Resources/content.json" "$MAC_APP/Contents/Resources/content.json"
   cp "$APPLE_DIR/Resources/PrivacyInfo.xcprivacy" "$MAC_APP/Contents/Resources/PrivacyInfo.xcprivacy"
   printf 'APPL????' > "$MAC_APP/Contents/PkgInfo"
   build_macos_icns "$MAC_APP/Contents/Resources/AppIcon.icns"
@@ -183,6 +188,7 @@ if [ "$run_ios" = true ]; then
 
   cp "$APPLE_DIR/Resources/iOS/Info.plist" "$IOS_APP/Info.plist"
   cp "$APPLE_DIR/Resources/catalog.json" "$IOS_APP/catalog.json"
+  cp "$APPLE_DIR/Resources/content.json" "$IOS_APP/content.json"
   cp "$APPLE_DIR/Resources/PrivacyInfo.xcprivacy" "$IOS_APP/PrivacyInfo.xcprivacy"
   printf 'APPL????' > "$IOS_APP/PkgInfo"
 

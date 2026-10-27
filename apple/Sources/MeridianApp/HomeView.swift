@@ -10,6 +10,7 @@ private struct RecentTopicItem: Identifiable {
 struct HomeView: View {
     @ObservedObject var store: AppStore
     let catalog: Catalog
+    let library: LessonLibrary
     let selectSection: (AppSection) -> Void
     let openWeb: (String) -> Void
 
@@ -31,7 +32,7 @@ struct HomeView: View {
                     Text("Engineering, studied properly.")
                         .font(.system(.title2, design: .serif, weight: .semibold))
                         .foregroundStyle(palette.onPrimaryContainer)
-                    Text("\(catalog.subjects.count) subjects and \(catalog.topicCount) topics are bundled on this device and work offline. Full notes, practice questions and the code playground open from the website.")
+                    Text("\(catalog.subjects.count) subjects, \(catalog.topicCount) topics and their full notes are built into this app, with practice questions, and all of it works offline.")
                         .font(.subheadline)
                         .foregroundStyle(palette.onPrimaryContainer.opacity(0.9))
                 }
@@ -88,6 +89,12 @@ struct HomeView: View {
                     action: { selectSection(.learn) }
                 )
                 ActionCardView(
+                    systemImage: "checklist",
+                    title: "Practise questions",
+                    subtitle: "Multiple-choice practice, saved on this device",
+                    action: { selectSection(.practice) }
+                )
+                ActionCardView(
                     systemImage: "chevron.left.forwardslash.chevron.right",
                     title: "Code playground",
                     subtitle: "Write and run code in the browser runtimes",
@@ -113,7 +120,14 @@ struct HomeView: View {
                         .padding(.top, 4)
                     ForEach(recent) { item in
                         NavigationLink {
-                            TopicDetailView(store: store, subject: item.subject, topic: item.topic, openWeb: openWeb)
+                            TopicDetailView(
+                                store: store,
+                                catalog: catalog,
+                                subject: item.subject,
+                                topic: item.topic,
+                                library: library,
+                                openWeb: openWeb
+                            )
                         } label: {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")

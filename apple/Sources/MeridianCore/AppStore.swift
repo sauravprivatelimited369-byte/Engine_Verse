@@ -14,6 +14,8 @@ public final class AppStore: ObservableObject {
     @Published public private(set) var activityDays: Set<Int64>
     @Published public private(set) var tasks: [PlannerTask]
     @Published public private(set) var themeMode: ThemeMode
+    /// Practice answers already given: question slug -> whether it was correct.
+    @Published public private(set) var answers: [String: Bool]
 
     private let defaults: UserDefaults
 
@@ -22,6 +24,7 @@ public final class AppStore: ObservableObject {
         static let days = "activity_days"
         static let tasks = "planner_tasks"
         static let theme = "theme"
+        static let answers = "practice_answers"
     }
 
     public init(defaults: UserDefaults = UserDefaults(suiteName: "\(AppConfig.bundleIdentifier).store") ?? .standard) {
@@ -30,6 +33,27 @@ public final class AppStore: ObservableObject {
         self.activityDays = Self.readDays(from: defaults)
         self.tasks = Self.readTasks(from: defaults)
         self.themeMode = Self.readTheme(from: defaults)
+        self.answers = Self.readAnswers(from: defaults)
+    }
+
+    public var answeredCount: Int { answers.count }
+
+    public var correctCount: Int { answers.values.filter { $0 }.count }
+
+    public func isAnswered(_ slug: String) -> Bool {
+        answers[slug] != nil
+    }
+
+    public func wasCorrect(_ slug: String) -> Bool {
+        answers[slug] == true
+    }
+
+    /// Remembers the latest answer to a practice question and counts the day.
+    public func answer(_ slug: String, correct: Bool) {
+        guard Self.isValidSlug(slug) else { return }
+        answers[slug] = correct
+        defaults.set(answers, forKey: Keys.answers)
+        recordActivity()
     }
 
     public var streak: Streak.Result {
@@ -93,10 +117,12 @@ public final class AppStore: ObservableObject {
         defaults.removeObject(forKey: Keys.days)
         defaults.removeObject(forKey: Keys.tasks)
         defaults.removeObject(forKey: Keys.theme)
+        defaults.removeObject(forKey: Keys.answers)
         completedTopics = []
         activityDays = []
         tasks = []
         themeMode = .system
+        answers = [:]
     }
 
     public func summaryText(catalog: Catalog) -> String {
@@ -154,6 +180,16 @@ public final class AppStore: ObservableObject {
                 createdAt: item.createdAt
             )
         }.prefix(PlannerRules.maxTasks))
+    }
+
+    private static func readAnswers(from defaults: UserDefaults) -> [String: Bool] {
+        guard let raw = defaults.dictionary(forKey: Keys.answers) else { return [:] }
+        var parsed: [String: Bool] = [:]
+        for (slug, value) in raw {
+            guard isValidSlug(slug), let wasRight = value as? Bool else { continue }
+            parsed[slug] = wasRight
+        }
+        return parsed
     }
 
     private static func readTheme(from defaults: UserDefaults) -> ThemeMode {

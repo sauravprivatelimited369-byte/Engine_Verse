@@ -44,6 +44,10 @@ jobs:
     name: Test, lint and build debug APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The APK is attached to a public release below, so anyone can download and
+    # install it without a GitHub login. That needs write access to releases.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -112,6 +116,35 @@ jobs:
                   where = f"{loc.get('file','').split('/android/')[-1]}:{loc.get('line','')}" if loc is not None else ""
                   print(f"::notice title=Lint {i.get('severity')} {i.get('id')}::{where} {i.get('message','')[:300]}")
           PY
+
+      - name: Publish the installable APK to the android-latest release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          apk=$(ls app/build/outputs/apk/debug/*.apk 2>/dev/null | head -n 1)
+          [ -n "$apk" ] || fail "no debug APK was produced"
+          mkdir -p ../dist
+          cp "$apk" ../dist/Meridian.apk
+          (cd ../dist && sha256sum Meridian.apk > Meridian.apk.sha256) || fail "could not compute the SHA-256"
+
+          tag=android-latest
+          notes="Installable Meridian APK built from ${GITHUB_SHA:0:7} on ${GITHUB_REF_NAME}. Debug-signed: allow installs from unknown sources, and uninstall any older Meridian build if the signature differs. Compare the SHA-256 in Meridian.apk.sha256 before installing."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if ! out=$(gh release upload "$tag" ../dist/Meridian.apk ../dist/Meridian.apk.sha256 --clobber 2>&1); then
+              fail "gh release upload failed: $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
+            fi
+          else
+            if ! out=$(gh release create "$tag" ../dist/Meridian.apk ../dist/Meridian.apk.sha256 \
+                --target "$GITHUB_SHA" --title "Meridian for Android (latest build)" \
+                --latest=false --notes "$notes" 2>&1); then
+              fail "gh release create failed: $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
+            fi
+          fi
+          echo "::notice title=APK download::https://github.com/${GITHUB_REPOSITORY}/releases/tag/$tag"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v7

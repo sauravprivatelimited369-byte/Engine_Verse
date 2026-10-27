@@ -1,5 +1,5 @@
-# Versions chosen for compileSdk/targetSdk 36 (Google Play's requirement from
-# 31 Aug 2026). Newer AndroidX releases need compileSdk 37; move together.
+# targetSdk stays 36 (Google Play's requirement from 31 Aug 2026) while
+# compileSdk is 37: these AndroidX releases fail AAR metadata checks below 37.
 [versions]
 agp = "9.4.1"
 kotlin = "2.4.21"

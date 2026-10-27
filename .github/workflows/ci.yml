@@ -97,10 +97,11 @@ jobs:
         env:
           ENGINEVERSE_DB_PATH: data/ci.sqlite3
 
-      - name: Native offline catalogues match seed
+      - name: Native offline catalogues and lesson library match seed
         run: |
           python scripts/export_android_catalog.py --check
           python scripts/export_apple_catalog.py --check
+          python scripts/export_mobile_content.py --check
 
   postgres:
     name: PostgreSQL · schema applies

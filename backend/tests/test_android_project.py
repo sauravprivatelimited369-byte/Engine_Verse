@@ -80,7 +80,14 @@ class TestBuildConfiguration:
 
     def test_toolchain_versions(self):
         wrapper = _read(ANDROID / "gradle" / "wrapper" / "gradle-wrapper.properties")
-        assert "gradle-9.4.1-bin.zip" in wrapper
+        # The wrapper must be at least the minimum Gradle the pinned AGP runs on.
+        # 9.4.1 with AGP 9.4.1 failed on every push ("Minimum supported Gradle
+        # version is 9.6.0"), so the app never produced an APK; assert the pair
+        # together instead of a hard-coded patch release.
+        found = re.search(r"gradle-(\d+)\.(\d+)(?:\.(\d+))?-bin\.zip", wrapper)
+        assert found, wrapper
+        version = tuple(int(part or 0) for part in found.groups())
+        assert version >= (9, 6, 0), f"Gradle {version} is older than AGP 9.4.1 supports"
         assert (ANDROID / "gradle" / "wrapper" / "gradle-wrapper.jar").stat().st_size > 40_000
         versions = _read(ANDROID / "gradle" / "libs.versions.toml")
         # Assert the major version, not one patch release: the file has already
@@ -153,6 +160,15 @@ class TestResourcesAndWorkflow:
     def test_gradle_wrapper_is_executable_for_ci(self):
         import os
         assert os.access(ANDROID / "gradlew", os.X_OK)
+
+    def test_ci_workflow_publishes_an_installable_apk(self):
+        wf = _read(ROOT / ".github" / "workflows" / "android-build.yml")
+        # Artifacts need a GitHub login; a release asset is a plain download, so
+        # the APK is also attached to the rolling android-latest release.
+        assert "android-latest" in wf
+        assert "gh release create" in wf and "gh release upload" in wf
+        assert "Meridian.apk" in wf
+        assert "contents: write" in wf
 
     def test_ci_workflow_builds_tests_lints_and_uploads_debug_apk(self):
         wf = _read(ROOT / ".github" / "workflows" / "android-build.yml")
