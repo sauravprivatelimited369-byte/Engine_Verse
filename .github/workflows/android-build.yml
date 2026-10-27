@@ -72,8 +72,16 @@ jobs:
               sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
             fi
             [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
-            if ! out=$({ (yes || true) | "$sdkmanager_bin" --licenses >/dev/null && (yes || true) | "$sdkmanager_bin" "platforms;android-37"; } 2>&1); then
-              printf '%s\n' "$out" | tail -n 15 | while IFS= read -r line; do
+            install_platform() {
+              printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --licenses >/dev/null
+              if printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" "platforms;android-37"; then
+                return 0
+              fi
+              printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --channel=3 --licenses >/dev/null
+              printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" --channel=3 "platforms;android-37"
+            }
+            if ! out=$(install_platform 2>&1); then
+              printf '%s\n' "$out" | tr '\r' '\n' | grep -E '\S' | tail -n 15 | while IFS= read -r line; do
                 esc=$(printf '%s' "$line" | sed 's/%/%25/g')
                 echo "::error title=sdkmanager::${esc}"
               done
@@ -228,8 +236,16 @@ jobs:
               sdkmanager_bin=$(command -v sdkmanager || ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
             fi
             [ -x "${sdkmanager_bin:-}" ] || { echo "::error::sdkmanager not found under $sdk"; exit 1; }
-            if ! out=$({ (yes || true) | "$sdkmanager_bin" --licenses >/dev/null && (yes || true) | "$sdkmanager_bin" "platforms;android-37"; } 2>&1); then
-              printf '%s\n' "$out" | tail -n 15 | while IFS= read -r line; do
+            install_platform() {
+              printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --licenses >/dev/null
+              if printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" "platforms;android-37"; then
+                return 0
+              fi
+              printf 'y\n%.0s' {1..40} | "$sdkmanager_bin" --channel=3 --licenses >/dev/null
+              printf 'y\n%.0s' {1..10} | "$sdkmanager_bin" --channel=3 "platforms;android-37"
+            }
+            if ! out=$(install_platform 2>&1); then
+              printf '%s\n' "$out" | tr '\r' '\n' | grep -E '\S' | tail -n 15 | while IFS= read -r line; do
                 esc=$(printf '%s' "$line" | sed 's/%/%25/g')
                 echo "::error title=sdkmanager::${esc}"
               done
