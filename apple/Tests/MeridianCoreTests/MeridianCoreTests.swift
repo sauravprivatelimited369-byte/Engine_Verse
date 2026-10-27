@@ -2,6 +2,67 @@ import Foundation
 import MeridianCore
 import XCTest
 
+final class LessonLibraryTests: XCTestCase {
+    private let document = """
+    {"format":"engineverse-mobile-content","version":1,
+     "levels":["beginner","standard"],
+     "notes":{"arrays":{"standard":[
+        {"kind":"definition","title":"Formal definition","callout":"exam",
+         "blocks":[["p",[["An array is ", ""],["contiguous","b"],[" memory.",""]]],
+                   ["math","a_{i}=b","aᵢ=b"],
+                   ["table",[[["Symbol",""]]],[[[["n","m"]]]]],
+                   ["hr"]]}]}},
+     "formulas":{"arrays":[{"name":"Index","latex":"a_i","meaning":"offset","application":"lookup"}]},
+     "practice":[{"slug":"arrays-what","subject":"dsa","topic":"arrays","difficulty":"easy",
+        "stem":[["p",[["What is an array?",""]]]],
+        "context":[],
+        "options":[{"label":"A","body":[["p",[["A list",""]]]],"correct":true,"why":[]},
+                   {"label":"B","body":[["p",[["A tree",""]]]],"correct":false,"why":[]}],
+        "explanation":[["p",[["Because.",""]]]]}]}
+    """
+
+    func testDecodesTheBundledContentFormat() throws {
+        let library = try LessonLibrary.decode(from: Data(document.utf8))
+        XCTAssertEqual(library.levels, ["beginner", "standard"])
+        XCTAssertEqual(library.availableLevels("arrays"), ["standard"])
+        XCTAssertEqual(library.topicCount, 1)
+
+        let sections = library.sections(topic: "arrays", level: "standard")
+        XCTAssertEqual(sections.count, 1)
+        XCTAssertEqual(sections[0].callout, "exam")
+
+        guard case let .paragraph(runs) = sections[0].blocks[0] else {
+            return XCTFail("expected a paragraph")
+        }
+        XCTAssertEqual(runs.map(\.text).joined(), "An array is contiguous memory.")
+        XCTAssertTrue(runs[1].bold)
+
+        guard case let .math(latex, plain) = sections[0].blocks[1] else {
+            return XCTFail("expected display maths")
+        }
+        XCTAssertEqual(latex, "a_{i}=b")
+        XCTAssertEqual(plain, "aᵢ=b")
+
+        guard case .table = sections[0].blocks[2], .rule == sections[0].blocks[3] else {
+            return XCTFail("expected a table and a rule")
+        }
+
+        let questions = library.questions(forTopic: "arrays")
+        XCTAssertEqual(questions.count, 1)
+        XCTAssertEqual(questions[0].headline, "What is an array?")
+        XCTAssertEqual(questions[0].options.filter(\.correct).count, 1)
+    }
+
+    func testRejectsForeignDocuments() {
+        XCTAssertThrowsError(try LessonLibrary.decode(from: Data("{\"format\":\"other\",\"version\":1}".utf8)))
+    }
+
+    func testLevelNames() {
+        XCTAssertEqual(LessonLibrary.levelName("beginner"), "Beginner")
+        XCTAssertEqual(LessonLibrary.levelName("industry"), "Industry")
+    }
+}
+
 final class MeridianCoreTests: XCTestCase {
     func testUrlPolicyAllowsOnlySiteHttpsPages() {
         let policy = UrlPolicy(siteURL: "https://sauravprivatelimited369-byte.github.io/Engine_Verse/")
