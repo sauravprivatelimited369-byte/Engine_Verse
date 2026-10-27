@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.sauravprivatelimited369byte.engineverse.core.Block
@@ -176,7 +177,7 @@ fun spans(spans: List<Span>): AnnotatedString {
                     fontWeight = if (span.bold) FontWeight.Bold else null,
                     fontStyle = if (span.italic) FontStyle.Italic else null,
                     fontFamily = if (span.code || span.math) FontFamily.Monospace else null,
-                    fontSize = if (span.code || span.math) 13.sp else null,
+                    fontSize = if (span.code || span.math) 13.sp else TextUnit.Unspecified,
                     color = if (span.math) mathColor else Color.Unspecified,
                     background = if (span.code) codeBackground else Color.Unspecified,
                 )
