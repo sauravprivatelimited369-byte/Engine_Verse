@@ -1772,6 +1772,11 @@ def export(
         fetch = "/explore" if path == "/explore/first-year" else path
         if path == "/explore/first-year":
             response = client.get("/explore", params={"year": "1"})
+        elif path == "/explore":
+            # One document for the whole catalogue: the static copy cannot page,
+            # and the top-bar stream filter has to be able to see every subject
+            # of the chosen branch rather than only the first page's.
+            response = client.get("/explore", params={"show_all": "1"})
         elif path.startswith("/topics/") and path.count("/") == 2:
             response = client.get(fetch, params={"depths": "all"})
         else:

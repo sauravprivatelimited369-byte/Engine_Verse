@@ -71,7 +71,19 @@
     <a class="section-link" href="/explore{{ '?year=1' if active_year else '' }}">Clear filters {{ icon("close", 13) }}</a>
   {% endif %}
 </div>
-<div class="grid g3 subject-grid">
+
+{# The catalogue shelf is stream-scoped: the top-bar switcher filters it to the
+   learner's own branch, and this banner appears in place of a silently emptied
+   grid so the reader knows the list shrank on purpose and where the rest of it
+   lives. It is hidden until stream.js turns it on. #}
+<div class="panel mb" data-ev-stream-notice>
+  <strong>Showing only <span data-ev-stream-notice-name>your stream</span></strong>
+  <span class="muted small">— the shared first-year core is still included.
+    <a data-ev-stream-notice-hub href="/streams">Open its study hub</a> or
+    <a href="/streams">browse every stream</a>.</span>
+</div>
+
+<div class="grid g3 subject-grid" data-ev-stream-scope>
   {% for subject in subjects %}
     {% include "_subject_card.html" %}
   {% else %}
@@ -82,6 +94,14 @@
       <a class="btn btn-soft btn-sm" href="/explore">Clear the filter</a>
     </div>
   {% endfor %}
+  <div class="empty" data-ev-stream-empty style="grid-column:1/-1">
+    <span class="em" aria-hidden="true">{{ icon("compass", 26) }}</span>
+    <strong>Nothing from your stream is on this page.</strong>
+    <p class="small muted" style="margin:6px 0 12px">
+      The catalogue is paginated; open your stream's hub for its whole subject list.
+    </p>
+    <a class="btn btn-soft btn-sm" data-ev-stream-notice-hub href="/streams">Open my stream's hub</a>
+  </div>
 </div>
 {% include "_pager.html" %}
 {% endblock %}

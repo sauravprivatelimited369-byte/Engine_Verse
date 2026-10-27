@@ -22,11 +22,11 @@
 {% endif %}
 
 {% for group in categories %}
-<section class="mb">
+<section class="mb" data-ev-stream-group>
   <h2>{{ group.name }}</h2>
   <div class="grid g3">
     {% for branch in group.branches %}
-      <div class="card">
+      <div class="card" data-ev-stream="{{ branch.slug }}">
         <a class="card-body" href="/stream/{{ branch.slug }}">
           <span class="title">{{ branch.name }}{% if my_branch and branch.id == my_branch.id %} <span class="chip ok">Yours</span>{% endif %}</span>
           <span class="desc">{{ branch.description }}</span>
@@ -36,6 +36,7 @@
           <span class="chip">{{ branch.notes }} notes</span>
           <span class="chip">{{ branch.questions }} questions</span>
           {% if branch.projects %}<span class="chip">{{ branch.projects }} projects</span>{% endif %}
+          <span class="chip">{{ branch.resources }} links</span>
         </div>
       </div>
     {% endfor %}

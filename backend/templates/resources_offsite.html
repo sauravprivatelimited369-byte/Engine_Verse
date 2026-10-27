@@ -2,7 +2,7 @@
 {% from "_icons.html" import icon %}
 {% block title %}Optional external reading — {{ brand.site_name }}{% endblock %}
 {% block content %}
-<h1>Optional external reading</h1>
+<h1>{% if branch_name %}Optional external reading for {{ branch_name }}{% else %}Optional external reading{% endif %}</h1>
 <div class="callout warning">
   <span class="label">You do not need any of this</span>
   Every graded problem, note, formula sheet, flashcard and project brief lives inside {{ brand.site_name }}.
@@ -11,9 +11,26 @@
 </div>
 <p class="muted">Official documentation, free courses and tools. Nothing pirated, nothing behind a paywall we
   cannot justify.</p>
+<form class="panel mb filter-panel" method="get" action="/resources/offsite">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end">
+    <div><label for="branch">Stream</label>
+      <select id="branch" name="branch">
+        <option value="">Every stream</option>
+        {% for group in branches %}{% for b in group.branches %}
+          <option value="{{ b.slug }}" {{ 'selected' if active_branch == b.slug }}>{{ b.name }}</option>
+        {% endfor %}{% endfor %}
+      </select></div>
+    <div><label for="kind">Type</label>
+      <select id="kind" name="kind">
+        <option value="">All types</option>
+        {% for k in kinds %}<option value="{{ k.kind }}" {{ 'selected' if active_kind == k.kind }}>{{ k.kind }}</option>{% endfor %}
+      </select></div>
+    <div><button class="btn btn-primary btn-block" type="submit">Filter</button></div>
+  </div>
+</form>
 <div class="chips-row">
-  <a class="chip {{ 'on' if not active_kind }}" href="/resources/offsite">All</a>
-  {% for k in kinds %}<a class="chip {{ 'on' if active_kind == k.kind }}" href="/resources/offsite?kind={{ k.kind }}">{{ k.kind }} ({{ k.count }})</a>{% endfor %}
+  <a class="chip {{ 'on' if not active_kind }}" href="/resources/offsite{{ '?branch=' + active_branch if active_branch else '' }}">All</a>
+  {% for k in kinds %}<a class="chip {{ 'on' if active_kind == k.kind }}" href="/resources/offsite?{% if active_branch %}branch={{ active_branch }}&{% endif %}kind={{ k.kind }}">{{ k.kind }} ({{ k.count }})</a>{% endfor %}
 </div>
 {% with narrow_noun="resource", narrow_all="the whole shelf", narrow_clear="/resources/offsite" %}{% include "_slugfilter.html" %}{% endwith %}
 <div class="grid g3">

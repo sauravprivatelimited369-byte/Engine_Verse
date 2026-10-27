@@ -405,6 +405,30 @@ a.mobilenav-head.on { color: var(--accent-ink); }
 .menu-pop a:hover, .menu-pop button.linklike:hover {
   background: var(--well); box-shadow: var(--neu-in-sm); color: var(--text); text-decoration: none;
 }
+.menu-pop a.on { background: var(--well); color: var(--accent-ink); font-weight: 650; }
+
+/* ------------------------------------------------------------------ stream
+   The global stream switcher and the filter it drives.
+
+   The switcher is an ordinary .menu: app.js opens and closes it, and the links
+   inside it are real anchors so the GitHub Pages export can rewrite them. The
+   filter is a class, not the hidden attribute, because many stream-scoped
+   elements carry their own display rule that would win over [hidden]. */
+.ev-stream-btn { gap: 5px; }
+.ev-stream-ico { display: inline-flex; }
+.ev-stream-label {
+  font-size: .8rem; font-weight: 650; max-width: 92px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ev-stream-btn.is-set .ev-stream-ico { color: var(--accent-ink); }
+/* A card, row or group that belongs to a different stream. */
+.ev-stream-off { display: none !important; }
+/* A shelf whose items were all filtered out collapses to its placeholder. */
+[data-ev-stream-scope].is-filtered-empty > *:not([data-ev-stream-empty]) { display: none !important; }
+[data-ev-stream-empty] { display: none; }
+[data-ev-stream-empty].is-on { display: block; }
+[data-ev-stream-notice] { display: none; }
+[data-ev-stream-notice].is-on { display: block; }
 .announce {
   max-width: var(--maxw); margin: 10px auto 0; width: calc(100% - 40px);
   background: var(--surface); color: var(--text); text-align: center;

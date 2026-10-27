@@ -430,17 +430,23 @@
       </div>
       <a class="mx-link" href="/explore">All subjects</a>
     </div>
-    <div class="mx-branches">
+    <div class="mx-branches" data-ev-stream-scope>
       {% for group in branches %}
-      <div class="mx-branch-group">
+      <div class="mx-branch-group" data-ev-stream-group>
         <h3>{{ group.name }} <span>{{ group.branches | length }}</span></h3>
         <ul>
           {% for branch in group.branches[:4] %}
-          <li><a href="/branches/{{ branch.slug }}">{{ branch.name }}<span>{{ branch.subject_count or 0 }} subjects</span></a></li>
+          <li data-ev-stream="{{ branch.slug }}"><a href="/branches/{{ branch.slug }}">{{ branch.name }}<span>{{ branch.subject_count or 0 }} subjects</span></a></li>
           {% endfor %}
         </ul>
       </div>
       {% endfor %}
+      <div class="empty" data-ev-stream-empty style="grid-column:1/-1">
+        <span class="em" aria-hidden="true">{{ icon("compass", 26) }}</span>
+        <strong>Your stream is not in this shortlist.</strong>
+        <p class="small muted" style="margin:6px 0 12px">Every branch has its own page and study hub.</p>
+        <a class="btn btn-soft btn-sm" href="/streams">Browse all {{ site.branches }} streams</a>
+      </div>
     </div>
     <details class="mx-branch-all">
       <summary>All {{ site.branches }} branches and their subjects</summary>

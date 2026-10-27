@@ -400,6 +400,31 @@ code, pre, .mono { font-family: var(--mono); font-size: 0.92em; }
 }
 
 .topbar-right { gap: 6px; }
+/* The global stream switcher: same chrome as the theme button, one accent
+   step quieter so it reads as a control rather than a call to action. */
+.ev-stream-menu { position: relative; }
+.ev-stream-btn {
+  gap: 6px; height: 34px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid transparent; color: var(--text-2);
+}
+.ev-stream-btn:hover { border-color: var(--line); background: rgba(16, 36, 62, 0.04); color: var(--text); }
+[data-theme="dark"] .ev-stream-btn:hover { background: rgba(212, 228, 248, 0.06); }
+.ev-stream-btn.is-set { color: var(--accent-ink); border-color: var(--line); background: rgba(16, 36, 62, 0.03); }
+[data-theme="dark"] .ev-stream-btn.is-set { background: rgba(212, 228, 248, 0.05); }
+.ev-stream-label { font-variant-numeric: tabular-nums; }
+.menu-pop a[data-ev-stream-slug]::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 8px; vertical-align: middle; background: var(--accent-3, var(--accent));
+  opacity: .55;
+}
+.menu-pop a[data-ev-stream-slug].on::before { opacity: 1; }
+/* The banner a filtered catalogue shows instead of a silently emptied grid. */
+[data-ev-stream-notice] {
+  display: none; margin: 0 0 14px; padding: 12px 16px; border-radius: var(--r, 14px);
+  background: var(--well); border: 1px solid var(--line); color: var(--text);
+}
+[data-ev-stream-notice].is-on { display: block; }
+[data-ev-stream-notice] strong { color: var(--accent-ink); }
 .streak, .xpchip {
   height: 34px;
   padding: 0 9px;
@@ -1603,6 +1628,12 @@ details:not(.panel) {
 }
 @media (max-width: 1020px) {
   .mainnav { display: none; }
+}
+@media (max-width: 560px) {
+  /* The stream switcher keeps its icon on a phone and drops the label, the
+     same trade the static copy's "My progress" button makes. */
+  .ev-stream-label { display: none; }
+  .ev-stream-btn { padding: 0 8px; }
 }
 @media (max-width: 900px) {
   .mx-footer-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }

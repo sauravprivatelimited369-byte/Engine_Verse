@@ -103,7 +103,8 @@ def list_streams(*, limit: int = 60) -> list[dict]:
         "     (SELECT id FROM subjects s5 WHERE s5.branch_id = b.id)) AS flashcards, "
         "  (SELECT count(*) FROM formulas fo WHERE fo.subject_id IN "
         "     (SELECT id FROM subjects s6 WHERE s6.branch_id = b.id)) AS formulas, "
-        "  (SELECT count(*) FROM projects p WHERE p.branch_id = b.id AND p.status = 'published') AS projects "
+        "  (SELECT count(*) FROM projects p WHERE p.branch_id = b.id AND p.status = 'published') AS projects, "
+        "  (SELECT count(*) FROM resources r WHERE r.branch_id = b.id) AS resources "
         "FROM branches b WHERE b.is_active = 1 ORDER BY b.order_index, b.name LIMIT ?",
         limit,
     )
@@ -279,4 +280,16 @@ def stream(branch_id: str, *, semester_id: int | None = None, viewer_id: str | N
             f"({','.join('?' * len(subject_ids))})", branch_id, *subject_ids
         ) if subject_ids else 0,
         "offsite_total": library.count_resources(),
+        # The stream's own optional reading, plus the resources no branch owns
+        # (the shared first-year core). These are deep links into the internal
+        # shelf rather than the external URLs themselves: a stream page never
+        # sends a learner straight to another site (see
+        # test_shapes_in_the_header_are_not_external_links_in_the_hub).
+        "resources": library.list_resources(branch_id=branch_id, limit=8),
+        "resources_total": library.count_resources(branch_id=branch_id),
+        # The split, so the shelf can say how much is the stream's own reading
+        # and how much is the shared first-year core rather than one number that
+        # quietly counts the core for every branch.
+        "resources_own": _count("SELECT count(*) FROM resources WHERE branch_id = ?", branch_id),
+        "resources_shared": _count("SELECT count(*) FROM resources WHERE branch_id IS NULL"),
     }

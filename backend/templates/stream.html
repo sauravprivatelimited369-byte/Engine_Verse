@@ -200,6 +200,39 @@
   </div>
 </section>
 
+{# Optional external reading, scoped to this stream. The cards link into the
+   internal shelf (anchored at the resource) rather than to the external URL, so
+   a stream page still sends nobody straight to another site; the shelf itself
+   carries the external link and says plainly that none of it is required. #}
+{% if resources_total %}
+<section id="reading" class="mb">
+  <div class="between">
+    <h2>Optional reading for this stream</h2>
+    <a class="section-link" href="/resources/offsite?branch={{ branch.slug }}">{{ resources_own }} for this stream{% if resources_shared %} · {{ resources_shared }} shared core{% endif %}</a>
+  </div>
+  <p class="muted small">Curated external reading - official documentation, open textbooks and tools - for
+    {{ branch.name }} and the shared first-year core. None of it is required: every note, formula sheet and
+    practice question for this stream is already on this site.</p>
+  {% if resources %}
+  <div class="grid g3">
+    {% for r in resources %}
+      <a class="card" href="/resources/offsite?branch={{ branch.slug }}#{{ r.slug }}">
+        <span class="title">{{ r.title }}</span>
+        <span class="desc">{{ r.description }}</span>
+        <div class="tags"><span class="chip accent">{{ r.kind }}</span>
+          <span class="chip">{{ r.level }}</span>
+          <span class="chip {{ 'ok' if r.is_free else '' }}">{{ 'Free' if r.is_free else 'Paid' }}</span></div>
+      </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><span class="em" aria-hidden="true">{{ icon("book", 26) }}</span>
+    No curated external reading is filed under this stream yet.
+    <a href="/resources/offsite">Browse the whole shelf</a>.</div>
+  {% endif %}
+</section>
+{% endif %}
+
 <section id="revise" class="mb">
   <h2>Revise</h2>
   <div class="grid g3">
