@@ -9,9 +9,10 @@
  *   2. Every element marked ``data-ev-stream="<slug>"`` that belongs to a
  *      different stream is hidden, and containers marked
  *      ``data-ev-stream-scope`` collapse to their ``data-ev-stream-empty``
- *      placeholder when nothing inside them matches. Elements with no
- *      attribute are chrome - navigation, footer, the note itself - and are
- *      never touched.
+ *      placeholder when nothing inside them matches. Elements marked
+ *      ``data-ev-stream-shared`` (shared subjects) are never hidden and count
+ *      as a match. Elements with no attribute are chrome - navigation, footer,
+ *      the note itself - and are never touched.
  *
  * The menu itself is rendered by ``base.html`` (with real links, so it works
  * without JavaScript and so the GitHub Pages export can rewrite the URLs);
@@ -133,7 +134,12 @@
       el.classList.toggle("ev-stream-off", Boolean(slug) && value !== slug);
     });
     document.querySelectorAll("[data-ev-stream-scope]").forEach((scope) => {
-      const visible = scope.querySelectorAll("[data-ev-stream]:not(.ev-stream-off)").length > 0;
+      // Shared items (data-ev-stream-shared, such as the first-year core) belong
+      // to every stream, so they keep a scope open even when no branch item is
+      // left. Without this a first-year page filtered by stream showed nothing.
+      const visible = scope.querySelectorAll(
+        "[data-ev-stream]:not(.ev-stream-off), [data-ev-stream-shared]"
+      ).length > 0;
       const empty = scope.querySelector("[data-ev-stream-empty]");
       // Only a *chosen* stream collapses a shelf. With no choice, everything
       // shows exactly as it was rendered.

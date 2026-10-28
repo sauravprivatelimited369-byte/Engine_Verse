@@ -14,6 +14,7 @@
 <div class="q-card{{ ' ' ~ card_class if card_class }}" id="q-{{ question.id }}" data-quiz="{{ question.id }}"{% if set_id %} data-set="{{ set_id }}"{% endif %}>
   <div class="row">
     {% if caller is defined %}{{ caller() }}{% endif %}
+    {% if question.code_language %}<span class="chip" data-cross-language title="This checkpoint tests one language; the subject is shared">Language checkpoint · {{ {'python': 'Python', 'java': 'Java', 'javascript': 'JavaScript', 'typescript': 'TypeScript', 'cpp': 'C++', 'go': 'Go', 'rust': 'Rust', 'c': 'C', 'csharp': 'C#', 'sql': 'SQL'}.get(question.code_language, question.code_language) }}</span>{% endif %}
     {% if attempt %}<span class="chip {{ 'ok' if attempt.correct else 'bad' }}" data-attempt-chip>Attempted {{ attempt.attempts }}× · {{ attempt.correct }} correct</span>{% endif %}
   </div>
   <div class="q-stem mt">{{ question.stem }}</div>

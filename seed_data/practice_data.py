@@ -426,7 +426,7 @@ CODING_PROBLEMS = [
         "two-sum", "Two Sum", "easy", 30,
         "Given an array of integers `nums` and an integer `target`, return the **indices** of the two numbers "
         "that add up to `target`. You may assume exactly one solution exists and you may not use the same element "
-        "twice. The answer may be returned in any order.\n\n"
+        "twice. Return the two indices with the smaller one first, for example `[0, 1]` rather than `[1, 0]`.\n\n"
         "Write a function `two_sum(nums, target)` that returns a list of two indices.",
         [
             {"input": "nums = [2, 7, 11, 15], target = 9", "output": "[0, 1]",

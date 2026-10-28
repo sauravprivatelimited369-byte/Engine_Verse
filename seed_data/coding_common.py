@@ -18,8 +18,8 @@ and the module fills in the mechanical parts:
 * the Python stub is generated from the signature, so the editor always opens on
   a declaration the harness can actually call - a stub that does not match
   ``drivers.entrypoint`` is a Run button that always fails;
-* ``expected_time``/``expected_space`` default to the honest generic answer and
-  are stated per problem where the real bound matters.
+* ``expected_time``/``expected_space`` have no default. The seeder takes the
+  reviewed bounds from ``seed_data/complexity.py``; an unreviewed problem is refused.
 
 XP for a judged submission is awarded by outcome rather than by difficulty - see
 ``engineverse.coding.submit`` - so a problem does not carry an ``xp`` field here,
@@ -58,8 +58,10 @@ def problem(
     editorial: str = "",
     company: str = "",
     minutes: int = 20,
-    expected_time: str = "O(n)",
-    expected_space: str = "O(1)",
+    # Required in practice: scripts/seed.py takes the reviewed bounds from
+    # seed_data/complexity.py and refuses problems without an entry there.
+    expected_time: str | None = None,
+    expected_space: str | None = None,
 ) -> dict:
     """Builds one problem in the shape ``scripts/seed.py`` inserts.
 

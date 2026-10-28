@@ -567,14 +567,18 @@ def seed_questions(subject_ids: dict[str, str], topic_ids: dict[str, str]) -> di
             if source not in tags:
                 tags.append(source)
             db.execute(
+                # code_language is set only for language checkpoints, so a learner can see
+                # which language a question tests even though it lives in the shared
+                # programming-fundamentals subject.
                 "INSERT INTO questions (id,slug,topic_id,subject_id,kind,difficulty,stem,explanation,answer_index,"
-                "tags,time_weight,is_active,created_at) VALUES (?,?,?,?, 'mcq',?,?,?,?,?,1,1,?) "
+                "tags,time_weight,is_active,created_at,code_language) VALUES (?,?,?,?, 'mcq',?,?,?,?,?,1,1,?,?) "
                 "ON CONFLICT(id) DO UPDATE SET topic_id=COALESCE(excluded.topic_id,questions.topic_id), "
                 "subject_id=excluded.subject_id, difficulty=excluded.difficulty, stem=excluded.stem, "
-                "explanation=excluded.explanation, answer_index=excluded.answer_index, tags=excluded.tags, is_active=1",
+                "explanation=excluded.explanation, answer_index=excluded.answer_index, tags=excluded.tags, "
+                "code_language=excluded.code_language, is_active=1",
                 question_id, slug, topic_id, subject_id, entry["difficulty"],
                 entry.get("statement", entry.get("stem", "")), entry["explanation"],
-                entry["correct"], jdump(tags), now_ms(),
+                entry["correct"], jdump(tags), now_ms(), entry.get("language"),
             )
             for position, option in enumerate(entry["options"]):
                 label = chr(ord("A") + position)
@@ -911,6 +915,21 @@ def _problem_bank() -> list[dict]:
     return bank
 
 
+def _reviewed_bounds(slug: str) -> tuple[str, str]:
+    """The reviewed (time, space) pair. A problem without one is refused.
+
+    The old fallback to O(n) / O(n) put a wrong bound on every problem that did
+    not state its own. Refusing here means a new problem cannot ship without a
+    deliberate, reviewed complexity claim.
+    """
+    from seed_data import complexity
+
+    bounds = complexity.bounds(slug)
+    if bounds is None:
+        raise SeedRefused(f"problem {slug!r} has no reviewed complexity in seed_data/complexity.py")
+    return bounds
+
+
 def seed_problems(language_ids: dict[str, str]) -> dict[str, str]:
     ids: dict[str, str] = {}
     with db.transaction():
@@ -931,7 +950,7 @@ def seed_problems(language_ids: dict[str, str]) -> dict[str, str]:
                 f"{entry['statement']}\n\n### Examples\n\n{examples}",
                 entry["difficulty"], jdump(entry["topics"]), jdump(entry["hints"]), entry["editorial"],
                 entry["solution"].get("python", ""), jdump([entry["company"]]),
-                entry.get("expected_time") or "O(n)", entry.get("expected_space") or "O(n)",
+                *_reviewed_bounds(slug),
                 entry.get("wrapper", "raw"), now_ms(),
             )
             for language_slug, stub in entry["stub"].items():

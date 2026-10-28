@@ -18,7 +18,9 @@
 // v14: the MERIDIAN identity — warm-paper glass, navy ink, signal blue.
 // v15: offline device speech and tutor answer controls; drop older cached JS.
 // v16: 3D observatory, scroll walkthrough, live workbench & meridian.css shell.
-const VERSION = "meridian-v16";
+// v17: contrast fix to the subject initials in app.css (a shell asset), so an
+// offline visitor must not keep the pre-fix stylesheet.
+const VERSION = "meridian-v17";
 const SHELL = [
   "/static/css/app.css",
   "/static/css/meridian.css",

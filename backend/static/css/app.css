@@ -1831,7 +1831,9 @@ a.card:hover .card-arrow { color: var(--accent-ink); transform: translateX(2px);
   font-weight: 680;
   letter-spacing: -.03em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--subj, var(--accent)) 72%, var(--text));
+  /* 48% accent, not 72%: the pale accents (amber, cyan, green) fell below 4.5:1 on
+     their own tint. The initials are decorative (aria-hidden) but still text. */
+  color: color-mix(in srgb, var(--subj, var(--accent)) 48%, var(--text));
   background: color-mix(in srgb, var(--subj, var(--accent)) 11%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--subj, var(--accent)) 22%, transparent);
 }

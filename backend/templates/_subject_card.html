@@ -1,6 +1,6 @@
 <a class="card subject-card" href="/subjects/{{ subject.slug }}"
    style="--subj: {{ subject.color or '#4f7cff' }}"
-   {% if subject.branch_slug %}data-ev-stream="{{ subject.branch_slug }}"{% endif %}>
+   {% if subject.branch_slug %}data-ev-stream="{{ subject.branch_slug }}"{% else %}data-ev-stream-shared{% endif %}>
   <div class="subject-top">
     {% set _words = subject.name.replace('&', ' ').replace('(', ' ').replace(')', ' ').split() %}
     {% set _sig = _words | reject('in', ['and', 'of', 'the', 'for', 'to', 'in', 'a', 'an', '-']) | list %}

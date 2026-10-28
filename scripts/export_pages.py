@@ -1824,9 +1824,6 @@ def export(
                 ),
                 private=False,
             )
-        # First-year page should not keep a query-string link to itself as the only year view.
-        if path == "/explore/first-year":
-            body = body.replace("<title>", "<title>First year - ", 1)
         target = output_path(site, path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(body, encoding="utf-8")

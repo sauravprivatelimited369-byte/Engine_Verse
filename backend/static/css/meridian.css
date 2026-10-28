@@ -404,6 +404,9 @@ code, pre, .mono { font-family: var(--mono); font-size: 0.92em; }
    step quieter so it reads as a control rather than a call to action. */
 .ev-stream-menu { position: relative; }
 .ev-stream-btn {
+  /* .iconbtn is a grid; with an icon AND a label the grid stacked them on two
+     rows and the label overlapped the top bar. A flex row keeps them inline. */
+  display: inline-flex; align-items: center; justify-content: center;
   gap: 6px; height: 34px; padding: 0 10px; border-radius: 8px;
   border: 1px solid transparent; color: var(--text-2);
 }
@@ -2780,4 +2783,12 @@ html[data-theme="dark"] .mx-dash-3d {
   .mx-hero-copy { transform: none; }
   .mx-fc-inner { transition: none; }
   .mx-atlas-card, .mx-lab-item, .mx-stat-cell { transition: none; transform: none; }
+}
+
+/* .iconbtn (below, same specificity) fixes the button to a 34px square and sets
+   display:grid. The stream button carries a text label, so it must size to its
+   content. This selector wins by specificity, not by source order. */
+.iconbtn.ev-stream-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: auto; min-width: 34px; max-width: 176px; height: 34px;
 }

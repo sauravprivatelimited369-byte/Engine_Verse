@@ -179,7 +179,10 @@
           <span class="mx-desk-eyebrow">{{ icon("sun", 14) }} Today’s desk</span>
           <span class="mx-desk-date"><time data-local-date>Today</time></span>
         </div>
-        <h2 class="mx-desk-title" id="mx-desk-title">Four-step study queue<span>~65 min total</span></h2>
+        {# The total is the sum of the timed rows below. The coding step has no
+           stored time estimate, so it is named as untimed rather than counted. #}
+        {% set timed_total = 30 + 10 + (featured_topics[0].est_minutes if featured_topics else 0) %}
+        <h2 class="mx-desk-title" id="mx-desk-title">Four-step study queue<span>~{{ timed_total }} min timed + coding</span></h2>
         <ol class="mx-desk-list">
           <li class="mx-desk-row">
             <span class="mx-desk-num" aria-hidden="true">01</span>

@@ -221,7 +221,10 @@ def test_homepage_and_explore_reach_every_branch_and_subject(client, seeded):
     branches = db.query("SELECT slug FROM branches WHERE is_active = 1")
     for row in branches:
         assert f'href="/branches/{row["slug"]}"' in response.text
-    assert 'href="/explore">All subjects</a>' in response.text
+    # The 2026 homepage links to the catalogue from its hero and its study-plan
+    # panel; the old "All subjects" label was removed in the redesign. The
+    # requirement - a visible route from the homepage to every subject - stays.
+    assert 'href="/explore"' in response.text
 
     expected = _subject_slugs()
     seen: set[str] = set()
