@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ brand.site_name }} — {{ brand.tagline }}{% endblock %}
-{% block description %}A free engineering study workspace: structured notes, daily practice, judged coding problems, spaced revision and an honest record of your progress.{% endblock %}
+{% block description %}A free engineering study workspace: structured notes, interactive 3D models, daily practice, judged coding problems, spaced revision and honest progress.{% endblock %}
 {% from "_icons.html" import icon %}
 
 {% block head %}
@@ -26,32 +26,46 @@
 
 {% block content %}
 {# ---------------------------------------------------------------------------
-   Meridian homepage.
+   Meridian homepage — 3D Observatory, Scroll Walkthrough & Live Workbench.
 
-   Rules this page is built on:
-   * Every number is read from the catalogue (site.*), never invented.
-   * Every row, link and button opens a page that exists. The workspace panel
-     is a preview of the daily plan below it, not a mock-up of a product.
-   * Sections change shape when their content does: a two-column library, a
-     checklist plan, a three-step loop, a list of branches. No wall of
-     identical cards, no testimonials, no fake statistics.
-   * Glass marks floating chrome and the one working surface (the plan and
-     the workspace preview). Reading surfaces stay quiet paper.
+   Invariants preserved across hosted FastAPI and static GitHub Pages copies:
+   * Every statistic is read from the live SQL catalogue (site.*, models_3d_count).
+   * Every 3D viewport uses validated JSON geometry rendered by engine3d.js.
+   * Every link and interactive workbench tool uses real catalogue content.
+   * No invented user counts, no fabricated testimonials, no third-party CDNs.
 --------------------------------------------------------------------------- #}
 <div class="mx-home">
 
-  <section class="mx-hero" aria-labelledby="mx-hero-title">
+  <nav class="mx-rail-nav" aria-label="Page chapters">
+    <a href="#mx-top" class="is-active" data-rail-link aria-current="true"><span>01</span> Instrument</a>
+    <a href="#mx-story-rail" data-rail-link><span>02</span> Study loop</a>
+    <a href="#mx-workbench" data-rail-link><span>03</span> Workbench</a>
+    <a href="#mx-atlas" data-rail-link><span>04</span> 3D atlas</a>
+    <a href="#ev-today-plan" data-rail-link><span>05</span> Today’s plan</a>
+    <a href="#mx-library-sec" data-rail-link><span>06</span> Catalogue</a>
+    <a href="#mx-faq" data-rail-link><span>07</span> FAQ</a>
+  </nav>
+
+  {# =============================================================== 1. HERO #}
+  <section class="mx-hero" id="mx-top" data-chapter-section data-scroll-scene aria-labelledby="mx-hero-title">
     <div class="mx-hero-copy">
-      <p class="mx-kicker"><span class="mx-kicker-rule" aria-hidden="true"></span>Free, open-source engineering study workspace</p>
+      <p class="mx-kicker">
+        <span class="mx-kicker-dot" aria-hidden="true"></span>
+        <span class="mx-kicker-rule" aria-hidden="true"></span>
+        Free, open-source engineering study workspace
+      </p>
       <h1 class="mx-hero-title" id="mx-hero-title">Learn with purpose.<br>Practise with <em>confidence.</em></h1>
-      <p class="mx-hero-lead">Your study notes, practice activities, and learning progress — organised in one place.
-        {{ site.topics }} topics across {{ site.branches }} branches, notes at four depths, and
-        {{ site.questions }} practice questions that mark themselves.</p>
+      <p class="mx-hero-lead">Structured notes at four depths, {{ models_3d_count }} interactive 3D models,
+        {{ site.questions }} self-marking practice questions, and {{ site.problems }} judged coding problems across
+        {{ site.branches }} engineering branches — organised on one calm desk.</p>
+
       <div class="mx-hero-actions">
-        <a class="btn btn-primary" href="/dpp">Start practising</a>
+        <a class="btn btn-primary" href="/dpp">Start practising {{ icon("chevron", 14) }}</a>
         <a class="btn btn-ghost" href="/explore">Explore notes</a>
+        <a class="btn btn-ghost" href="/codelab">{{ icon("terminal", 14) }} Open CodeLab</a>
         <a class="mx-hero-aside" href="/install">{{ icon("download", 15) }} iOS, macOS &amp; Android</a>
       </div>
+
       {% if macos_url or ios_url or apk_url %}
       <p class="mx-hero-downloads" aria-label="Direct native app downloads">
         <span class="small muted">Direct download:</span>
@@ -66,11 +80,13 @@
         {% endif %}
       </p>
       {% endif %}
+
       <ul class="mx-hero-facts">
-        <li>{{ icon("check", 14) }} Read and practise in the browser, no setup</li>
-        <li>{{ icon("check", 14) }} Code runs for real, with real test cases</li>
+        <li>{{ icon("check", 14) }} Read, inspect 3D models and practise with zero setup</li>
+        <li>{{ icon("check", 14) }} Real compilers and real test cases across {{ site.languages }} languages</li>
         <li>{% if static_export %}{{ icon("check", 14) }} Progress stays in this browser, exportable as JSON{% else %}{{ icon("check", 14) }} One account keeps progress across devices{% endif %}</li>
       </ul>
+
       <details class="mx-fineprint">
         <summary>What runs where?</summary>
         <p>{% if static_export %}This public copy has no accounts: practice results, streaks and code runs are kept in this browser.
@@ -78,112 +94,567 @@
           and sign-in keeps your progress across devices.{% endif %}
           <a href="/install">Compare the two</a>.</p>
       </details>
+
+      <p class="mx-scroll-cue-wrap">
+        <a class="mx-scroll-cue" href="#mx-story-rail">
+          <span class="mx-scroll-wheel" aria-hidden="true"><span></span></span>
+          <span>Scroll through the 3D study loop</span>
+        </a>
+      </p>
     </div>
 
-    <aside class="mx-desk" aria-labelledby="mx-desk-title">
-      <div class="mx-desk-head">
-        <span class="mx-desk-eyebrow">{{ icon("sun", 14) }} Workspace</span>
-        <span class="mx-desk-date"><time data-local-date>Today</time></span>
-      </div>
-      <h2 class="mx-desk-title" id="mx-desk-title">Today’s plan<span>4 steps · about 65 minutes</span></h2>
-      <ol class="mx-desk-list">
-        <li class="mx-desk-row">
-          <span class="mx-desk-num" aria-hidden="true">01</span>
-          <a class="mx-desk-main" href="/dpp">
-            <span class="mx-desk-what">Daily practice set</span>
-            <span class="mx-desk-why">A mixed set for <time data-local-date>today</time></span>
-          </a>
-          <span class="mx-desk-meta">~30 min</span>
-        </li>
-        <li class="mx-desk-row">
-          <span class="mx-desk-num" aria-hidden="true">02</span>
-          <a class="mx-desk-main" href="{{ '/revision' if user else '/flashcards' }}">
-            <span class="mx-desk-what">Revise flashcards</span>
-            <span class="mx-desk-why">Spaced repetition, {{ site.flashcards }} cards in the catalogue</span>
-          </a>
-          <span class="mx-desk-meta">~10 min</span>
-        </li>
-        {% if sample_problems %}
-        <li class="mx-desk-row">
-          <span class="mx-desk-num" aria-hidden="true">03</span>
-          <a class="mx-desk-main" href="/practice/problems/{{ sample_problems[0].slug }}">
-            <span class="mx-desk-what">{{ sample_problems[0].title }}</span>
-            <span class="mx-desk-why">Judged coding · {{ sample_problems[0].difficulty }}{% if sample_problems[0].expected_time %} · {{ sample_problems[0].expected_time }} target{% endif %}</span>
-          </a>
-          <span class="mx-desk-meta">code</span>
-        </li>
-        {% endif %}
-        {% if featured_topics %}
-        <li class="mx-desk-row">
-          <span class="mx-desk-num" aria-hidden="true">04</span>
-          <a class="mx-desk-main" href="/topics/{{ featured_topics[0].slug }}">
-            <span class="mx-desk-what">{{ featured_topics[0].title }}</span>
-            <span class="mx-desk-why">Notes · {{ featured_topics[0].subject }}</span>
-          </a>
-          <span class="mx-desk-meta">{{ featured_topics[0].est_minutes }} min</span>
-        </li>
-        {% endif %}
-      </ol>
-      <div class="mx-desk-foot">
-        <a href="{% if static_export %}/dashboard{% elif user %}/profile{% else %}/leaderboard{% endif %}">{{ 'My progress' if static_export else 'Progress' }}</a>
-        <a href="/planner">Planner</a>
-        <span class="mx-desk-note">Every row opens a real page.</span>
-      </div>
-    </aside>
-  </section>
-
-  <section class="mx-section" aria-labelledby="mx-library-title">
-    <div class="mx-split">
-      <div class="mx-split-rail">
-        <p class="mx-eyebrow">The library</p>
-        <h2 class="mx-section-title" id="mx-library-title">Notes written to be finished, not skimmed.</h2>
-        <p class="mx-section-lead">Each topic carries a definition, the intuition behind it, a worked example and where it is used in practice.
-          Read the version you need: a two-minute refresher or the full treatment before an exam.</p>
-        <dl class="mx-figures">
-          <div><dt>Branches</dt><dd>{{ site.branches }}</dd></div>
-          <div><dt>Subjects</dt><dd>{{ site.subjects }}</dd></div>
-          <div><dt>Topics</dt><dd>{{ site.topics }}</dd></div>
-          <div><dt>Note versions</dt><dd>{{ site.notes }}</dd></div>
-          <div><dt>Formula sheets</dt><dd>{{ site.formulas }}</dd></div>
-        </dl>
-        <p class="mx-rail-link"><a href="/explore">Browse the catalogue {{ icon("chevron", 13) }}</a></p>
-      </div>
-
-      <div class="mx-split-main">
-        <div class="mx-list-head">
-          <span>Topic</span>
-          <span>Subject</span>
-          <span>Read</span>
+    <div class="mx-hero-stage">
+      {% if hero_model and hero_model.scene_json %}
+      <div class="mx-stage-card" id="mx-hero-stage-card" data-ev3d-root>
+        <div class="mx-stage-head">
+          <span class="mx-live-pill"><span class="mx-live-dot" aria-hidden="true"></span> Live WebGL 3D</span>
+          <span class="mx-coord-readout" data-ev3d-readout aria-hidden="true">32° · 17°</span>
+          <div class="ev3d-toolbar" role="toolbar" aria-label="3D viewport controls">
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="spin" aria-pressed="true" title="Toggle auto-orbit">
+              <span data-ev3d-spin-label>Orbiting</span>
+            </button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="wireframe" aria-pressed="false" title="Toggle wireframe X-ray">X-Ray</button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="reset" title="Reset camera">Reset</button>
+          </div>
         </div>
-        <ul class="mx-library">
-          {% for topic in featured_topics[:6] %}
-          <li>
-            <a class="mx-library-row" href="/topics/{{ topic.slug }}">
-              <span class="mx-lib-main">
-                <span class="mx-lib-title">{{ topic.title }}</span>
-                <span class="mx-lib-sub">{{ topic.summary | excerpt(96) }}</span>
-              </span>
-              <span class="mx-lib-subject"><span class="mx-lib-subject-label">Subject</span>{{ topic.subject }}</span>
-              <span class="mx-lib-meta"><span class="mx-lib-time">{{ topic.est_minutes }} min</span><span class="mx-lib-level">{{ topic.difficulty }}</span></span>
+
+        <figure class="ev3d mx-hero-3d" id="mx-hero-viewport" data-model3d data-ev3d-scroll data-scene="{{ hero_model.scene_json }}">
+          <canvas tabindex="0" role="img" aria-label="Interactive 3D engineering model: {{ hero_model.title }}"></canvas>
+          <div class="ev3d-labels" aria-hidden="true"></div>
+          <p class="ev3d-hint">Interactive 3D instrument — drag to rotate, or use arrow keys.</p>
+        </figure>
+
+        {% if showcase_models %}
+        <div class="mx-stage-tabs" role="tablist" aria-label="Switch 3D engineering model">
+          <button type="button" role="tab" class="mx-stage-tab is-on" aria-selected="true"
+                  data-stage-pick="0" data-stage-slug="meridian-ring"
+                  data-stage-scene="{{ hero_model.scene_json }}" data-stage-label="{{ hero_model.title }}">
+            {{ hero_model.tab_label }}
+          </button>
+          {% for m in showcase_models[:4] %}
+          <button type="button" role="tab" class="mx-stage-tab" aria-selected="false"
+                  data-stage-pick="{{ loop.index }}" data-stage-slug="{{ m.topic_slug }}"
+                  data-stage-scene="{{ m.scene_json }}" data-stage-label="{{ m.title }}">
+            {{ m.tab_label }}
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="mx-stage-caption" data-stage-meta="0">
+          <div class="mx-stage-caption-top">
+            <span class="mx-stage-disc">{{ hero_model.discipline }}</span>
+            <a class="mx-stage-link" href="{% if hero_model.topic_slug %}/topics/{{ hero_model.topic_slug }}{% else %}/explore{% endif %}">Explore {{ models_3d_count }} 3D models {{ icon("chevron", 12) }}</a>
+          </div>
+          <p class="mx-stage-title">{{ hero_model.title }}</p>
+          <p class="mx-stage-desc">{{ hero_model.caption }}</p>
+        </div>
+
+        {% for m in showcase_models[:4] %}
+        <div class="mx-stage-caption" data-stage-meta="{{ loop.index }}" hidden>
+          <div class="mx-stage-caption-top">
+            <span class="mx-stage-disc">{{ m.subject_name }}</span>
+            <a class="mx-stage-link" href="/topics/{{ m.topic_slug }}#model-3d">Open {{ m.topic_title }} {{ icon("chevron", 12) }}</a>
+          </div>
+          <p class="mx-stage-title">{{ m.title }}</p>
+          <p class="mx-stage-desc">{{ m.caption | excerpt(170) }}</p>
+        </div>
+        {% endfor %}
+
+        <div class="mx-stage-caption" data-stage-meta-custom hidden>
+          <div class="mx-stage-caption-top">
+            <span class="mx-stage-disc" data-custom-discipline>Engineering 3D</span>
+            <a class="mx-stage-link" data-custom-link href="/explore">Open topic →</a>
+          </div>
+          <p class="mx-stage-title" data-custom-title>3D Model</p>
+          <p class="mx-stage-desc" data-custom-caption></p>
+        </div>
+      </div>
+      {% endif %}
+
+      <aside class="mx-desk mx-desk-compact" aria-labelledby="mx-desk-title">
+        <div class="mx-desk-head">
+          <span class="mx-desk-eyebrow">{{ icon("sun", 14) }} Today’s desk</span>
+          <span class="mx-desk-date"><time data-local-date>Today</time></span>
+        </div>
+        <h2 class="mx-desk-title" id="mx-desk-title">Four-step study queue<span>~65 min total</span></h2>
+        <ol class="mx-desk-list">
+          <li class="mx-desk-row">
+            <span class="mx-desk-num" aria-hidden="true">01</span>
+            <a class="mx-desk-main" href="/dpp">
+              <span class="mx-desk-what">Daily practice set</span>
+              <span class="mx-desk-why">Mixed engineering MCQs for <time data-local-date>today</time></span>
             </a>
+            <span class="mx-desk-meta">~30 min</span>
           </li>
-          {% endfor %}
-        </ul>
-        {% if first_year %}
-        <p class="mx-list-foot">
-          <span class="mx-list-foot-label">First year</span>
-          {% for subject in first_year[:4] %}
-          <a href="/subjects/{{ subject.slug }}">{{ subject.name }}</a>
-          {% endfor %}
-          <a class="mx-more" href="/explore?year=1">All {{ first_year | length }}</a>
-        </p>
+          <li class="mx-desk-row">
+            <span class="mx-desk-num" aria-hidden="true">02</span>
+            <a class="mx-desk-main" href="{{ '/revision' if user else '/flashcards' }}">
+              <span class="mx-desk-what">Revise flashcards</span>
+              <span class="mx-desk-why">SM-2 spaced recall · {{ site.flashcards }} cards</span>
+            </a>
+            <span class="mx-desk-meta">~10 min</span>
+          </li>
+          {% if sample_problems %}
+          <li class="mx-desk-row">
+            <span class="mx-desk-num" aria-hidden="true">03</span>
+            <a class="mx-desk-main" href="/practice/problems/{{ sample_problems[0].slug }}">
+              <span class="mx-desk-what">{{ sample_problems[0].title }}</span>
+              <span class="mx-desk-why">Judged coding · {{ sample_problems[0].difficulty }}{% if sample_problems[0].expected_time %} · {{ sample_problems[0].expected_time }}{% endif %}</span>
+            </a>
+            <span class="mx-desk-meta">code</span>
+          </li>
+          {% endif %}
+          {% if featured_topics %}
+          <li class="mx-desk-row">
+            <span class="mx-desk-num" aria-hidden="true">04</span>
+            <a class="mx-desk-main" href="/topics/{{ featured_topics[0].slug }}">
+              <span class="mx-desk-what">{{ featured_topics[0].title }}</span>
+              <span class="mx-desk-why">4-depth notes · {{ featured_topics[0].subject }}</span>
+            </a>
+            <span class="mx-desk-meta">{{ featured_topics[0].est_minutes }} min</span>
+          </li>
+          {% endif %}
+        </ol>
+        <div class="mx-desk-foot">
+          <a href="{% if static_export %}/dashboard{% elif user %}/profile{% else %}/leaderboard{% endif %}">{{ 'My progress' if static_export else 'Progress' }}</a>
+          <a href="/planner">Study planner</a>
+          <a href="#mx-workbench">Try interactive tools ↓</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  {# ============================================= 2. VERIFIED TELEMETRY BAR #}
+  <section class="mx-telemetry ev-reveal" aria-labelledby="mx-telemetry-title">
+    <h2 class="sr-only" id="mx-telemetry-title">Verified catalogue coverage</h2>
+    <div class="mx-telemetry-grid" data-stagger>
+      <a class="mx-stat-cell" href="/explore">
+        <span class="mx-stat-num" data-count-target="{{ site.branches }}">{{ site.branches }}</span>
+        <span class="mx-stat-label">Engineering branches</span>
+      </a>
+      <a class="mx-stat-cell" href="/explore">
+        <span class="mx-stat-num" data-count-target="{{ site.subjects }}">{{ site.subjects }}</span>
+        <span class="mx-stat-label">Published subjects</span>
+      </a>
+      <a class="mx-stat-cell" href="/explore">
+        <span class="mx-stat-num" data-count-target="{{ site.topics }}">{{ site.topics }}</span>
+        <span class="mx-stat-label">Topics at 4 depths</span>
+      </a>
+      <a class="mx-stat-cell" href="#mx-atlas">
+        <span class="mx-stat-num" data-count-target="{{ models_3d_count }}">{{ models_3d_count }}</span>
+        <span class="mx-stat-label">Live WebGL 3D models</span>
+      </a>
+      <a class="mx-stat-cell" href="/practice/questions">
+        <span class="mx-stat-num" data-count-target="{{ site.questions }}">{{ site.questions }}</span>
+        <span class="mx-stat-label">Self-marking questions</span>
+      </a>
+      <a class="mx-stat-cell" href="/practice/problems">
+        <span class="mx-stat-num" data-count-target="{{ site.problems }}">{{ site.problems }}</span>
+        <span class="mx-stat-label">Judged code problems</span>
+      </a>
+      <a class="mx-stat-cell" href="/formulas">
+        <span class="mx-stat-num" data-count-target="{{ site.formulas }}">{{ site.formulas }}</span>
+        <span class="mx-stat-label">Indexed formulas</span>
+      </a>
+      <a class="mx-stat-cell" href="/programming">
+        <span class="mx-stat-num" data-count-target="{{ site.languages }}">{{ site.languages }}</span>
+        <span class="mx-stat-label">Compiler toolchains</span>
+      </a>
+    </div>
+  </section>
+
+  {# =============================== 3. STICKY 3D SCROLL-STORYTELLING LOOP #}
+  {% set s0 = showcase_models[5] if showcase_models | length > 5 else (showcase_models[0] if showcase_models else hero_model) %}
+  {% set s1 = showcase_models[0] if showcase_models else hero_model %}
+  {% set s2 = showcase_models[6] if showcase_models | length > 6 else (showcase_models[1] if showcase_models | length > 1 else hero_model) %}
+  {% set s3 = showcase_models[4] if showcase_models | length > 4 else (showcase_models[2] if showcase_models | length > 2 else hero_model) %}
+  <section class="mx-section mx-story" id="mx-story-rail" data-chapter-section aria-labelledby="mx-loop-title">
+    <div class="mx-section-head ev-reveal">
+      <p class="mx-eyebrow">The study loop · scroll walkthrough</p>
+      <h2 class="mx-section-title" id="mx-loop-title">One engineering loop, from first intuition to long-term recall.</h2>
+      <p class="mx-section-lead">Scroll through the four bearings below — or pick any chapter directly — to watch how a single engineering concept moves from clear prose and 3D geometry to verified practice and spaced retention.</p>
+    </div>
+
+    <div class="mx-story-grid">
+      <div class="mx-story-chapters">
+        <article class="mx-chapter is-active ev-reveal" data-story-step="0">
+          <div class="mx-chapter-meta">
+            <span class="mx-chapter-num" aria-hidden="true">01</span>
+            <span class="mx-chapter-tag">Read the line · {{ site.notes }} note editions</span>
+          </div>
+          <h3>Learn it at the depth your hour demands</h3>
+          <p>Every published topic ships four distinct editions — <strong>Beginner</strong> for intuition before lecture, <strong>Standard</strong> for definitions and worked examples, <strong>Advanced</strong> for derivations and boundary cases, and <strong>Industry</strong> for real-world engineering trade-offs.</p>
+          <ul class="mx-ticks">
+            <li>{{ diagrams_count }} sanitised SVG diagrams and {{ site.formulas }} LaTeX formulas</li>
+            <li>Built-in browser voice reader reads individual sections or full lessons aloud</li>
+            <li>Unreviewed starter notes are explicitly marked as public learning drafts</li>
+          </ul>
+          <p class="mx-chapter-cta"><a class="mx-link" href="/explore">Browse all {{ site.subjects }} subjects {{ icon("chevron", 13) }}</a></p>
+        </article>
+
+        <article class="mx-chapter ev-reveal" data-story-step="1">
+          <div class="mx-chapter-meta">
+            <span class="mx-chapter-num" aria-hidden="true">02</span>
+            <span class="mx-chapter-tag">Spatial intuition · {{ models_3d_count }} WebGL scenes</span>
+          </div>
+          <h3>Rotate the physics instead of guessing from a flat sketch</h3>
+          <p>Cross-sections, phase angles, stress cages, Venturi throats and recursion trees are built from mathematical primitives in Meridian’s zero-dependency WebGL renderer — drag with a pointer, pinch on touch, or orbit with the arrow keys.</p>
+          <ul class="mx-ticks">
+            <li>Toggle X-Ray wireframe mode to inspect internal flux lines and streamlines</li>
+            <li>Validated numeric scene schema with automatic fallback when WebGL is off</li>
+            <li>Zero external CDNs or heavyweight game-engine downloads</li>
+          </ul>
+          <p class="mx-chapter-cta"><a class="mx-link" href="{% if s1.topic_slug %}/topics/{{ s1.topic_slug }}#model-3d{% else %}/explore{% endif %}">Inspect a topic’s 3D model {{ icon("chevron", 13) }}</a></p>
+        </article>
+
+        <article class="mx-chapter ev-reveal" data-story-step="2">
+          <div class="mx-chapter-meta">
+            <span class="mx-chapter-num" aria-hidden="true">03</span>
+            <span class="mx-chapter-tag">Hold the bearing · {{ site.questions }} MCQs &amp; {{ site.problems }} problems</span>
+          </div>
+          <h3>Test understanding under real constraints</h3>
+          <p>Daily Practice Problems mix subjects so older material stays sharp. Coding problems execute on real compilers — CPython, Clang, OpenJDK, Roslyn, Rust, Go, TypeScript and SQLite — and every wrong answer goes straight into your mistake notebook.</p>
+          <ul class="mx-ticks">
+            <li>Knowledge-based XP: rewarded once on first genuine pass, never farmed</li>
+            <li>14 curated problem sheets ordered from first drills to dynamic programming</li>
+            <li>Time and space bounds stated before you write a line of code</li>
+          </ul>
+          <p class="mx-chapter-cta"><a class="mx-link" href="/practice">Open practice &amp; coding sheets {{ icon("chevron", 13) }}</a></p>
+        </article>
+
+        <article class="mx-chapter ev-reveal" data-story-step="3">
+          <div class="mx-chapter-meta">
+            <span class="mx-chapter-num" aria-hidden="true">04</span>
+            <span class="mx-chapter-tag">Re-cross to confirm · {{ site.flashcards }} SM-2 cards</span>
+          </div>
+          <h3>Lock concepts in right before you would forget them</h3>
+          <p>Spaced-repetition flashcards resurface on an SM-2 interval curve, paired with a study planner, exam countdowns, a focus timer, six-month activity heatmaps and an exportable record of completed work.</p>
+          <ul class="mx-ticks">
+            <li>Works offline in the native iOS, macOS and Android apps</li>
+            <li>Retrieval-grounded study tutor cites exact catalogue notes instead of guessing</li>
+            <li>Honest completion records — never marketed as accredited degrees</li>
+          </ul>
+          <p class="mx-chapter-cta"><a class="mx-link" href="{{ '/revision' if user else '/flashcards' }}">Open spaced-repetition cards {{ icon("chevron", 13) }}</a></p>
+        </article>
+      </div>
+
+      {% if s0 and s0.scene_json %}
+      <aside class="mx-story-stage" aria-label="Interactive chapter 3D preview" data-ev3d-root>
+        <div class="mx-story-stage-bar">
+          <div class="mx-story-tabs" role="tablist" aria-label="Story chapters">
+            <button type="button" role="tab" class="mx-story-tab is-on" aria-selected="true"
+                    data-story-tab="0" data-story-scene="{{ s0.scene_json }}" data-story-label="{{ s0.title }}">01 Read</button>
+            <button type="button" role="tab" class="mx-story-tab" aria-selected="false"
+                    data-story-tab="1" data-story-scene="{{ s1.scene_json }}" data-story-label="{{ s1.title }}">02 3D</button>
+            <button type="button" role="tab" class="mx-story-tab" aria-selected="false"
+                    data-story-tab="2" data-story-scene="{{ s2.scene_json }}" data-story-label="{{ s2.title }}">03 Test</button>
+            <button type="button" role="tab" class="mx-story-tab" aria-selected="false"
+                    data-story-tab="3" data-story-scene="{{ s3.scene_json }}" data-story-label="{{ s3.title }}">04 Retain</button>
+          </div>
+          <div class="ev3d-toolbar" role="toolbar" aria-label="Chapter 3D controls">
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="wireframe" aria-pressed="false">X-Ray</button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="reset">Reset</button>
+          </div>
+        </div>
+
+        <figure class="ev3d mx-story-3d" id="mx-story-viewport" data-model3d data-ev3d-scroll data-scene="{{ s0.scene_json }}">
+          <canvas tabindex="0" role="img" aria-label="Interactive 3D engineering model: {{ s0.title }}"></canvas>
+          <div class="ev3d-labels" aria-hidden="true"></div>
+          <p class="ev3d-hint">Interactive 3D chapter view — requires JavaScript and WebGL.</p>
+        </figure>
+
+        {% for item in [s0, s1, s2, s3] %}
+        <div class="mx-story-meta" data-story-meta="{{ loop.index0 }}"{% if not loop.first %} hidden{% endif %}>
+          <div class="mx-stage-caption-top">
+            <span class="mx-stage-disc">Chapter 0{{ loop.index }} · {{ item.subject_name }}</span>
+            {% if item.topic_slug %}
+            <a class="mx-stage-link" href="/topics/{{ item.topic_slug }}">{{ item.topic_title }} {{ icon("chevron", 12) }}</a>
+            {% endif %}
+          </div>
+          <h3 class="mx-story-stage-title">{{ item.title }}</h3>
+          <p class="mx-stage-desc">{{ item.caption | excerpt(165) }}</p>
+        </div>
+        {% endfor %}
+      </aside>
+      {% endif %}
+    </div>
+  </section>
+
+  {# ======================================= 4. LIVE INTERACTIVE WORKBENCH #}
+  <section class="mx-section mx-workbench" id="mx-workbench" data-chapter-section aria-labelledby="mx-wb-title">
+    <div class="mx-section-head ev-reveal">
+      <p class="mx-eyebrow">Interactive demonstration</p>
+      <h2 class="mx-section-title" id="mx-wb-title">Try the study tools right on this page.</h2>
+      <p class="mx-section-lead">Switch reading depths, check yourself on real catalogue MCQs, flip 3D flashcards, or inspect multi-language problem starters — everything below runs live with zero sign-up wall.</p>
+    </div>
+
+    <div class="mx-wb-shell ev-reveal">
+      <div class="mx-wb-tabs" role="tablist" aria-label="Interactive workspace demonstrations">
+        <button type="button" role="tab" id="wb-tab-notes" class="mx-wb-tab is-on" aria-selected="true" aria-controls="wb-panel-notes" data-wb-tab="notes" tabindex="0">
+          {{ icon("book", 15) }} <span>4-Depth Notes</span>
+        </button>
+        <button type="button" role="tab" id="wb-tab-quiz" class="mx-wb-tab" aria-selected="false" aria-controls="wb-panel-quiz" data-wb-tab="quiz" tabindex="-1">
+          {{ icon("target", 15) }} <span>Live Practice Quiz</span>
+        </button>
+        <button type="button" role="tab" id="wb-tab-cards" class="mx-wb-tab" aria-selected="false" aria-controls="wb-panel-cards" data-wb-tab="cards" tabindex="-1">
+          {{ icon("cards", 15) }} <span>3D Flashcards</span>
+        </button>
+        <button type="button" role="tab" id="wb-tab-code" class="mx-wb-tab" aria-selected="false" aria-controls="wb-panel-code" data-wb-tab="code" tabindex="-1">
+          {{ icon("code", 15) }} <span>Judged Code</span>
+        </button>
+      </div>
+
+      {# --- Panel 1: 4-Depth Notes Reader --- #}
+      <div class="mx-wb-panel" id="wb-panel-notes" role="tabpanel" aria-labelledby="wb-tab-notes" data-wb-panel="notes">
+        {% if demo_topic %}
+        <div class="mx-depth-head">
+          <div>
+            <p class="mx-wb-kicker">{{ demo_topic.subject }} · ~{{ demo_topic.est_minutes }} min full read</p>
+            <h3>{{ demo_topic.title }}</h3>
+          </div>
+          <div class="mx-depth-pills" role="tablist" aria-label="Reading depth">
+            {% for d in demo_topic.depths %}
+            <button type="button" role="tab" class="mx-depth-pill{{ ' is-on' if loop.first else '' }}"
+                    aria-selected="{{ 'true' if loop.first else 'false' }}" data-depth-tab="{{ d.quality }}">
+              {{ d.label }}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+
+        {% for d in demo_topic.depths %}
+        <div class="mx-depth-pane" data-depth-pane="{{ d.quality }}"{% if not loop.first %} hidden{% endif %}
+             data-speak data-speak-title="{{ demo_topic.title }} — {{ d.label }} reading">
+          <p class="mx-depth-blurb">{{ d.blurb }}</p>
+          <div class="mx-depth-cols">
+            {% for sec in d.sections %}
+            <div class="mx-depth-sec">
+              <h4 class="mx-depth-sec-title">{{ sec.title }}</h4>
+              <div class="prose small">{{ sec.body | md | safe }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mx-wb-foot">
+            <a class="btn btn-primary btn-sm" href="/topics/{{ demo_topic.slug }}?depth={{ d.quality }}">Read full {{ d.label | lower }} note {{ icon("chevron", 13) }}</a>
+            <a class="btn btn-ghost btn-sm" href="/topics/{{ demo_topic.slug }}#model-3d">Open 3D model</a>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">Explore all structured notes across four reading depths in <a href="/explore">the catalogue</a>.</p>
+        {% endif %}
+      </div>
+
+      {# --- Panel 2: Instant Self-Marking MCQ Quiz --- #}
+      <div class="mx-wb-panel" id="wb-panel-quiz" role="tabpanel" aria-labelledby="wb-tab-quiz" data-wb-panel="quiz" hidden>
+        {% if demo_questions %}
+        <div class="mx-depth-head">
+          <div>
+            <p class="mx-wb-kicker">Instant verification · drawn from {{ site.questions }} catalogue questions</p>
+            <h3>Check yourself on a real question</h3>
+          </div>
+          <div class="mx-quiz-bar">
+            <div class="mx-depth-pills" role="tablist" aria-label="Sample questions">
+              {% for q in demo_questions %}
+              <button type="button" role="tab" class="mx-depth-pill{{ ' is-on' if loop.first else '' }}"
+                      aria-selected="{{ 'true' if loop.first else 'false' }}" data-mx-quiz-pick="{{ loop.index0 }}">
+                Q{{ loop.index }} · {{ q.difficulty }}
+              </button>
+              {% endfor %}
+            </div>
+            <span class="mx-quiz-score" data-mx-quiz-score aria-live="polite">{{ demo_questions | length }} questions ready</span>
+          </div>
+        </div>
+
+        {% for q in demo_questions %}
+        <div class="mx-inline-quiz" data-mx-quiz-item="{{ loop.index0 }}" data-correct="{{ q.correct_label }}"{% if not loop.first %} hidden{% endif %}>
+          <p class="mx-quiz-subject">{{ q.subject_name }} · <a href="/topics/{{ q.topic_slug }}">{{ q.topic_title }}</a></p>
+          <p class="mx-quiz-stem">{{ q.stem }}</p>
+          <div class="mx-quiz-opts" role="radiogroup" aria-label="Answer choices for question {{ loop.index }}">
+            {% for opt in q.options %}
+            <button type="button" role="radio" aria-checked="false" class="mx-quiz-opt" data-mx-opt="{{ opt.label }}">
+              <span class="mx-quiz-opt-key">{{ opt.label }}</span>
+              <span class="mx-quiz-opt-body">{{ opt.body }}</span>
+            </button>
+            {% endfor %}
+          </div>
+          <div class="mx-wb-foot">
+            <button type="button" class="btn btn-primary btn-sm" data-mx-check disabled>Check answer</button>
+            {% if demo_questions | length > 1 %}
+            <button type="button" class="btn btn-ghost btn-sm" data-mx-next-q>Next sample question →</button>
+            {% endif %}
+            <a class="mx-link" href="/practice/questions?slug={{ q.slug }}">Open in question bank {{ icon("chevron", 12) }}</a>
+          </div>
+          <div class="mx-quiz-feedback" data-mx-feedback role="status" aria-live="polite" hidden>
+            <p class="mx-quiz-verdict" data-mx-verdict></p>
+            <p class="small">{{ q.explanation }}</p>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">Practise self-marking questions in <a href="/practice/questions">the question bank</a>.</p>
+        {% endif %}
+      </div>
+
+      {# --- Panel 3: 3D Perspective Flashcards --- #}
+      <div class="mx-wb-panel" id="wb-panel-cards" role="tabpanel" aria-labelledby="wb-tab-cards" data-wb-panel="cards" hidden>
+        {% if demo_flashcards %}
+        <div class="mx-fc-deck" data-mx-deck>
+          <div class="mx-depth-head">
+            <div>
+              <p class="mx-wb-kicker">Spaced repetition · SM-2 recall deck ({{ site.flashcards }} public cards)</p>
+              <h3>Click or press Space to flip in 3D</h3>
+            </div>
+            <div class="mx-fc-meta">
+              <span class="mx-quiz-score" data-mx-fc-counter>Card 1 of {{ demo_flashcards | length }}</span>
+              <span class="small muted" data-mx-fc-tally>0 known · 0 to review</span>
+            </div>
+          </div>
+
+          <div class="mx-fc-stage">
+            {% for card in demo_flashcards %}
+            <div class="mx-fc-card" data-mx-card="{{ loop.index0 }}" tabindex="0" role="button"
+                 aria-pressed="false" aria-label="Flashcard {{ loop.index }}: click or press Space to flip"{% if not loop.first %} hidden{% endif %}>
+              <div class="mx-fc-inner">
+                <div class="mx-fc-face mx-fc-front">
+                  <span class="mx-fc-badge">Prompt · Front</span>
+                  <p class="mx-fc-text">{{ card.front }}</p>
+                  <span class="mx-fc-hint">Tap or press Space to reveal answer ↻</span>
+                </div>
+                <div class="mx-fc-face mx-fc-back">
+                  <span class="mx-fc-badge mx-fc-badge-ans">Answer · Back</span>
+                  <p class="mx-fc-text">{{ card.back }}</p>
+                  <span class="mx-fc-hint">Tap to flip back ↺</span>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="mx-wb-foot">
+            <button type="button" class="btn btn-ghost btn-sm" data-mx-fc-prev>← Previous</button>
+            <button type="button" class="btn btn-primary btn-sm" data-mx-fc-flip>Flip 3D card</button>
+            <button type="button" class="btn btn-soft btn-sm" data-mx-fc-know>{{ icon("check", 13) }} Got it</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-mx-fc-again>Review again</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-mx-fc-next>Next →</button>
+            <a class="mx-link" href="{{ '/revision' if user else '/flashcards' }}">All {{ site.flashcards }} flashcards {{ icon("chevron", 12) }}</a>
+          </div>
+        </div>
+        {% else %}
+        <p class="muted">Browse spaced-repetition cards at <a href="/flashcards">Flashcards</a>.</p>
+        {% endif %}
+      </div>
+
+      {# --- Panel 4: Multi-Language Judged Code Preview --- #}
+      <div class="mx-wb-panel" id="wb-panel-code" role="tabpanel" aria-labelledby="wb-tab-code" data-wb-panel="code" hidden>
+        {% if demo_problem and demo_problem.stubs %}
+        <div class="mx-depth-head">
+          <div>
+            <p class="mx-wb-kicker">Judged coding · {{ demo_problem.difficulty }} · {% if demo_problem.expected_time %}{{ demo_problem.expected_time }} time{% endif %}{% if demo_problem.expected_space %} · {{ demo_problem.expected_space }} space{% endif %}</p>
+            <h3>{{ demo_problem.title }}</h3>
+          </div>
+          <div class="mx-depth-pills" role="tablist" aria-label="Starter code language">
+            {% for stub in demo_problem.stubs %}
+            <button type="button" role="tab" class="mx-depth-pill{{ ' is-on' if loop.first else '' }}"
+                    aria-selected="{{ 'true' if loop.first else 'false' }}" data-code-lang="{{ stub.slug or stub.language_id }}">
+              {{ stub.name }}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="mx-code-grid">
+          <div class="mx-code-editor">
+            <div class="mx-code-bar">
+              <span>Starter harness · real compiler execution</span>
+              <button type="button" class="ev3d-btn" data-copy-code>Copy starter</button>
+            </div>
+            {% for stub in demo_problem.stubs %}
+            <pre class="mx-code-pre" data-code-pane="{{ stub.slug or stub.language_id }}"{% if not loop.first %} hidden{% endif %}><code>{{ stub.stub }}</code></pre>
+            {% endfor %}
+          </div>
+          <div class="mx-code-io">
+            <p class="mx-wb-kicker">Verified sample test cases</p>
+            {% for tc in demo_problem.samples[:2] %}
+            <div class="mx-tc-box">
+              <div><span class="mx-tc-label">Input</span><code>{{ tc.input }}</code></div>
+              <div><span class="mx-tc-label">Expected</span><code>{{ tc.expected }}</code></div>
+            </div>
+            {% endfor %}
+            <p class="small muted">Runs in isolated WebAssembly workers on the static copy or on the server judge when configured.</p>
+          </div>
+        </div>
+
+        <div class="mx-wb-foot">
+          <a class="btn btn-primary btn-sm" href="/practice/problems/{{ demo_problem.slug }}">Solve &amp; run tests {{ icon("chevron", 13) }}</a>
+          <a class="btn btn-ghost btn-sm" href="/codelab">{{ icon("terminal", 14) }} Open 10-language CodeLab</a>
+          <a class="mx-link" href="/sheets">Browse 14 curated coding sheets {{ icon("chevron", 12) }}</a>
+        </div>
+        {% else %}
+        <p class="muted">Explore all {{ site.problems }} judged problems in <a href="/practice/problems">Coding practice</a> or open <a href="/codelab">CodeLab</a>.</p>
         {% endif %}
       </div>
     </div>
   </section>
 
-  <section class="mx-section mx-section-plan" id="ev-today-plan" aria-labelledby="ev-plan-title">
-    <div class="mx-plan">
+  {# ================================ 5. HORIZONTAL 3D ENGINEERING ATLAS #}
+  {% if showcase_models %}
+  <section class="mx-section mx-atlas" id="mx-atlas" data-chapter-section aria-labelledby="mx-atlas-title">
+    <div class="mx-section-head mx-section-head-inline ev-reveal">
+      <div>
+        <p class="mx-eyebrow">Interactive 3D gallery · {{ models_3d_count }} models in catalogue</p>
+        <h2 class="mx-section-title" id="mx-atlas-title">Spatial models across {{ site.branches }} branches.</h2>
+      </div>
+      <div class="mx-atlas-controls">
+        <div class="mx-atlas-filters" role="group" aria-label="Filter 3D models by discipline">
+          <button type="button" class="mx-depth-pill is-on" aria-pressed="true" data-atlas-filter="all">All</button>
+          <button type="button" class="mx-depth-pill" aria-pressed="false" data-atlas-filter="mech-civil">Mechanical &amp; Civil</button>
+          <button type="button" class="mx-depth-pill" aria-pressed="false" data-atlas-filter="elec-phys">Electrical &amp; Physics</button>
+          <button type="button" class="mx-depth-pill" aria-pressed="false" data-atlas-filter="computing">Computing</button>
+          <button type="button" class="mx-depth-pill" aria-pressed="false" data-atlas-filter="chem-math">Chemical &amp; Maths</button>
+        </div>
+        <div class="mx-atlas-arrows">
+          <button type="button" class="iconbtn" data-atlas-prev aria-label="Scroll 3D models left" title="Previous models">←</button>
+          <button type="button" class="iconbtn" data-atlas-next aria-label="Scroll 3D models right" title="Next models">→</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mx-atlas-track ev-reveal" data-atlas-track tabindex="0" role="region" aria-label="3D engineering models carousel">
+      {% for m in showcase_models %}
+      <article class="mx-atlas-card" data-atlas-card data-atlas-cat="{{ m.category }}" data-tilt-card>
+        <div class="mx-atlas-card-top">
+          <span class="mx-stage-disc">{{ m.subject_name }}</span>
+          <span class="mx-lib-level">{{ m.difficulty }}</span>
+        </div>
+        <h3>{{ m.title }}</h3>
+        <p class="mx-atlas-summary">{{ m.caption | excerpt(138) }}</p>
+        <div class="mx-atlas-card-foot">
+          <button type="button" class="btn btn-soft btn-sm"
+                  data-atlas-load
+                  data-atlas-slug="{{ m.topic_slug }}"
+                  data-atlas-topic="{{ m.topic_title }}"
+                  data-atlas-discipline="{{ m.subject_name }}"
+                  data-atlas-title="{{ m.title }}"
+                  data-atlas-caption="{{ m.caption | excerpt(175) }}"
+                  data-atlas-scene="{{ m.scene_json }}">
+            Load in 3D Stage ↑
+          </button>
+          <a class="mx-link" data-atlas-topic-link href="/topics/{{ m.topic_slug }}#model-3d">Topic &amp; notes {{ icon("chevron", 12) }}</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="mx-atlas-scrollbar" aria-hidden="true"><span data-atlas-progress></span></div>
+  </section>
+  {% endif %}
+
+  {# =========================================== 6. TODAY'S STUDY PLAN #}
+  <section class="mx-section mx-section-plan" id="ev-today-plan" data-chapter-section aria-labelledby="ev-plan-title">
+    <div class="mx-plan ev-reveal">
       <div class="mx-plan-head">
         <div>
           <p class="mx-eyebrow">Today’s plan · <time data-local-date>today</time></p>
@@ -273,141 +744,72 @@
         </li>
       </ol>
       <p class="mx-plan-foot">These ticks live on this device only.
-        {% if user %}<a href="/today">Your personalised plan</a> also accounts for what you have already covered.{% else %}Signed-in learners get the same plan, personalised, on <a href="/today">Today’s plan</a>.{% endif %}</p>
+        {% if user %}<a href="/today">Your personalised plan</a> also accounts for what you have already covered.{% else %}Need exam countdowns and a focus timer? Open the <a href="/planner">Study planner</a>.{% endif %}</p>
     </div>
   </section>
 
-  <section class="mx-section" aria-labelledby="mx-loop-title">
-    <div class="mx-section-head">
-      <p class="mx-eyebrow">The study loop</p>
-      <h2 class="mx-section-title" id="mx-loop-title">Learn → practise → review</h2>
-      <p class="mx-section-lead">The same three moves for every subject, so you always know what to do next.</p>
-    </div>
-    <ol class="mx-loop">
-      <li class="mx-loop-item">
-        <span class="mx-loop-num" aria-hidden="true">1</span>
-        <h3>Learn it properly</h3>
-        <p>A definition, the intuition, a diagram where it helps, and a worked example. Four depths per topic, from a quick refresher to the full derivation.</p>
-        <a href="/explore">Browse notes</a>
-      </li>
-      <li class="mx-loop-item">
-        <span class="mx-loop-num" aria-hidden="true">2</span>
-        <h3>Practise under pressure</h3>
-        <p>Daily sets, question banks and judged coding problems. A wrong answer is filed in your mistake notebook instead of disappearing.</p>
-        <a href="/practice">Open practice</a>
-      </li>
-      <li class="mx-loop-item">
-        <span class="mx-loop-num" aria-hidden="true">3</span>
-        <h3>Review until it holds</h3>
-        <p>Flashcards come back on a spaced schedule, and your progress page shows what is actually sticking rather than what you merely opened.</p>
-        <a href="{{ '/revision' if user else '/flashcards' }}">Review cards</a>
-      </li>
-    </ol>
-  </section>
-
-  <section class="mx-section mx-section-features" aria-labelledby="mx-features-title">
-    <div class="mx-section-head">
-      <p class="mx-eyebrow">What is inside</p>
-      <h2 class="mx-section-title" id="mx-features-title">Three tools, with the work in view.</h2>
-      <p class="mx-section-lead">Every preview below is built from the same catalogue and components the pages themselves use.</p>
-    </div>
-
-    <article class="mx-feature">
-      <div class="mx-feature-copy">
-        <p class="mx-feature-label">{{ icon("book", 16) }} Notes</p>
-        <h3>Read at the depth you actually need</h3>
-        <p>The catalogue holds {{ site.topics }} topics across {{ site.subjects }} subjects. Each one is written four ways — beginner, standard, advanced and industry — so revision the night before an exam and a first pass in week two are both covered.</p>
-        <ul class="mx-ticks">
-          <li>Worked examples and per-topic diagrams</li>
-          <li>Formula sheets, books and video references</li>
-          <li>Drafts are labelled as drafts until reviewed</li>
-        </ul>
-        <p><a class="mx-link" href="/explore">Open the catalogue {{ icon("chevron", 13) }}</a></p>
-      </div>
-      <div class="mx-feature-demo" aria-hidden="true">
-        <div class="mx-demo-bar">
-          <span class="mx-demo-crumb">Catalogue / {{ featured_topics[0].subject if featured_topics else 'Engineering' }}</span>
-          <span class="mx-demo-tag">Topic</span>
-        </div>
-        <p class="mx-demo-title">{{ featured_topics[0].title if featured_topics else 'Arrays' }}</p>
-        <p class="mx-demo-lede">{{ (featured_topics[0].summary | excerpt(120)) if featured_topics else 'Contiguous storage with constant-time indexing.' }}</p>
-        <div class="mx-demo-depths">
-          <span>Beginner</span><span class="on">Standard</span><span>Advanced</span><span>Industry</span>
-        </div>
-        <div class="mx-demo-lines">
-          <span style="width:100%"></span><span style="width:92%"></span><span style="width:76%"></span>
-        </div>
-      </div>
-    </article>
-
-    <article class="mx-feature mx-feature-flip">
-      <div class="mx-feature-copy">
-        <p class="mx-feature-label">{{ icon("target", 16) }} Practice sheets</p>
-        <h3>Questions with answers you can check</h3>
-        <p>{{ site.questions }} practice questions and {{ site.problems }} judged coding problems in {{ site.languages }} language paths. Coding submissions are compiled and run, and a failed attempt is recorded rather than hidden.</p>
-        <ul class="mx-ticks">
-          <li>Daily problem set, generated for the date</li>
-          <li>Question bank by subject, with explanations</li>
-          <li>Mistake notebook for what you got wrong</li>
-        </ul>
-        <p><a class="mx-link" href="/practice">Open practice sheets {{ icon("chevron", 13) }}</a></p>
-      </div>
-      <div class="mx-feature-demo" aria-hidden="true">
-        <div class="mx-demo-bar">
-          <span class="mx-demo-crumb">Practice / judged</span>
-          <span class="mx-demo-tag">Code</span>
-        </div>
-        {% for problem in sample_problems[:3] %}
-        <div class="mx-demo-problem">
-          <span class="mx-demo-problem-title">{{ problem.title }}</span>
-          <span class="mx-demo-pill mx-demo-pill-{{ problem.difficulty }}">{{ problem.difficulty }}</span>
-          <span class="mx-demo-problem-meta">{% if problem.expected_time %}{{ problem.expected_time }}{% else %}judged{% endif %}</span>
-        </div>
-        {% endfor %}
-        <p class="mx-demo-note">{{ site.problems }} problems · real test cases · runs in the browser</p>
-      </div>
-    </article>
-
-    <article class="mx-feature">
-      <div class="mx-feature-copy">
-        <p class="mx-feature-label">{{ icon("chart", 16) }} Progress{% if not static_export %} &amp; leaderboard{% endif %}</p>
-        <h3>A record of work done, not time spent</h3>
-        <p>{% if static_export %}Streaks, XP and completed topics are calculated from the questions you actually answered and the topics you marked finished. The record is kept in this browser and can be exported as JSON.{% else %}Streaks, XP and completed topics are calculated from what you actually answered, and the leaderboard compares XP with other learners on this instance.{% endif %}</p>
-        <ul class="mx-ticks">
-          <li>Six-month study heatmap</li>
-          <li>Mistakes and revision queue kept together</li>
-          <li>Certificates are completion records, not qualifications</li>
-        </ul>
-        <p><a class="mx-link" href="{% if static_export %}/dashboard{% elif user %}/profile{% else %}/leaderboard{% endif %}">{{ 'See my progress' if static_export else 'Progress and leaderboard' }} {{ icon("chevron", 13) }}</a></p>
-      </div>
-      <div class="mx-feature-demo" aria-hidden="true">
-        <div class="mx-demo-bar">
-          <span class="mx-demo-crumb">{{ 'This device' if static_export else 'This account' }}</span>
-          <span class="mx-demo-tag">Record</span>
-        </div>
-        <dl class="mx-demo-stats">
-          <div><dt>Streak</dt><dd>days</dd></div>
-          <div><dt>XP</dt><dd>earned</dd></div>
-          <div><dt>Topics</dt><dd>completed</dd></div>
+  {# =========================================== 7. THE LIBRARY & CATALOGUE #}
+  <section class="mx-section" id="mx-library-sec" data-chapter-section aria-labelledby="mx-library-title">
+    <div class="mx-split ev-reveal">
+      <div class="mx-split-rail">
+        <p class="mx-eyebrow">The library</p>
+        <h2 class="mx-section-title" id="mx-library-title">Notes written to be finished, not skimmed.</h2>
+        <p class="mx-section-lead">Each topic carries a definition, the intuition behind it, a 3D model and SVG diagram, a worked example and where it is used in practice.
+          Read the version you need: a two-minute refresher or the full treatment before an exam.</p>
+        <dl class="mx-figures">
+          <div><dt>Branches</dt><dd>{{ site.branches }}</dd></div>
+          <div><dt>Subjects</dt><dd>{{ site.subjects }}</dd></div>
+          <div><dt>Topics</dt><dd>{{ site.topics }}</dd></div>
+          <div><dt>Note versions</dt><dd>{{ site.notes }}</dd></div>
+          <div><dt>3D models</dt><dd>{{ models_3d_count }}</dd></div>
+          <div><dt>Formula sheets</dt><dd>{{ site.formulas }}</dd></div>
         </dl>
-        <div class="mx-demo-heat" aria-hidden="true">
-          {% for i in range(28) %}<span class="{{ 'on' if i in [3,4,5,9,10,12,17,18,19,20,25] else '' }}"></span>{% endfor %}
-        </div>
-        <p class="mx-demo-note">{{ 'Filled from progress saved in this browser.' if static_export else 'Filled from your account’s activity.' }}</p>
+        <p class="mx-rail-link"><a class="mx-link" href="/explore">Browse the full catalogue {{ icon("chevron", 13) }}</a></p>
       </div>
-    </article>
+
+      <div class="mx-split-main">
+        <div class="mx-list-head">
+          <span>Topic</span>
+          <span>Subject</span>
+          <span>Read</span>
+        </div>
+        <ul class="mx-library">
+          {% for topic in featured_topics[:6] %}
+          <li>
+            <a class="mx-library-row" href="/topics/{{ topic.slug }}">
+              <span class="mx-lib-main">
+                <span class="mx-lib-title">{{ topic.title }}</span>
+                <span class="mx-lib-sub">{{ topic.summary | excerpt(96) }}</span>
+              </span>
+              <span class="mx-lib-subject"><span class="mx-lib-subject-label">Subject</span>{{ topic.subject }}</span>
+              <span class="mx-lib-meta"><span class="mx-lib-time">{{ topic.est_minutes }} min</span><span class="mx-lib-level">{{ topic.difficulty }}</span></span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% if first_year %}
+        <p class="mx-list-foot">
+          <span class="mx-list-foot-label">First year</span>
+          {% for subject in first_year[:4] %}
+          <a href="/subjects/{{ subject.slug }}">{{ subject.name }}</a>
+          {% endfor %}
+          <a class="mx-more" href="/explore?year=1">All {{ first_year | length }}</a>
+        </p>
+        {% endif %}
+      </div>
+    </div>
   </section>
 
-  <section class="mx-section mx-section-code" aria-labelledby="mx-code-title">
+  {# ================================================ 8. JUDGED CODING LIST #}
+  <section class="mx-section mx-section-code ev-reveal" aria-labelledby="mx-code-title">
     <div class="mx-section-head mx-section-head-inline">
       <div>
-        <p class="mx-eyebrow">Judged coding</p>
+        <p class="mx-eyebrow">Judged coding · {{ site.languages }} language paths</p>
         <h2 class="mx-section-title" id="mx-code-title">Problems that run your code</h2>
       </div>
-      <a class="mx-link" href="/practice">All {{ site.problems }} coding problems {{ icon("chevron", 13) }}</a>
+      <a class="mx-link" href="/practice/problems">All {{ site.problems }} coding problems {{ icon("chevron", 13) }}</a>
     </div>
-    <p class="mx-section-lead mx-code-lead">Each problem is compiled and run against its own test cases — in the browser on this
-      copy, on the server judge when the operator has configured one. The expected time and space bounds are stated up front.</p>
+    <p class="mx-section-lead mx-code-lead">Each problem is compiled and run against its own test cases — in the browser on the public copy, or on the server judge when configured. Expected time and space bounds are stated up front.</p>
     <ul class="mx-problems">
       {% for problem in sample_problems %}
       <li>
@@ -422,13 +824,51 @@
     </ul>
   </section>
 
-  <section class="mx-section" aria-labelledby="mx-branches-title">
+  {# ====================================== 9. INTEGRATED ENGINEERING LABS #}
+  <section class="mx-section mx-labs-sec ev-reveal" aria-labelledby="mx-labs-title">
+    <div class="mx-section-head mx-section-head-inline">
+      <div>
+        <p class="mx-eyebrow">Systems &amp; developer studios</p>
+        <h2 class="mx-section-title" id="mx-labs-title">Four integrated engineering labs</h2>
+      </div>
+      <a class="mx-link" href="/resources">Full site index {{ icon("chevron", 13) }}</a>
+    </div>
+    <div class="mx-labs-grid" data-stagger>
+      <a class="mx-lab-item" href="/apis" data-tilt-card>
+        <span class="mx-lab-ico" aria-hidden="true">{{ icon("globe", 18) }}</span>
+        <h3>Public APIs directory</h3>
+        <p>Curated developer and scientific APIs with auth, CORS rules, local project pairings and ready cURL, Python and JavaScript snippets.</p>
+        <span class="mx-lab-go">Explore APIs {{ icon("chevron", 12) }}</span>
+      </a>
+      <a class="mx-lab-item" href="/studio" data-tilt-card>
+        <span class="mx-lab-ico" aria-hidden="true">{{ icon("database", 18) }}</span>
+        <h3>Data &amp; BaaS SQL studio</h3>
+        <p>Inspect a 26-table relational schema, row-level access policies and query plans against a safe disposable snapshot.</p>
+        <span class="mx-lab-go">Open SQL studio {{ icon("chevron", 12) }}</span>
+      </a>
+      <a class="mx-lab-item" href="/workflows" data-tilt-card>
+        <span class="mx-lab-ico" aria-hidden="true">{{ icon("workflow", 18) }}</span>
+        <h3>Workflow automations</h3>
+        <p>Declarative study, revision, placement and audit pipelines with step traces and importable n8n JSON blueprints.</p>
+        <span class="mx-lab-go">Inspect workflows {{ icon("chevron", 12) }}</span>
+      </a>
+      <a class="mx-lab-item" href="/swarm" data-tilt-card>
+        <span class="mx-lab-ico" aria-hidden="true">{{ icon("network", 18) }}</span>
+        <h3>Engineering swarm lab</h3>
+        <p>Five deterministic specialist review lenses grounded strictly in Meridian’s cited notes, formulas and project briefs.</p>
+        <span class="mx-lab-go">Run review lenses {{ icon("chevron", 12) }}</span>
+      </a>
+    </div>
+  </section>
+
+  {# ================================= 10. STREAM-SCOPED ENGINEERING BRANCHES #}
+  <section class="mx-section ev-reveal" aria-labelledby="mx-branches-title">
     <div class="mx-section-head mx-section-head-inline">
       <div>
         <p class="mx-eyebrow">Start where you are</p>
         <h2 class="mx-section-title" id="mx-branches-title">{{ site.branches }} branches, {{ site.subjects }} subjects</h2>
       </div>
-      <a class="mx-link" href="/explore">All subjects</a>
+      <a class="mx-link" href="/streams">All {{ site.branches }} study hubs {{ icon("chevron", 13) }}</a>
     </div>
     <div class="mx-branches" data-ev-stream-scope>
       {% for group in branches %}
@@ -449,7 +889,11 @@
       </div>
     </div>
     <details class="mx-branch-all">
-      <summary>All {{ site.branches }} branches and their subjects</summary>
+      <summary>All {{ site.branches }} branches and instant search</summary>
+      <div class="mx-branch-search">
+        <label class="sr-only" for="mx-branch-q">Filter branches</label>
+        <input type="search" id="mx-branch-q" data-branch-filter placeholder="Type to filter all {{ site.branches }} engineering branches…" autocomplete="off">
+      </div>
       <div class="mx-branch-all-grid">
         {% for group in branches %}
         <div>
@@ -460,11 +904,46 @@
         </div>
         {% endfor %}
       </div>
+      <p class="small muted mt" data-branch-filter-empty hidden>No branch matches that filter. <a href="/explore">Search the full catalogue instead</a>.</p>
     </details>
   </section>
 
+  {# ==================================================== 11. HONEST FAQ #}
+  <section class="mx-section mx-faq" id="mx-faq" data-chapter-section aria-labelledby="mx-faq-title">
+    <div class="mx-split ev-reveal">
+      <div class="mx-split-rail">
+        <p class="mx-eyebrow">Straight answers</p>
+        <h2 class="mx-section-title" id="mx-faq-title">Questions learners ask first.</h2>
+        <p class="mx-section-lead">Meridian states what works, where your data lives, and what the platform is not — before you invest a semester in it.</p>
+        <p class="mx-rail-link"><a class="mx-link" href="/about">About the project {{ icon("chevron", 13) }}</a></p>
+      </div>
+      <div class="mx-faq-list">
+        <details class="mx-faq-item" open>
+          <summary>Is Meridian completely free and open source?</summary>
+          <p>Yes. Meridian is MIT-licensed with no paywalls, ad networks, analytics trackers or third-party scripts. Every note, 3D model, practice question, coding problem and native app package is built openly from this repository.</p>
+        </details>
+        <details class="mx-faq-item">
+          <summary>How does code compile and run in the browser without a server?</summary>
+          <p>On the static copy and mobile apps, each language runs inside an isolated Web Worker using pinned WebAssembly toolchains — Pyodide (CPython 3.12), Clang, OpenJDK with TeaVM, Roslyn, Rust Miri, GopherJS, TypeScript and SQLite — downloaded lazily the first time you pick that language.</p>
+        </details>
+        <details class="mx-faq-item">
+          <summary>Where is my study progress stored, and can I back it up?</summary>
+          <p>{% if static_export %}On this static copy, streaks, XP, bookmarks and mistake notebooks stay in your browser’s local storage and can be exported or imported as a validated JSON file on Settings.{% else %}Signed-in accounts store progress in the server database across devices, and you can export or manage your data at any time in Settings.{% endif %}</p>
+        </details>
+        <details class="mx-faq-item">
+          <summary>Can I study offline on a phone or laptop?</summary>
+          <p>Yes. Installing the PWA caches pages and 3D assets for offline reading, and the native iOS, macOS and Android apps bundle all {{ site.topics }} topics, {{ site.questions }} practice questions and the study planner right on your device.</p>
+        </details>
+        <details class="mx-faq-item">
+          <summary>Is Meridian an accredited university or qualification?</summary>
+          <p>No. Seeded material is structured study scaffolding — unreviewed topics are clearly labelled as drafts — and Meridian completion certificates are verifiable records of work completed here, not academic degrees or professional licences.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
   {% if trending %}
-  <section class="mx-section mx-trending" aria-label="Trending searches">
+  <section class="mx-section mx-trending ev-reveal" aria-label="Trending searches">
     <p class="mx-eyebrow">Searched this week</p>
     <ul>
       {% for t in trending %}
@@ -474,15 +953,17 @@
   </section>
   {% endif %}
 
-  <section class="mx-start" aria-labelledby="mx-start-title">
+  {# ============================================== 12. CONVERSION FINALE #}
+  <section class="mx-start ev-reveal" aria-labelledby="mx-start-title">
     <div class="mx-start-copy">
       <p class="mx-eyebrow">Begin</p>
       <h2 id="mx-start-title">Start with today’s set.</h2>
-      <p>Thirty minutes, mixed subjects, marked answers. It is the quickest honest measure of where you actually are.</p>
+      <p>Thirty minutes, mixed subjects, marked answers. It is the quickest honest measure of where you actually stand.</p>
     </div>
     <div class="mx-start-actions">
-      <a class="btn btn-primary" href="/dpp">Start practising</a>
+      <a class="btn btn-primary" href="/dpp">Start practising {{ icon("chevron", 14) }}</a>
       <a class="btn btn-ghost" href="/codelab">Open CodeLab</a>
+      <a class="btn btn-ghost" href="/opportunities">Internships &amp; scholarships</a>
       <a class="btn btn-ghost" href="/install">{{ icon("download", 15) }} Get the app</a>
     </div>
   </section>

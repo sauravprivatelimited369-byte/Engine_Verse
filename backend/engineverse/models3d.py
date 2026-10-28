@@ -391,3 +391,63 @@ def tree_edges(positions) -> list[dict]:
         parent = (index - 1) // 2
         out.append(edge(positions[parent], positions[index], color=DIM))
     return out
+
+
+def meridian_instrument_scene() -> dict:
+    """Signature 3D Meridian armillary instrument for the hero observatory.
+
+    Built exclusively from the validated scene vocabulary (grid, torus, sphere,
+    cylinder, arrow, helix, line, label) so it passes through validate_scene()
+    with zero dropped objects and zero external assets.
+    """
+    objects: list[dict] = [
+        grid(6.0, 12, color="#233758", position=(0.0, -2.08, 0.0)),
+        # Base azimuth datum ring
+        {"mesh": "torus", "radius": 2.38, "tube": 0.024, "segments": 56, "rings": 14,
+         "position": [0.0, -2.05, 0.0], "color": "#2f538a", "opacity": 0.72},
+        # Prime Meridian vertical ring (signal blue)
+        {"mesh": "torus", "radius": 2.04, "tube": 0.052, "segments": 64, "rings": 20,
+         "position": [0.0, 0.0, 0.0], "rotation": [90.0, 0.0, 0.0], "color": "#2f7cf6"},
+        # Orthogonal colure meridian ring
+        {"mesh": "torus", "radius": 1.92, "tube": 0.034, "segments": 64, "rings": 18,
+         "position": [0.0, 0.0, 0.0], "rotation": [90.0, 90.0, 0.0], "color": "#5c95f5", "opacity": 0.84},
+        # Equatorial horizon ring
+        {"mesh": "torus", "radius": 1.78, "tube": 0.038, "segments": 64, "rings": 18,
+         "position": [0.0, 0.0, 0.0], "color": "#8cb6ff", "opacity": 0.88},
+        # Tilted bearing / ecliptic ring
+        {"mesh": "torus", "radius": 1.48, "tube": 0.032, "segments": 56, "rings": 16,
+         "position": [0.0, 0.0, 0.0], "rotation": [26.0, 18.0, -22.0], "color": WARM, "opacity": 0.92},
+        # Central geodesic wireframe sphere + solid precision core
+        sphere((0.0, 0.0, 0.0), 0.92, color=ACCENT, wire=True, opacity=0.56),
+        sphere((0.0, 0.0, 0.0), 0.32, color=INK),
+        # Polar spindle and zenith/nadir finials
+        cylinder((0.0, 0.0, 0.0), radius=0.024, height=4.16, color="#6d89b8", opacity=0.72),
+        sphere((0.0, 2.08, 0.0), 0.085, color=ACCENT),
+        sphere((0.0, -2.08, 0.0), 0.075, color=NEUTRAL),
+        # Active signal node on the prime meridian (42 deg elevation) + halo
+        sphere((1.516, 1.365, 0.0), 0.145, color=GOOD),
+        {"mesh": "torus", "radius": 0.25, "tube": 0.02, "segments": 36, "rings": 12,
+         "position": [1.516, 1.365, 0.0], "rotation": [90.0, 0.0, 0.0], "color": GOOD, "opacity": 0.86},
+        # Engineering resultant vector triad + harmonic coil
+        arrow((0.0, 0.0, 0.0), (1.36, 1.22, 0.0), color=GOOD, shaft=0.028, head=0.2, radius=0.075),
+        arrow((0.0, 0.0, 0.0), (-0.96, 0.74, 1.12), color=WARM, shaft=0.026, head=0.19, radius=0.07),
+        arrow((0.0, 0.0, 0.0), (0.0, 1.68, 0.0), color=ACCENT, shaft=0.026, head=0.19, radius=0.07),
+        helix((0.0, 0.0, 0.0), radius=0.56, height=1.64, turns=2.5, color="#5c95f5", tube=0.02),
+    ]
+    labels = [
+        label("Fix position", (1.68, 1.62, 0.0)),
+        label("Read the line", (0.0, 2.34, 0.0)),
+        label("Hold bearing", (-1.18, 0.9, 1.28)),
+        label("SM-2 review", (-1.82, -0.32, 0.44)),
+    ]
+    return scene(
+        objects,
+        labels=labels,
+        distance=6.4,
+        yaw=32.0,
+        pitch=17.0,
+        spin=0.18,
+        background="#0b1526",
+        ambient=0.32,
+    )
+

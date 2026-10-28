@@ -289,3 +289,24 @@ class TestCatalogAndPage:
     def test_the_service_worker_precaches_the_renderer(self):
         sw = (ROOT / "backend" / "static" / "sw.js").read_text()
         assert '"/static/js/engine3d.js"' in sw, "an offline visit would get a blank model"
+
+    def test_meridian_instrument_scene_validates_with_zero_dropped_objects(self):
+        raw = models3d.meridian_instrument_scene()
+        clean = models3d.validate_scene(raw)
+        assert clean is not None
+        assert len(clean["objects"]) == len(raw["objects"])
+        assert len(clean["labels"]) == 4
+
+    def test_anonymous_home_renders_3d_observatory_story_and_workbench(self, client):
+        page = client.get("/")
+        assert page.status_code == 200
+        assert 'id="mx-hero-viewport"' in page.text
+        assert 'id="mx-story-viewport"' in page.text
+        assert 'id="mx-workbench"' in page.text
+        assert 'id="mx-atlas"' in page.text
+        scenes = re.findall(r'data-scene="([^"]*)"', page.text)
+        assert len(scenes) >= 2
+        for encoded in scenes:
+            parsed = json.loads(html.unescape(encoded))
+            assert parsed["objects"]
+
