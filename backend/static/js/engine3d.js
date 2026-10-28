@@ -532,15 +532,36 @@
     void main() {
       if (uUnlit > 0.5) { gl_FragColor = vec4(uColor, uOpacity); return; }
       vec3 n = normalize(vNormal);
+      vec3 v = normalize(uEye - vWorld);
       float key = max(dot(n, normalize(uLightDir)), 0.0);
-      float fill = max(dot(n, normalize(uFillDir)), 0.0) * 0.35;
-      vec3 h = normalize(normalize(uLightDir) + normalize(uEye - vWorld));
-      float spec = pow(max(dot(n, h), 0.0), 32.0) * 0.4;
-      vec3 c = uColor * (uAmbient + key + fill) + vec3(spec);
+      float fill = max(dot(n, normalize(uFillDir)), 0.0) * 0.36;
+      float hemi = (n.y * 0.5 + 0.5) * 0.14;
+      vec3 h = normalize(normalize(uLightDir) + v);
+      float spec = pow(max(dot(n, h), 0.0), 38.0) * 0.42;
+      float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * 0.22;
+      vec3 c = uColor * (uAmbient + hemi + key + fill) + vec3(spec) + uColor * rim;
       gl_FragColor = vec4(clamp(c, 0.0, 1.0), uOpacity);
     }`;
 
   const UNIFORMS = ["uModel", "uView", "uProj", "uNormalMat", "uColor", "uLightDir", "uFillDir", "uEye", "uAmbient", "uOpacity", "uUnlit"];
+
+  function buildWireIndices(triIndices) {
+    const out = [];
+    const seen = Object.create(null);
+    for (let i = 0; i + 2 < triIndices.length; i += 3) {
+      const a = triIndices[i], b = triIndices[i + 1], c = triIndices[i + 2];
+      const edges = [[a, b], [b, c], [c, a]];
+      for (let k = 0; k < 3; k++) {
+        const u = edges[k][0], w = edges[k][1];
+        const key = u < w ? u + ":" + w : w + ":" + u;
+        if (!seen[key]) {
+          seen[key] = 1;
+          out.push(u, w);
+        }
+      }
+    }
+    return new Uint16Array(out);
+  }
 
   function compile(gl, type, src) {
     const shader = gl.createShader(type);
@@ -559,31 +580,67 @@
   class View3D {
     constructor(container, scene) {
       this.container = container;
-      this.scene = scene;
       this.canvas = container.querySelector("canvas");
       this.labelLayer = container.querySelector(".ev3d-labels");
+      this.root = (container.closest && container.closest("[data-ev3d-root], .mx-stage-card, .note-section, .dash-3d-card"))
+        || container.parentElement || container;
+      this.readoutEl = this.root && this.root.querySelector ? this.root.querySelector("[data-ev3d-readout]") : null;
+      this.lastReadout = "";
+      this.visible = true;
+      this.dirty = true;
+      this.engaged = false;
+      this.wireframe = false;
+      this.cssWidth = 1;
+      this.cssHeight = 1;
+      this.objects = [];
+      this.labels = [];
+      this.last = 0;
+
+      this.pointerGoalYaw = 0;
+      this.pointerGoalPitch = 0;
+      this.pointerYaw = 0;
+      this.pointerPitch = 0;
+
+      this.scrollLinked = !REDUCED && container.hasAttribute && container.hasAttribute("data-ev3d-scroll");
+      this.scrollGoalYaw = 0;
+      this.scrollGoalPitch = 0;
+      this.scrollYaw = 0;
+      this.scrollPitch = 0;
+
+      this.tween = null;
+      this.applySceneMeta(scene, false);
+    }
+
+    applySceneMeta(scene, animate) {
+      this.scene = scene;
       const cam = scene.camera || {};
       this.home = {
         yaw: num(cam.yaw, 35) * DEG,
         pitch: clamp(num(cam.pitch, 18) * DEG, -1.5, 1.5),
         distance: clamp(num(cam.distance, 6), 0.8, 200),
       };
-      this.yaw = this.home.yaw;
-      this.pitch = this.home.pitch;
-      this.distance = this.home.distance;
       this.fov = clamp(num(cam.fov, 45), 15, 100) * DEG;
-      this.spin = REDUCED ? 0 : num(scene.spin, 0.22);
+      this.defaultSpin = REDUCED ? 0 : num(scene.spin, 0.22);
+      this.spin = this.defaultSpin;
       this.ambient = clamp(num(scene.ambient, 0.28), 0, 1);
-      this.target = vec3(scene.target, 0);
+      const nextTarget = vec3(scene.target, 0);
       this.background = typeof scene.background === "string" ? scene.background : null;
-      this.visible = true;
+
+      if (animate && !REDUCED && Number.isFinite(this.yaw)) {
+        this.tween = {
+          yaw: this.home.yaw,
+          pitch: this.home.pitch,
+          distance: this.home.distance,
+          target: nextTarget,
+        };
+      } else {
+        this.yaw = this.home.yaw;
+        this.pitch = this.home.pitch;
+        this.distance = this.home.distance;
+        this.target = nextTarget;
+        this.tween = null;
+      }
       this.dirty = true;
-      this.engaged = false;
-      this.cssWidth = 1;
-      this.cssHeight = 1;
-      this.objects = [];
-      this.labels = [];
-      this.last = 0;
     }
 
     init() {
@@ -613,7 +670,38 @@
       this.buildObjects();
       this.buildLabels();
       this.bindControls();
+      this.bindToolbar();
       this.resize();
+      if (this.scrollLinked) this.updateScrollGoal();
+      this.syncToolbar();
+      return this.objects.length > 0;
+    }
+
+    disposeObjects() {
+      const gl = this.gl;
+      if (!gl) return;
+      this.objects.forEach((o) => {
+        if (o.vertexBuffer) gl.deleteBuffer(o.vertexBuffer);
+        if (o.indexBuffer) gl.deleteBuffer(o.indexBuffer);
+        if (o.wireBuffer) gl.deleteBuffer(o.wireBuffer);
+      });
+      this.objects = [];
+      this.labels = [];
+      if (this.labelLayer) this.labelLayer.textContent = "";
+    }
+
+    setScene(nextScene) {
+      let parsed = nextScene;
+      if (typeof nextScene === "string") {
+        try { parsed = JSON.parse(nextScene); } catch (_) { parsed = null; }
+      }
+      if (!parsed || !Array.isArray(parsed.objects) || !parsed.objects.length || !this.gl) return false;
+      this.disposeObjects();
+      this.applySceneMeta(parsed, true);
+      this.buildObjects();
+      this.buildLabels();
+      this.syncToolbar();
+      this.dirty = true;
       return this.objects.length > 0;
     }
 
@@ -642,10 +730,23 @@
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.indices), gl.STATIC_DRAW);
 
+        let wireBuffer = null, wireCount = 0;
+        if (mesh.mode === "triangles") {
+          const wireIdx = buildWireIndices(mesh.indices);
+          if (wireIdx.length > 0) {
+            wireBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wireBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, wireIdx, gl.STATIC_DRAW);
+            wireCount = wireIdx.length;
+          }
+        }
+
         const scale = Array.isArray(spec.scale) ? vec3(spec.scale, 1) : [num(spec.scale, 1), num(spec.scale, 1), num(spec.scale, 1)];
         this.objects.push({
           vertexBuffer,
           indexBuffer,
+          wireBuffer,
+          wireCount,
           count: mesh.indices.length,
           mode: mesh.mode === "lines" ? gl.LINES : mesh.mode === "points" ? gl.POINTS : gl.TRIANGLES,
           color: parseColor(spec.color),
@@ -674,13 +775,86 @@
       });
     }
 
+    updateScrollGoal() {
+      if (!this.scrollLinked || !this.visible) return;
+      const rect = this.container.getBoundingClientRect();
+      const vh = window.innerHeight || 800;
+      const center = rect.top + rect.height * 0.5;
+      const norm = clamp((vh * 0.5 - center) / (vh * 0.65), -1, 1);
+      this.scrollGoalYaw = norm * 0.36;
+      this.scrollGoalPitch = norm * 0.12;
+      this.dirty = true;
+    }
+
+    syncToolbar() {
+      if (!this.root || !this.root.querySelectorAll) return;
+      const spinBtns = this.root.querySelectorAll('[data-ev3d-cmd="spin"]');
+      const spinning = this.spin !== 0;
+      for (let i = 0; i < spinBtns.length; i++) {
+        spinBtns[i].setAttribute("aria-pressed", spinning ? "true" : "false");
+        const lbl = spinBtns[i].querySelector("[data-ev3d-spin-label]");
+        if (lbl) lbl.textContent = spinning ? "Orbiting" : "Paused";
+      }
+      const wireBtns = this.root.querySelectorAll('[data-ev3d-cmd="wireframe"]');
+      for (let i = 0; i < wireBtns.length; i++) {
+        wireBtns[i].setAttribute("aria-pressed", this.wireframe ? "true" : "false");
+      }
+    }
+
+    bindToolbar() {
+      if (!this.root || !this.root.querySelectorAll) return;
+      const buttons = this.root.querySelectorAll("[data-ev3d-cmd]");
+      for (let i = 0; i < buttons.length; i++) {
+        const btn = buttons[i];
+        if (btn.dataset.ev3dBound === "1") continue;
+        btn.dataset.ev3dBound = "1";
+        btn.addEventListener("click", () => {
+          const action = btn.getAttribute("data-ev3d-cmd");
+          if (action === "spin") {
+            this.spin = this.spin !== 0 ? 0 : (this.defaultSpin || 0.22);
+            this.syncToolbar();
+          } else if (action === "wireframe") {
+            this.wireframe = !this.wireframe;
+            this.syncToolbar();
+          } else if (action === "zoom-in") {
+            const targetDist = clamp((this.tween ? this.tween.distance : this.distance) * 0.82, 0.8, 200);
+            if (REDUCED) this.distance = targetDist;
+            else this.tween = { yaw: this.yaw, pitch: this.pitch, distance: targetDist, target: this.target.slice() };
+          } else if (action === "zoom-out") {
+            const targetDist = clamp((this.tween ? this.tween.distance : this.distance) * 1.2, 0.8, 200);
+            if (REDUCED) this.distance = targetDist;
+            else this.tween = { yaw: this.yaw, pitch: this.pitch, distance: targetDist, target: this.target.slice() };
+          } else if (action === "reset") {
+            this.wireframe = false;
+            this.spin = this.defaultSpin;
+            if (REDUCED) {
+              this.yaw = this.home.yaw;
+              this.pitch = this.home.pitch;
+              this.distance = this.home.distance;
+            } else {
+              this.tween = {
+                yaw: this.home.yaw,
+                pitch: this.home.pitch,
+                distance: this.home.distance,
+                target: vec3(this.scene.target, 0),
+              };
+            }
+            this.syncToolbar();
+          }
+          this.dirty = true;
+        });
+      }
+    }
+
     bindControls() {
       const el = this.canvas;
       let dragging = false, lastX = 0, lastY = 0, pinch = 0;
+      const allowParallax = !REDUCED && (!this.container.getAttribute || this.container.getAttribute("data-ev3d-parallax") !== "off");
 
       el.addEventListener("pointerdown", (e) => {
         dragging = true;
         this.engaged = true;
+        this.tween = null;
         lastX = e.clientX;
         lastY = e.clientY;
         el.classList.add("ev3d-dragging");
@@ -688,13 +862,28 @@
         if (el.focus) el.focus({ preventScroll: true });
       });
       el.addEventListener("pointermove", (e) => {
-        if (!dragging) return;
-        this.yaw += (e.clientX - lastX) * 0.008;
-        this.pitch = clamp(this.pitch + (e.clientY - lastY) * 0.008, -1.5, 1.5);
-        lastX = e.clientX;
-        lastY = e.clientY;
-        this.spin = 0;          // taking manual control stops the auto-spin
-        this.dirty = true;
+        if (dragging) {
+          this.yaw += (e.clientX - lastX) * 0.008;
+          this.pitch = clamp(this.pitch + (e.clientY - lastY) * 0.008, -1.5, 1.5);
+          lastX = e.clientX;
+          lastY = e.clientY;
+          if (this.spin !== 0) {
+            this.spin = 0;          // taking manual control stops the auto-spin
+            this.syncToolbar();
+          }
+          this.dirty = true;
+          return;
+        }
+        if (allowParallax && e.pointerType !== "touch") {
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+            const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+            this.pointerGoalYaw = clamp(nx, -1, 1) * 0.085;
+            this.pointerGoalPitch = clamp(-ny, -1, 1) * 0.055;
+            this.dirty = true;
+          }
+        }
       });
       const release = (e) => {
         dragging = false;
@@ -703,7 +892,14 @@
       };
       el.addEventListener("pointerup", release);
       el.addEventListener("pointercancel", release);
-      el.addEventListener("pointerleave", () => { this.engaged = false; });
+      el.addEventListener("pointerleave", () => {
+        this.engaged = false;
+        if (this.pointerGoalYaw !== 0 || this.pointerGoalPitch !== 0) {
+          this.pointerGoalYaw = 0;
+          this.pointerGoalPitch = 0;
+          this.dirty = true;
+        }
+      });
       el.addEventListener("blur", () => { this.engaged = false; });
 
       // Zoom only once the model is engaged, so scrolling past a model on a
@@ -711,6 +907,7 @@
       el.addEventListener("wheel", (e) => {
         if (!this.engaged) return;
         e.preventDefault();
+        this.tween = null;
         this.distance = clamp(this.distance * (1 + Math.sign(e.deltaY) * 0.12), 0.8, 200);
         this.dirty = true;
       }, { passive: false });
@@ -719,6 +916,7 @@
         if (e.touches.length !== 2) return;
         const span = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
         if (pinch) {
+          this.tween = null;
           this.distance = clamp(this.distance * (pinch / (span || pinch)), 0.8, 200);
           this.dirty = true;
         }
@@ -727,14 +925,24 @@
       el.addEventListener("touchend", () => { pinch = 0; });
 
       el.addEventListener("dblclick", () => {
-        this.yaw = this.home.yaw;
-        this.pitch = this.home.pitch;
-        this.distance = this.home.distance;
+        if (REDUCED) {
+          this.yaw = this.home.yaw;
+          this.pitch = this.home.pitch;
+          this.distance = this.home.distance;
+        } else {
+          this.tween = {
+            yaw: this.home.yaw,
+            pitch: this.home.pitch,
+            distance: this.home.distance,
+            target: vec3(this.scene.target, 0),
+          };
+        }
         this.dirty = true;
       });
 
       el.addEventListener("keydown", (e) => {
         const step = 0.18;
+        this.tween = null;
         if (e.key === "ArrowLeft") this.yaw -= step;
         else if (e.key === "ArrowRight") this.yaw += step;
         else if (e.key === "ArrowUp") this.pitch = clamp(this.pitch + step, -1.5, 1.5);
@@ -743,16 +951,26 @@
         else if (e.key === "-" || e.key === "_") this.distance = clamp(this.distance * 1.1, 0.8, 200);
         else return;
         e.preventDefault();
-        this.spin = 0;
+        if (this.spin !== 0) {
+          this.spin = 0;
+          this.syncToolbar();
+        }
         this.dirty = true;
       });
 
       if ("IntersectionObserver" in window) {
         this.observer = new IntersectionObserver((entries) => {
           this.visible = entries.some((entry) => entry.isIntersecting);
-          if (this.visible) { this.resize(); this.dirty = true; }
+          if (this.visible) {
+            this.resize();
+            if (this.scrollLinked) this.updateScrollGoal();
+            this.dirty = true;
+          }
         }, { rootMargin: "160px" });
         this.observer.observe(this.container);
+      }
+      if (this.scrollLinked) {
+        window.addEventListener("scroll", () => { this.updateScrollGoal(); }, { passive: true });
       }
       window.addEventListener("resize", () => { this.resize(); this.dirty = true; }, { passive: true });
     }
@@ -775,14 +993,78 @@
 
     frame(now) {
       if (!this.visible || document.hidden) return;
-      const dt = this.last ? Math.min((now - this.last) / 1000, 0.1) : 0;
+      const dt = this.last ? Math.min((now - this.last) / 1000, 0.1) : 0.016;
       this.last = now;
+      let moving = false;
+
       if (this.spin) {
         this.yaw += this.spin * dt;
         this.dirty = true;
+        moving = true;
       }
+
+      if (this.tween) {
+        const k = Math.min(1, dt * 8.5);
+        this.yaw += (this.tween.yaw - this.yaw) * k;
+        this.pitch += (this.tween.pitch - this.pitch) * k;
+        this.distance += (this.tween.distance - this.distance) * k;
+        for (let i = 0; i < 3; i++) this.target[i] += (this.tween.target[i] - this.target[i]) * k;
+        const settled = Math.abs(this.tween.yaw - this.yaw) < 0.0015 &&
+          Math.abs(this.tween.pitch - this.pitch) < 0.0015 &&
+          Math.abs(this.tween.distance - this.distance) < 0.004;
+        if (settled) {
+          this.yaw = this.tween.yaw;
+          this.pitch = this.tween.pitch;
+          this.distance = this.tween.distance;
+          this.target = this.tween.target.slice();
+          this.tween = null;
+        } else {
+          moving = true;
+        }
+        this.dirty = true;
+      }
+
+      const pk = Math.min(1, dt * 9);
+      if (Math.abs(this.pointerGoalYaw - this.pointerYaw) > 0.0004 ||
+          Math.abs(this.pointerGoalPitch - this.pointerPitch) > 0.0004) {
+        this.pointerYaw += (this.pointerGoalYaw - this.pointerYaw) * pk;
+        this.pointerPitch += (this.pointerGoalPitch - this.pointerPitch) * pk;
+        this.dirty = true;
+        moving = true;
+      } else {
+        this.pointerYaw = this.pointerGoalYaw;
+        this.pointerPitch = this.pointerGoalPitch;
+      }
+
+      if (this.scrollLinked) {
+        const sk = Math.min(1, dt * 7.5);
+        if (Math.abs(this.scrollGoalYaw - this.scrollYaw) > 0.0004 ||
+            Math.abs(this.scrollGoalPitch - this.scrollPitch) > 0.0004) {
+          this.scrollYaw += (this.scrollGoalYaw - this.scrollYaw) * sk;
+          this.scrollPitch += (this.scrollGoalPitch - this.scrollPitch) * sk;
+          this.dirty = true;
+          moving = true;
+        } else {
+          this.scrollYaw = this.scrollGoalYaw;
+          this.scrollPitch = this.scrollGoalPitch;
+        }
+      }
+
       if (!this.dirty) return;
-      this.dirty = this.spin !== 0;
+      this.dirty = moving;
+
+      const effYaw = this.yaw + this.pointerYaw + this.scrollYaw;
+      const effPitch = clamp(this.pitch + this.pointerPitch + this.scrollPitch, -1.5, 1.5);
+
+      if (this.readoutEl) {
+        const yawDeg = (((Math.round(effYaw / DEG) % 360) + 360) % 360);
+        const pitchDeg = Math.round(effPitch / DEG);
+        const text = yawDeg + "° · " + pitchDeg + "°";
+        if (text !== this.lastReadout) {
+          this.lastReadout = text;
+          this.readoutEl.textContent = text;
+        }
+      }
 
       const gl = this.gl;
       const bg = this.background ? parseColor(this.background, [0.04, 0.07, 0.14]) : [0.04, 0.07, 0.14];
@@ -790,9 +1072,9 @@
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
       const eye = [
-        this.target[0] + this.distance * Math.cos(this.pitch) * Math.sin(this.yaw),
-        this.target[1] + this.distance * Math.sin(this.pitch),
-        this.target[2] + this.distance * Math.cos(this.pitch) * Math.cos(this.yaw),
+        this.target[0] + this.distance * Math.cos(effPitch) * Math.sin(effYaw),
+        this.target[1] + this.distance * Math.sin(effPitch),
+        this.target[2] + this.distance * Math.cos(effPitch) * Math.cos(effYaw),
       ];
       const view = mat4.lookAt(mat4.create(), eye, this.target, [0, 1, 0]);
       const proj = mat4.perspective(mat4.create(), this.fov, this.aspect, 0.05, this.distance * 8 + 20);
@@ -811,16 +1093,23 @@
         mat4.normalMatrix(nmat, model);
         gl.uniformMatrix4fv(this.u.uModel, false, model);
         gl.uniformMatrix3fv(this.u.uNormalMat, false, nmat);
+        const useWire = this.wireframe && o.wireBuffer && o.wireCount > 0;
         gl.uniform3fv(this.u.uColor, o.color);
-        gl.uniform1f(this.u.uOpacity, o.opacity);
-        gl.uniform1f(this.u.uUnlit, o.unlit);
-        if (o.opacity < 1) gl.depthMask(false);
+        gl.uniform1f(this.u.uOpacity, useWire ? Math.max(o.opacity, 0.82) : o.opacity);
+        gl.uniform1f(this.u.uUnlit, useWire ? 1 : o.unlit);
+        if (!useWire && o.opacity < 1) gl.depthMask(false);
         gl.bindBuffer(gl.ARRAY_BUFFER, o.vertexBuffer);
         gl.vertexAttribPointer(this.aPosition, 3, gl.FLOAT, false, 24, 0);
         if (this.aNormal >= 0) gl.vertexAttribPointer(this.aNormal, 3, gl.FLOAT, false, 24, 12);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, o.indexBuffer);
-        if (o.mode === gl.TRIANGLES) gl.enable(gl.CULL_FACE); else gl.disable(gl.CULL_FACE);
-        gl.drawElements(o.mode, o.count, gl.UNSIGNED_SHORT, 0);
+        if (useWire) {
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, o.wireBuffer);
+          gl.disable(gl.CULL_FACE);
+          gl.drawElements(gl.LINES, o.wireCount, gl.UNSIGNED_SHORT, 0);
+        } else {
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, o.indexBuffer);
+          if (o.mode === gl.TRIANGLES) gl.enable(gl.CULL_FACE); else gl.disable(gl.CULL_FACE);
+          gl.drawElements(o.mode, o.count, gl.UNSIGNED_SHORT, 0);
+        }
         gl.depthMask(true);
       });
       gl.enable(gl.CULL_FACE);
@@ -869,7 +1158,7 @@
   }
 
   function mount(container) {
-    if (container.dataset.ev3dReady === "1") return;
+    if (!container || container.dataset.ev3dReady === "1") return;
     container.dataset.ev3dReady = "1";
 
     let scene = null;
@@ -888,9 +1177,26 @@
         : "This browser has no WebGL, so the 3D view is unavailable — the written explanation above covers the same idea.");
       return;
     }
+    container._ev3dView = view;
     container.classList.add("ev3d-live");
     views.push(view);
     if (!raf) raf = window.requestAnimationFrame(tick);
+  }
+
+  function getView(container) {
+    return container && container._ev3dView ? container._ev3dView : null;
+  }
+
+  function setScene(container, scene) {
+    if (!container) return false;
+    if (container.dataset.ev3dReady !== "1") {
+      container.dataset.scene = typeof scene === "string" ? scene : JSON.stringify(scene);
+      mount(container);
+      return Boolean(container._ev3dView);
+    }
+    const view = getView(container);
+    if (!view) return false;
+    return view.setScene(scene);
   }
 
   function boot() {
@@ -902,5 +1208,5 @@
 
   // Exposed so a panel added after load can mount its own models, and so
   // scripts/check_engine3d.js can run the mesh maths outside a browser.
-  window.EngineVerse3D = { mount, boot, builders: BUILDERS, mat4, project, parseColor, orientAlong };
+  window.EngineVerse3D = { mount, boot, getView, setScene, builders: BUILDERS, mat4, project, parseColor, orientAlong };
 })();

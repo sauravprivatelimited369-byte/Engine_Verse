@@ -17,9 +17,11 @@
 // (topbar auto-hide + study-plan progress) and the new home/dashboard markup.
 // v14: the MERIDIAN identity — warm-paper glass, navy ink, signal blue.
 // v15: offline device speech and tutor answer controls; drop older cached JS.
-const VERSION = "meridian-v15";
+// v16: 3D observatory, scroll walkthrough, live workbench & meridian.css shell.
+const VERSION = "meridian-v16";
 const SHELL = [
   "/static/css/app.css",
+  "/static/css/meridian.css",
   "/static/css/codelab.css",
   "/static/css/voice.css",
   "/static/js/app.js",
@@ -32,6 +34,8 @@ const SHELL = [
   "/static/js/engine3d.js",
   "/static/js/scroll.js",
   "/static/fonts/inter-latin-wght-normal.woff2",
+  "/static/fonts/newsreader-latin-wght-normal.woff2",
+  "/static/fonts/newsreader-latin-wght-italic.woff2",
   "/static/fonts/sora-latin-wght-normal.woff2",
   "/static/icons/favicon.svg",
   "/static/offline.html",

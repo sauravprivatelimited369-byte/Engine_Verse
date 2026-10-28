@@ -1739,6 +1739,1045 @@ details:not(.panel) {
 }
 @media print {
   body { background: #fff; }
-  .topbar, .footer, .mx-plan-check, .mx-hero-actions, .bottomnav { display: none !important; }
-  .mx-desk, .mx-plan, .mx-feature-demo, .panel, .card { box-shadow: none; border: 1px solid #ccc; background: #fff; }
+  .topbar, .footer, .mx-plan-check, .mx-hero-actions, .bottomnav, .mx-rail-nav, .ev3d-toolbar { display: none !important; }
+  .mx-desk, .mx-plan, .mx-feature-demo, .mx-stage-card, .mx-story-stage, .mx-wb-shell, .panel, .card { box-shadow: none; border: 1px solid #ccc; background: #fff; }
+}
+
+/* ================================================================ 9. 3D OBSERVATORY, SCROLL WALKTHROUGH & WORKBENCH */
+
+/* Staggered child reveal support */
+[data-stagger] > * {
+  transition-delay: var(--ev-stagger, 0ms);
+}
+
+/* Floating architectural chapter rail on wide viewports */
+.mx-rail-nav {
+  position: fixed;
+  right: max(14px, calc((100vw - 1340px) / 2));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 32;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(135%);
+  backdrop-filter: blur(16px) saturate(135%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+}
+@media (min-width: 1460px) {
+  .mx-rail-nav { display: flex; }
+}
+.mx-rail-nav a {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  font-weight: 540;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background-color .15s ease, color .15s ease;
+}
+.mx-rail-nav a span {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  opacity: 0.75;
+}
+.mx-rail-nav a:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+  text-decoration: none;
+}
+.mx-rail-nav a.is-active {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  font-weight: 640;
+}
+
+/* Kicker signal dot & scroll cue */
+.mx-kicker-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+  flex-shrink: 0;
+}
+.mx-scroll-cue-wrap {
+  margin: 22px 0 0;
+}
+.mx-scroll-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.81rem;
+  font-weight: 520;
+  text-decoration: none;
+  transition: color .16s ease;
+}
+.mx-scroll-cue:hover {
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.mx-scroll-wheel {
+  width: 18px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line-strong);
+  display: inline-flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+.mx-scroll-wheel > span {
+  width: 3px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--accent);
+  animation: mx-wheel-bob 2.1s ease-in-out infinite;
+}
+@keyframes mx-wheel-bob {
+  0%, 100% { transform: translateY(0); opacity: 0.9; }
+  55% { transform: translateY(7px); opacity: 0.35; }
+}
+
+/* Hero two-column observatory layout */
+.mx-hero {
+  align-items: start;
+  padding: 44px 0 54px;
+}
+.mx-hero-copy {
+  padding-top: 8px;
+  transform: translate3d(0, calc((var(--scroll-p, 0.5) - 0.5) * -10px), 0);
+}
+.mx-hero-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Meridian Glass 3D Stage Card */
+.mx-stage-card,
+.mx-story-stage,
+.mx-wb-shell {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  padding: 14px;
+}
+.mx-stage-head,
+.mx-story-stage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.mx-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 0.71rem;
+  font-weight: 630;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mx-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.mx-coord-readout {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-right: auto;
+  padding-left: 4px;
+}
+
+/* Shared 3D HUD Toolbar (Hero, Story Stage, Topic Page, Dashboard) */
+.ev3d-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.ev3d-btn {
+  appearance: none;
+  background: var(--bg-soft);
+  color: var(--text-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 560;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease;
+}
+.ev3d-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.ev3d-btn[aria-pressed="true"],
+.ev3d-btn.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Hero & Story 3D viewports */
+.mx-hero-3d {
+  height: 300px;
+  margin: 0;
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(29, 91, 214, 0.09), transparent 68%),
+    var(--bg-soft);
+}
+html[data-theme="dark"] .mx-hero-3d,
+html[data-theme="dark"] .mx-story-3d,
+html[data-theme="dark"] .mx-dash-3d {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(110, 168, 255, 0.13), transparent 70%),
+    rgba(9, 19, 32, 0.86);
+}
+.mx-story-3d {
+  height: 320px;
+  margin: 0;
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(29, 91, 214, 0.08), transparent 68%),
+    var(--bg-soft);
+}
+.mx-dash-3d {
+  height: 215px;
+  margin: 0;
+  border-radius: 10px;
+}
+
+/* 3D Model Switcher Pills */
+.mx-stage-tabs,
+.mx-story-tabs {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.mx-story-tabs { margin-top: 0; }
+.mx-stage-tab,
+.mx-story-tab {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.mx-stage-tab:hover,
+.mx-story-tab:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+.mx-stage-tab.is-on,
+.mx-story-tab.is-on {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.mx-stage-caption,
+.mx-story-meta {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.mx-stage-caption-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.mx-stage-disc {
+  font-size: 0.7rem;
+  font-weight: 640;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.mx-stage-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 560;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.mx-stage-link:hover { text-decoration: underline; }
+.mx-stage-title,
+.mx-story-stage-title {
+  margin: 0 0 4px;
+  font-family: var(--display);
+  font-size: 1.06rem;
+  font-weight: 520;
+  line-height: 1.25;
+  color: var(--text);
+}
+.mx-stage-desc {
+  margin: 0;
+  font-size: 0.815rem;
+  line-height: 1.52;
+  color: var(--muted);
+}
+
+/* Compact Today's Desk below Hero 3D Stage */
+.mx-desk-compact {
+  padding: 16px 18px 13px;
+}
+.mx-desk-compact .mx-desk-title {
+  margin-bottom: 8px;
+  font-size: 1.16rem;
+}
+.mx-desk-compact .mx-desk-row {
+  padding: 8px 4px;
+}
+
+/* Verified Telemetry Ribbon */
+.mx-telemetry {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+.mx-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 10px;
+}
+.mx-stat-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 12px;
+  border-radius: 11px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-rim);
+  text-decoration: none;
+  transition: border-color .16s ease, transform .16s ease;
+}
+.mx-stat-cell:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.mx-stat-num {
+  font-family: var(--display);
+  font-size: 1.48rem;
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.mx-stat-label {
+  font-size: 0.73rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+/* Sticky 3D Scroll-Storytelling Walkthrough */
+.mx-story-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(340px, 0.96fr);
+  gap: clamp(28px, 4.5vw, 58px);
+  align-items: start;
+}
+.mx-story-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.mx-chapter {
+  padding: 24px 24px 22px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  transition: border-color .22s ease, background-color .22s ease, box-shadow .22s ease;
+}
+.mx-chapter.is-active {
+  background: var(--glass-strong);
+  border-color: var(--accent);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+}
+.mx-chapter-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.mx-chapter-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+.mx-chapter-tag {
+  font-size: 0.72rem;
+  font-weight: 620;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mx-chapter h3 {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-size: 1.42rem;
+  font-weight: 490;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+.mx-chapter p {
+  margin: 0 0 14px;
+  color: var(--text-2);
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+.mx-chapter-cta {
+  margin: 14px 0 0 !important;
+}
+.mx-story-stage {
+  position: sticky;
+  top: 86px;
+}
+
+/* Interactive 4-Tab Workbench */
+.mx-wb-shell {
+  padding: 0;
+  overflow: hidden;
+}
+.mx-wb-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+.mx-wb-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 2px solid transparent;
+  padding: 14px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 560;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.mx-wb-tab:last-child { border-right: 0; }
+.mx-wb-tab:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+.mx-wb-tab.is-on {
+  color: var(--accent-ink);
+  background: var(--glass-strong);
+  border-bottom-color: var(--accent);
+  font-weight: 630;
+}
+.mx-wb-panel {
+  padding: clamp(18px, 3vw, 28px);
+}
+.mx-depth-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.mx-wb-kicker {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 620;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mx-depth-head h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.46rem;
+  font-weight: 490;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+.mx-depth-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mx-depth-pill {
+  appearance: none;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 560;
+  cursor: pointer;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease;
+}
+.mx-depth-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.mx-depth-pill.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.mx-depth-pill.is-ok { border-color: var(--ok); }
+.mx-depth-pill.is-bad { border-color: var(--bad); }
+
+.mx-depth-blurb {
+  margin: 0 0 14px;
+  font-size: 0.86rem;
+  color: var(--accent-ink);
+  font-weight: 540;
+}
+.mx-depth-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.mx-depth-sec {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+}
+.mx-depth-sec-title {
+  margin: 0 0 8px;
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 640;
+  color: var(--text);
+}
+.mx-wb-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* Workbench Quiz */
+.mx-quiz-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mx-quiz-score {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 0.75rem;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+.mx-quiz-subject {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.mx-quiz-stem {
+  margin: 0 0 16px;
+  font-size: 1.02rem;
+  font-weight: 520;
+  line-height: 1.55;
+  color: var(--text);
+}
+.mx-quiz-opts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.mx-quiz-opt {
+  appearance: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease;
+}
+.mx-quiz-opt:hover { border-color: var(--accent); }
+.mx-quiz-opt.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.mx-quiz-opt.is-right {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+.mx-quiz-opt.is-wrong {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+.mx-quiz-opt-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  font-weight: 650;
+  flex-shrink: 0;
+}
+.mx-quiz-feedback {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line-strong);
+}
+.mx-quiz-verdict {
+  margin: 0 0 6px;
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+.mx-quiz-verdict.is-ok { color: var(--ok); }
+.mx-quiz-verdict.is-bad { color: var(--bad); }
+
+/* Workbench 3D Perspective Flashcards */
+.mx-fc-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mx-fc-stage {
+  perspective: 1100px;
+  max-width: 680px;
+  margin: 6px auto 4px;
+}
+.mx-fc-card {
+  cursor: pointer;
+  outline: none;
+}
+.mx-fc-card:focus-visible .mx-fc-inner {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+.mx-fc-inner {
+  position: relative;
+  min-height: 215px;
+  transform-style: preserve-3d;
+  transition: transform .52s cubic-bezier(.22, .61, .36, 1);
+  border-radius: 14px;
+}
+.mx-fc-card.is-flipped .mx-fc-inner {
+  transform: rotateY(180deg);
+}
+.mx-fc-face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+}
+.mx-fc-back {
+  transform: rotateY(180deg);
+  border-color: var(--accent);
+}
+.mx-fc-badge {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  font-size: 0.69rem;
+  font-weight: 640;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mx-fc-badge-ans {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+.mx-fc-text {
+  margin: 12px 0;
+  font-family: var(--display);
+  font-size: clamp(1.08rem, 2vw, 1.32rem);
+  line-height: 1.42;
+  color: var(--text);
+}
+.mx-fc-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Workbench Multi-language Code */
+.mx-code-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.65fr);
+  gap: 16px;
+  align-items: start;
+}
+.mx-code-editor {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+.mx-code-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.mx-code-pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.81rem;
+  line-height: 1.55;
+  color: var(--text);
+  max-height: 260px;
+}
+.mx-code-io {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mx-tc-box {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.mx-tc-box code {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.77rem;
+  color: var(--text);
+  word-break: break-word;
+}
+.mx-tc-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 630;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Horizontal 3D Engineering Atlas & Perspective Tilt Cards */
+.mx-atlas-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mx-atlas-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mx-atlas-arrows {
+  display: inline-flex;
+  gap: 6px;
+}
+.mx-atlas-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(288px, 326px);
+  gap: 16px;
+  overflow-x: auto;
+  padding: 6px 2px 14px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+.mx-atlas-card,
+.mx-lab-item {
+  scroll-snap-align: start;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 20px 18px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at var(--gx, 50%) var(--gy, 20%), rgba(29, 91, 214, 0.08), transparent 62%),
+    var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  backdrop-filter: blur(18px) saturate(135%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform .18s ease-out, border-color .18s ease;
+  text-decoration: none;
+  color: var(--text);
+}
+.mx-atlas-card[hidden] { display: none; }
+.mx-atlas-card:hover,
+.mx-lab-item:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+.mx-atlas-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.mx-atlas-card h3,
+.mx-lab-item h3 {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 500;
+  line-height: 1.24;
+  color: var(--text);
+}
+.mx-atlas-summary,
+.mx-lab-item p {
+  margin: 0 0 16px;
+  font-size: 0.855rem;
+  line-height: 1.56;
+  color: var(--muted);
+  flex: 1;
+}
+.mx-atlas-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.mx-atlas-scrollbar {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.mx-atlas-scrollbar > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(0.25);
+  transition: transform .15s ease-out;
+}
+
+/* Integrated Engineering Labs Grid */
+.mx-labs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.mx-lab-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  margin-bottom: 14px;
+}
+.mx-lab-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.81rem;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+/* Branch Instant Search */
+.mx-branch-search {
+  margin: 14px 0 18px;
+  max-width: 420px;
+}
+.mx-branch-search input {
+  width: 100%;
+}
+
+/* Honest FAQ Accordion */
+.mx-faq-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.mx-faq-item {
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+.mx-faq-item summary {
+  cursor: pointer;
+  font-family: var(--display);
+  font-size: 1.12rem;
+  font-weight: 500;
+  color: var(--text);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mx-faq-item summary::-webkit-details-marker { display: none; }
+.mx-faq-item summary::after {
+  content: "+";
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.mx-faq-item[open] summary::after { content: "−"; color: var(--accent-ink); }
+.mx-faq-item p {
+  margin: 10px 0 2px;
+  max-width: 66ch;
+  color: var(--text-2);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+/* Responsive Breakpoints for 3D, Story, Workbench & Labs */
+@media (max-width: 1120px) {
+  .mx-telemetry-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mx-labs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 980px) {
+  .mx-hero-copy { transform: none; }
+  .mx-story-grid { grid-template-columns: 1fr; }
+  .mx-story-stage { position: static; order: -1; }
+  .mx-depth-cols,
+  .mx-quiz-opts,
+  .mx-code-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .mx-telemetry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mx-wb-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mx-wb-tab:nth-child(2) { border-right: 0; }
+  .mx-wb-tab:nth-child(1),
+  .mx-wb-tab:nth-child(2) { border-bottom: 1px solid var(--line); }
+  .mx-hero-3d { height: 245px; }
+  .mx-story-3d { height: 250px; }
+  .mx-labs-grid { grid-template-columns: 1fr; }
+  .mx-coord-readout { display: none; }
+  .mx-fc-inner { min-height: 240px; }
+}
+@media (max-width: 420px) {
+  .mx-stage-card, .mx-story-stage { padding: 11px; }
+  .mx-hero-3d { height: 220px; }
+  .mx-atlas-track { grid-auto-columns: minmax(256px, 84vw); }
+}
+
+/* Fallbacks for reduced transparency, forced colors & reduced motion */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mx-stage-card, .mx-story-stage, .mx-wb-shell, .mx-stat-cell, .mx-atlas-card, .mx-lab-item, .mx-rail-nav {
+    background: var(--glass-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mx-stage-card, .mx-story-stage, .mx-wb-shell, .mx-stat-cell, .mx-atlas-card, .mx-lab-item, .mx-rail-nav, .mx-fc-face {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (forced-colors: active) {
+  .mx-stage-card, .mx-story-stage, .mx-wb-shell, .mx-stat-cell, .mx-atlas-card, .mx-lab-item, .mx-rail-nav, .mx-fc-face {
+    background: Canvas;
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-scroll-wheel > span { animation: none; }
+  .mx-hero-copy { transform: none; }
+  .mx-fc-inner { transition: none; }
+  .mx-atlas-card, .mx-lab-item, .mx-stat-cell { transition: none; transform: none; }
 }

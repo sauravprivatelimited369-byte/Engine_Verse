@@ -9,6 +9,20 @@ release.
 
 ### Added
 
+- **Interactive 3D Observatory, Scroll Walkthrough and Live Study Workbench.**
+  Upgraded `engine3d.js` with hemisphere ambient, Blinn-Phong specular and
+  Fresnel rim lighting, indexed `gl.LINES` X-Ray wireframe mode, smooth
+  `EngineVerse3D.setScene()` camera transitions, pointer micro-parallax,
+  scroll-linked 3D rotation (`data-ev3d-scroll`) and declarative viewport
+  toolbars (`data-ev3d-cmd`) across the homepage, signed-in dashboard and all
+  406 topic pages. Added `models3d.meridian_instrument_scene()` for the
+  Meridian Armillary hero scene, a sticky 3D scroll-storytelling walkthrough,
+  a four-tab interactive workbench (four-depth note reader with browser speech,
+  self-marking practice MCQs, 3D-flip spaced-repetition flashcards and
+  multi-language judged code starters), a discipline-filterable 3D Atlas with
+  in-stage model loading, instant 45-branch search, and `meridian-v16` offline
+  service-worker caching.
+
 - **The native apps are now real offline apps, and they are downloadable.**
   Every push publishes `Meridian.apk` to the
   [android-latest](https://github.com/sauravprivatelimited369-byte/Engine_Verse/releases/tag/android-latest)

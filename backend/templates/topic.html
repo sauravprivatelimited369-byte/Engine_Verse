@@ -53,8 +53,18 @@
     {% endif %}
 
     {% for model in models_3d %}
-      <section class="note-section" id="model-3d">
-        <h2>3D model</h2>
+      <section class="note-section" id="model-3d" data-ev3d-root>
+        <div class="between" style="flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <h2 style="margin:0">3D model</h2>
+          <div class="ev3d-toolbar" role="toolbar" aria-label="3D model controls">
+            <span class="mx-coord-readout" data-ev3d-readout aria-hidden="true">32° · 17°</span>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="spin" aria-pressed="true" title="Toggle auto-orbit"><span data-ev3d-spin-label>Orbiting</span></button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="wireframe" aria-pressed="false" title="Toggle wireframe X-ray">X-Ray</button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+            <button type="button" class="ev3d-btn" data-ev3d-cmd="reset" title="Reset camera">Reset</button>
+          </div>
+        </div>
         {# The scene is validated JSON geometry, emitted into an attribute and
            drawn by static/js/engine3d.js. Autoescaping is on, and the scene
            itself contains only finite numbers, hex colours and allowlisted

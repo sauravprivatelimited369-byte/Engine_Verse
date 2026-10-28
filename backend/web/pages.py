@@ -26,6 +26,7 @@ from engineverse import (
     judge,
     ladders,
     library,
+    models3d,
     navigation,
     outcomes,
     practice,
@@ -75,6 +76,247 @@ def deep_link_slug(slug: str | None) -> str | None:
 # Home and exploration
 # ---------------------------------------------------------------------------
 
+_SHOWCASE_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    ("bernoullis-equation", "Fluid Flow", "mech-civil", "Fluid Mechanics"),
+    ("transformers", "Electromagnetics", "elec-phys", "Electrical Machines"),
+    ("stress-strain-hookes-law", "Solid Mechanics", "mech-civil", "Strength of Materials"),
+    ("hash-tables", "Data Structures", "computing", "Algorithms & Computing"),
+    ("semiconductors-pn-junctions", "PN Junction", "elec-phys", "Semiconductor Physics"),
+    ("limits-continuity", "3D Surface", "chem-math", "Engineering Mathematics"),
+    ("recursion-backtracking", "Recursion Tree", "computing", "Computing Systems"),
+    ("material-energy-balances", "Process Balance", "chem-math", "Chemical Engineering"),
+)
+
+
+def _curated_showcase_models() -> list[dict[str, Any]]:
+    """Fetch validated 3D models from the catalogue across core engineering branches."""
+    slugs = [item[0] for item in _SHOWCASE_SPECS]
+    placeholders = ",".join("?" for _ in slugs)
+    rows = db.query(
+        f"SELECT m.title, m.caption, m.scene, "
+        f"t.slug AS topic_slug, t.title AS topic_title, t.est_minutes, t.difficulty, "
+        f"s.name AS subject_name, s.slug AS subject_slug, b.name AS branch_name "
+        f"FROM models_3d m "
+        f"JOIN topics t ON t.id = m.topic_id "
+        f"JOIN subjects s ON s.id = t.subject_id "
+        f"LEFT JOIN branches b ON b.id = s.branch_id "
+        f"WHERE t.status = 'published' AND t.slug IN ({placeholders})",
+        *slugs,
+    )
+    by_slug = {row["topic_slug"]: row for row in rows}
+    meta_by_slug = {slug: (tab, cat, disc) for slug, tab, cat, disc in _SHOWCASE_SPECS}
+    out: list[dict[str, Any]] = []
+    for slug, tab_label, category, discipline in _SHOWCASE_SPECS:
+        row = by_slug.get(slug)
+        if not row:
+            continue
+        encoded = models3d.scene_json(row["scene"])
+        if not encoded:
+            continue
+        out.append({
+            "topic_slug": row["topic_slug"],
+            "topic_title": row["topic_title"],
+            "subject_name": row["subject_name"],
+            "subject_slug": row["subject_slug"],
+            "branch_name": row["branch_name"] or discipline,
+            "est_minutes": row["est_minutes"] or 15,
+            "difficulty": row["difficulty"] or "intermediate",
+            "tab_label": tab_label,
+            "category": category,
+            "discipline": discipline,
+            "title": row["title"],
+            "caption": row["caption"],
+            "scene_json": encoded,
+        })
+    if len(out) < 4:
+        extra = db.query(
+            "SELECT m.title, m.caption, m.scene, "
+            "t.slug AS topic_slug, t.title AS topic_title, t.est_minutes, t.difficulty, "
+            "s.name AS subject_name, s.slug AS subject_slug, b.name AS branch_name "
+            "FROM models_3d m "
+            "JOIN topics t ON t.id = m.topic_id "
+            "JOIN subjects s ON s.id = t.subject_id "
+            "LEFT JOIN branches b ON b.id = s.branch_id "
+            "WHERE t.status = 'published' ORDER BY t.order_index LIMIT 8"
+        )
+        seen = {item["topic_slug"] for item in out}
+        for row in extra:
+            if row["topic_slug"] in seen:
+                continue
+            encoded = models3d.scene_json(row["scene"])
+            if not encoded:
+                continue
+            tab_label, category, discipline = meta_by_slug.get(
+                row["topic_slug"],
+                (row["topic_title"][:18], "computing", row["subject_name"]),
+            )
+            out.append({
+                "topic_slug": row["topic_slug"],
+                "topic_title": row["topic_title"],
+                "subject_name": row["subject_name"],
+                "subject_slug": row["subject_slug"],
+                "branch_name": row["branch_name"] or discipline,
+                "est_minutes": row["est_minutes"] or 15,
+                "difficulty": row["difficulty"] or "intermediate",
+                "tab_label": tab_label,
+                "category": category,
+                "discipline": discipline,
+                "title": row["title"],
+                "caption": row["caption"],
+                "scene_json": encoded,
+            })
+            seen.add(row["topic_slug"])
+            if len(out) >= 8:
+                break
+    return out
+
+
+def _demo_topic_depths(fallback_slug: str | None = None) -> dict[str, Any] | None:
+    """Return a real topic with its four authored reading depths for the workbench."""
+    target = catalog.get_topic("bernoullis-equation")
+    if not target and fallback_slug:
+        target = catalog.get_topic(fallback_slug)
+    if not target:
+        return None
+    notes = db.query(
+        "SELECT id, quality_level FROM notes WHERE topic_id = ? AND status = 'published'",
+        target["id"],
+    )
+    by_level = {row["quality_level"]: row["id"] for row in notes}
+    depths: list[dict[str, Any]] = []
+    blurbs = {
+        "beginner": "Two-minute intuition before lecture",
+        "standard": "Core definition, equation and structure",
+        "advanced": "Full mathematical framing and edge bounds",
+        "industry": "Real engineering trade-offs in practice",
+    }
+    for level in catalog.NOTE_ORDER:
+        note_id = by_level.get(level)
+        if not note_id:
+            continue
+        sections = db.query(
+            "SELECT kind, title, body, callout FROM note_sections "
+            "WHERE note_id = ? ORDER BY order_index LIMIT 2",
+            note_id,
+        )
+        if not sections:
+            continue
+        depths.append({
+            "quality": level,
+            "label": level.capitalize(),
+            "blurb": blurbs.get(level, ""),
+            "sections": sections,
+        })
+    if not depths:
+        return None
+    return {
+        "slug": target["slug"],
+        "title": target["title"],
+        "subject": target.get("subject_name") or "Fluid Mechanics",
+        "summary": target.get("summary") or "",
+        "est_minutes": target.get("est_minutes") or 15,
+        "depths": depths,
+    }
+
+
+def _demo_questions() -> list[dict[str, Any]]:
+    """Fetch up to 3 real self-marking MCQs from distinct subjects for the workbench."""
+    rows = db.query(
+        "SELECT q.id, q.slug, q.stem, q.difficulty, q.explanation, "
+        "t.slug AS topic_slug, t.title AS topic_title, s.name AS subject_name "
+        "FROM questions q "
+        "JOIN topics t ON t.id = q.topic_id "
+        "JOIN subjects s ON s.id = q.subject_id "
+        "WHERE q.is_active = 1 AND q.kind = 'mcq' AND q.explanation != '' "
+        "ORDER BY q.time_weight, q.id LIMIT 24"
+    )
+    picked: list[dict[str, Any]] = []
+    seen_subjects: set[str] = set()
+    for row in rows:
+        if row["subject_name"] in seen_subjects and len(rows) > 3:
+            continue
+        options = db.query(
+            "SELECT label, body, is_correct FROM question_options "
+            "WHERE question_id = ? ORDER BY order_index",
+            row["id"],
+        )
+        if len(options) < 2 or not any(opt["is_correct"] for opt in options):
+            continue
+        correct = next((opt["label"] for opt in options if opt["is_correct"]), options[0]["label"])
+        picked.append({
+            "id": row["id"],
+            "slug": row["slug"],
+            "stem": row["stem"],
+            "difficulty": row["difficulty"],
+            "explanation": row["explanation"],
+            "topic_slug": row["topic_slug"],
+            "topic_title": row["topic_title"],
+            "subject_name": row["subject_name"],
+            "correct_label": correct,
+            "options": options,
+        })
+        seen_subjects.add(row["subject_name"])
+        if len(picked) >= 3:
+            break
+    return picked
+
+
+def _demo_flashcards() -> list[dict[str, Any]]:
+    """Fetch up to 4 real spaced-repetition flashcards from the catalogue."""
+    return db.query(
+        "SELECT f.id, f.front, f.back, t.slug AS topic_slug, t.title AS topic_title, s.name AS subject_name "
+        "FROM flashcards f "
+        "LEFT JOIN topics t ON t.id = f.topic_id "
+        "LEFT JOIN subjects s ON s.id = f.subject_id "
+        "ORDER BY f.id LIMIT 4"
+    )
+
+
+def _dashboard_model(branch_id: str | None) -> dict[str, Any] | None:
+    """Return one validated 3D study model for the signed-in dashboard."""
+    row = None
+    if branch_id:
+        row = db.query_one(
+            "SELECT m.title, m.caption, m.scene, t.slug AS topic_slug, t.title AS topic_title, s.name AS subject_name "
+            "FROM models_3d m "
+            "JOIN topics t ON t.id = m.topic_id "
+            "JOIN subjects s ON s.id = t.subject_id "
+            "WHERE s.branch_id = ? AND t.status = 'published' "
+            "ORDER BY t.view_count DESC, t.order_index LIMIT 1",
+            branch_id,
+        )
+    if not row:
+        row = db.query_one(
+            "SELECT m.title, m.caption, m.scene, t.slug AS topic_slug, t.title AS topic_title, s.name AS subject_name "
+            "FROM models_3d m "
+            "JOIN topics t ON t.id = m.topic_id "
+            "JOIN subjects s ON s.id = t.subject_id "
+            "WHERE t.slug = 'bernoullis-equation' AND t.status = 'published' LIMIT 1"
+        )
+    if row:
+        encoded = models3d.scene_json(row["scene"])
+        if encoded:
+            return {
+                "title": row["title"],
+                "caption": row["caption"],
+                "topic_slug": row["topic_slug"],
+                "topic_title": row["topic_title"],
+                "subject_name": row["subject_name"],
+                "scene_json": encoded,
+            }
+    fallback_json = models3d.scene_json(models3d.meridian_instrument_scene())
+    if not fallback_json:
+        return None
+    return {
+        "title": "The Meridian Armillary",
+        "caption": "Three orthogonal meridian rings fix coordinates in space while the signal dot marks your active topic.",
+        "topic_slug": "",
+        "topic_title": "Explore 3D models",
+        "subject_name": "Engineering Catalogue",
+        "scene_json": fallback_json,
+    }
+
+
 @router.get("/")
 async def home(request: Request):
     viewer = current_user(request)
@@ -84,6 +326,8 @@ async def home(request: Request):
         "popular_subjects": catalog.popular_subjects(12),
         "cyber_security_subject": catalog.get_subject("cryptography-security"),
         "trending": search.trending(8),
+        "models_3d_count": int(db.scalar("SELECT count(*) AS c FROM models_3d") or 0),
+        "diagrams_count": int(db.scalar("SELECT count(*) AS c FROM diagrams") or 0),
     }
     if viewer:
         context["dashboard"] = recommend.dashboard(viewer.id)
@@ -94,16 +338,42 @@ async def home(request: Request):
         context["my_stream"] = next(
             (row for row in hub.list_streams() if row["id"] == viewer.branch_id), None
         )
+        context["dashboard_model"] = _dashboard_model(viewer.branch_id)
         return render(request, "dashboard.html", **context)
-    context["featured_topics"] = db.query(
+
+    featured_topics = db.query(
         "SELECT t.slug, t.title, t.summary, t.difficulty, t.est_minutes, s.name AS subject, s.color AS color "
         "FROM topics t JOIN subjects s ON s.id = t.subject_id WHERE t.status='published' "
         "ORDER BY t.view_count DESC, t.order_index LIMIT 9"
     )
-    context["sample_problems"] = coding.list_problems(limit=6)[0]
+    sample_problems = coding.list_problems(limit=6)[0]
+    showcase_models = _curated_showcase_models()
+    hero_scene_json = models3d.scene_json(models3d.meridian_instrument_scene())
+    hero_model = {
+        "topic_slug": featured_topics[0]["slug"] if featured_topics else "",
+        "topic_title": featured_topics[0]["title"] if featured_topics else "Explore catalogue",
+        "subject_name": "Meridian Reference Instrument",
+        "tab_label": "Meridian Ring",
+        "discipline": "Navigation & Reference",
+        "title": "The Meridian Armillary — position, bearing and verification",
+        "caption": "Orthogonal meridian rings fix coordinates in 3D space; the emerald signal marks your active topic on the prime meridian while the vector triad resolves concept, practice and spaced review.",
+        "scene_json": hero_scene_json,
+    }
+    demo_problem = coding.get_problem("two-sum")
+    if not demo_problem and sample_problems:
+        demo_problem = coding.get_problem(sample_problems[0]["slug"])
+
+    context["featured_topics"] = featured_topics
+    context["sample_problems"] = sample_problems
     context["sample_projects"] = projects.list_projects(limit=3)
     context["paths"] = catalog.featured_paths()
     context["first_year"] = catalog.list_subjects(first_year=True, limit=200)
+    context["hero_model"] = hero_model
+    context["showcase_models"] = showcase_models
+    context["demo_topic"] = _demo_topic_depths(featured_topics[0]["slug"] if featured_topics else None)
+    context["demo_questions"] = _demo_questions()
+    context["demo_flashcards"] = _demo_flashcards()
+    context["demo_problem"] = demo_problem
     return render(request, "home.html", **context)
 
 

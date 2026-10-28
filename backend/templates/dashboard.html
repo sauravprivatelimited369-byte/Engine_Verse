@@ -196,6 +196,28 @@
   </div>
 
   <aside class="sidebar">
+    {% if dashboard_model and dashboard_model.scene_json %}
+    <div class="panel tight ev-reveal" data-ev3d-root>
+      <div class="between" style="gap:6px;margin-bottom:8px">
+        <h3 style="margin:0">3D concept bench</h3>
+        <div class="ev3d-toolbar" role="toolbar" aria-label="Dashboard 3D controls">
+          <button type="button" class="ev3d-btn" data-ev3d-cmd="wireframe" aria-pressed="false">X-Ray</button>
+          <button type="button" class="ev3d-btn" data-ev3d-cmd="reset">Reset</button>
+        </div>
+      </div>
+      <figure class="ev3d mx-dash-3d" data-model3d data-scene="{{ dashboard_model.scene_json }}">
+        <canvas tabindex="0" role="img" aria-label="Interactive 3D model: {{ dashboard_model.title }}"></canvas>
+        <div class="ev3d-labels" aria-hidden="true"></div>
+        <p class="ev3d-hint">Interactive 3D model — requires JavaScript and WebGL.</p>
+      </figure>
+      <p class="small" style="margin:8px 0 4px"><strong>{{ dashboard_model.title }}</strong></p>
+      <p class="tiny muted" style="margin:0 0 8px">{{ dashboard_model.caption | excerpt(120) }}</p>
+      {% if dashboard_model.topic_slug %}
+      <a class="btn btn-soft btn-sm" href="/topics/{{ dashboard_model.topic_slug }}#model-3d">Open {{ dashboard_model.topic_title }} →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="panel tight quick-panel ev-reveal">
       <h3>Quick actions</h3>
       <div class="quick-links">
