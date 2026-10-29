@@ -30,7 +30,17 @@
       {% if f.constraints %}<p class="tiny muted"><strong>Valid when:</strong> {{ f.constraints }}</p>{% endif %}
       <p class="tiny muted">{{ f.category }}{% if f.application %} · {{ f.application }}{% endif %}</p>
     </div>
-  {% else %}<div class="empty"><span class="em">∑</span>No formulas match.</div>{% endfor %}
+  {% else %}
+  <div class="empty"><span class="em">∑</span>
+    <strong>No formulas match that search.</strong>
+    <p class="small muted" style="margin:6px 0 12px">Try the name of the quantity rather than the symbol — “Bernoulli”,
+      “Ohm”, “capitalisation” — or clear the category filter.</p>
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-soft btn-sm" href="/formulas">All formulas</a>
+      <a class="btn btn-soft btn-sm" href="/explore">Browse by subject</a>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% include "_pager.html" %}
 {% endblock %}

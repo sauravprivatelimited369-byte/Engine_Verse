@@ -283,6 +283,46 @@ def render() -> str:
                 ),
             )
         )
+    # Question coverage is very uneven, and a table of counts hides that. The
+    # audit named it: one subject carries 96 questions while the median
+    # subject carries four. The imbalance is a content gap - it needs more
+    # authored questions, not code - but it should at least be named in the
+    # report rather than left for somebody to notice in a table.
+    per_subject = db.query(
+        "SELECT s.name AS name, s.slug AS slug, count(q.id) AS n FROM subjects s "
+        "LEFT JOIN questions q ON q.subject_id = s.id AND q.is_active = 1 "
+        "WHERE s.status = 'published' GROUP BY s.id ORDER BY n DESC, s.name"
+    )
+    counts = sorted(int(row["n"]) for row in per_subject)
+    if counts:
+        middle = counts[len(counts) // 2]
+        heavy = [row for row in per_subject if int(row["n"]) >= max(12, middle * 4)]
+        thin = [row for row in per_subject if int(row["n"]) <= max(2, middle // 2)]
+        lines.extend([
+            "",
+            "## Question coverage is uneven",
+            "",
+            f"- Median questions per subject: {middle}.",
+        ])
+        if heavy:
+            lines.append(
+                "- Heavily covered: "
+                + ", ".join(f"{row['name']} ({row['n']})" for row in heavy[:6])
+                + "."
+            )
+        if thin:
+            lines.append(
+                "- Thinly covered: "
+                + ", ".join(f"{row['name']} ({row['n']})" for row in thin[:8])
+                + (", and others." if len(thin) > 8 else ".")
+            )
+        lines.extend([
+            "",
+            "Every published subject has at least one question, so no topic leads a",
+            "learner to an empty page. The spread above is a content gap: it needs",
+            "more authored questions, not a code change.",
+            "",
+        ])
     lines.extend([
         "",
         "A branch with a handful of subjects is a sample, not a semester. Core learning",

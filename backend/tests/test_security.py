@@ -333,7 +333,7 @@ class TestAdminCapabilityNames:
         return client, _csrf(client.get("/admin").text)
 
     def test_a_super_admin_can_actually_use_the_admin_forms(self, app, seeded):
-        from engineverse import db
+        from engineverse import brand, db
 
         client, token = self._admin(app)
         target = db.query_one("SELECT id FROM users WHERE email = 'ravi@example.com'")["id"]
@@ -349,12 +349,27 @@ class TestAdminCapabilityNames:
                              follow_redirects=False)
         assert status.status_code == 303, status.text
 
-        config = client.post("/admin/config",
-                             data={"site_name": "EngineVerse", "tagline": "Learn everything.",
-                                   "csrf_token": token},
-                             follow_redirects=False)
-        assert config.status_code == 303, config.text
-        assert db.query_one("SELECT value FROM site_config WHERE key = 'tagline'")["value"] == "Learn everything."
+        # The database is shared by the whole session, so the branding this
+        # test writes has to be put back: it used to leak, and every later
+        # test then saw a site called "EngineVerse" - which is how a product
+        # that calls itself Meridian ended up rendering the old name.
+        original = {
+            "site_name": db.scalar("SELECT value FROM site_config WHERE key = 'site_name'"),
+            "tagline": db.scalar("SELECT value FROM site_config WHERE key = 'tagline'"),
+        }
+        try:
+            config = client.post("/admin/config",
+                                 data={"site_name": "EngineVerse", "tagline": "Learn everything.",
+                                       "csrf_token": token},
+                                 follow_redirects=False)
+            assert config.status_code == 303, config.text
+            assert db.query_one("SELECT value FROM site_config WHERE key = 'tagline'")["value"] == "Learn everything."
+        finally:
+            for key, value in original.items():
+                if value is None:
+                    db.execute("DELETE FROM site_config WHERE key = ?", key)
+                else:
+                    brand.set_many({key: value})
 
     def test_a_moderator_can_resolve_a_report(self, app, seeded):
         from engineverse import community, db

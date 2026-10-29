@@ -47,7 +47,7 @@ PROBLEMS += [
                   "first and comparing sizes says the same thing with less code: if the distinct count is smaller "
                   "than the length, something repeated. Time O(n), space O(n). Sorting first also works and uses "
                   "O(1) extra space beyond the sort, but costs O(n log n).",
-        wrapper="int-list", expected_time="O(n)", expected_space="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "valid-anagram", "Valid Anagram", "easy",
@@ -103,7 +103,7 @@ PROBLEMS += [
         editorial="The key insight is that an anagram class has a canonical form: the word's letters in sorted "
                   "order. Map that key to the list of words that produced it, remembering insertion order so the "
                   "output is deterministic. Time O(n · k log k) for k-letter words, space O(n · k).",
-        wrapper="string-list", expected_time="O(n·k log k)", expected_space="O(n·k)",
+        wrapper="string-list",
     ),
     problem(
         "top-k-frequent", "Top K Frequent Elements", "medium",
@@ -131,7 +131,7 @@ PROBLEMS += [
                   "gives a deterministic answer and is O(d log d) for d distinct values. A min-heap of size k runs "
                   "in O(n log k), which matters when the value range is large. Bucket sort by frequency reaches "
                   "O(n) but cannot break ties by value as simply.",
-        wrapper="int-list-int", expected_time="O(n log n)", expected_space="O(n)",
+        wrapper="int-list-int",
     ),
     problem(
         "product-except-self", "Product of Array Except Self", "medium",
@@ -163,7 +163,7 @@ PROBLEMS += [
                   "running suffix product. Each pass is O(n), and the only extra space is the output itself. The "
                   "division ban is the point of the problem: with zeros in the list, dividing would need special "
                   "cases anyway.",
-        wrapper="int-list", expected_time="O(n)", expected_space="O(1) besides the output",
+        wrapper="int-list",
     ),
     problem(
         "longest-consecutive-sequence", "Longest Consecutive Sequence", "medium",
@@ -195,7 +195,7 @@ PROBLEMS += [
                   "set contains the next value. Each value is visited at most twice across all runs, so the total "
                   "work is O(n) even though the inner loop looks nested. Skip the check and every value would "
                   "start its own walk, which is the O(n²) trap this problem is testing for.",
-        wrapper="int-list", expected_time="O(n)", expected_space="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "move-zeroes", "Move Zeroes", "easy",
@@ -224,7 +224,7 @@ PROBLEMS += [
         editorial="This is the write-index pattern: walk the list once, compact the non-zero values to the front "
                   "and remember where that front ended, then fill the remainder with zeros. It is O(n) time, O(1) "
                   "extra space, and stable - which is why swapping pairs is riskier than it looks.",
-        wrapper="int-list", expected_time="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "majority-element", "Majority Element", "easy",
@@ -252,7 +252,7 @@ PROBLEMS += [
                   "value decrements, and a zero counter adopts the next value. Because the majority element occurs "
                   "more than n/2 times it survives every cancellation. One pass, constant space. Counting with a "
                   "dictionary is easier to reason about but uses O(n) space, and sorting is O(n log n).",
-        wrapper="int-list", expected_time="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "subarray-sum-equals-k", "Subarray Sum Equals K", "medium",
@@ -283,7 +283,7 @@ PROBLEMS += [
                   "seen. The `{0: 1}` seed is what lets a subarray starting at index 0 be counted. Negative "
                   "numbers make a sliding window invalid, which is why the prefix map is the right tool: O(n) "
                   "time, O(n) space.",
-        wrapper="int-list-int", expected_time="O(n)", expected_space="O(n)",
+        wrapper="int-list-int",
     ),
 ]
 
@@ -422,7 +422,7 @@ PROBLEMS += [
                   "-nums[i]. Sorting makes skipping duplicates easy and makes the output order deterministic. "
                   "Total time O(n²), space O(1) beyond the output. Missing the duplicate skips is the classic "
                   "wrong answer here, and it is usually visible in the test output as a repeated triple.",
-        wrapper="int-list", expected_time="O(n²)", expected_space="O(1) besides the output",
+        wrapper="int-list",
     ),
     problem(
         "sorted-squares", "Squares of a Sorted Array", "easy",
@@ -445,7 +445,7 @@ PROBLEMS += [
                   "ends of the input and writes the larger square into the output from the right, because the "
                   "largest magnitude sits at one end. Both are correct; the second shows you noticed the input was "
                   "already sorted.",
-        wrapper="int-list", expected_time="O(n log n)", expected_space="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "minimum-window-substring", "Minimum Window Substring", "hard",
@@ -492,7 +492,7 @@ PROBLEMS += [
                   "record it if it is the shortest so far and then shrink from the left until it stops being "
                   "valid. Comparing full dictionaries at each step is O(26n) here but the counter-of-satisfied-"
                   "characters version is O(n) and is the one that generalises to larger alphabets.",
-        wrapper="two-lines", expected_time="O(n)", expected_space="O(k)",
+        wrapper="two-lines",
     ),
     problem(
         "sliding-window-maximum", "Sliding Window Maximum", "hard",
@@ -527,7 +527,7 @@ PROBLEMS += [
                   "values from the back - they can never be the maximum while this one is in the window. Pop the "
                   "front when it falls out of the window, and the front is then the window maximum. Each index "
                   "enters and leaves once, so the total work is O(n).",
-        wrapper="int-list-int", expected_time="O(n)", expected_space="O(k)",
+        wrapper="int-list-int",
     ),
     problem(
         "remove-duplicates-sorted", "Remove Duplicates from Sorted Array", "easy",
@@ -631,7 +631,7 @@ PROBLEMS += [
                   "the stack, that day's answer is the distance, and it can be popped - every index is pushed and "
                   "popped once, so the loop is O(n) overall. The stack values stay decreasing, which is what makes "
                   "the pop condition correct.",
-        wrapper="int-list", expected_time="O(n)", expected_space="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "next-greater-element", "Next Greater Element", "medium",
@@ -658,7 +658,7 @@ PROBLEMS += [
         editorial="The monotonic stack records indices waiting for a greater value. When a bigger value arrives it "
                   "answers every smaller value below it on the stack, then takes their place. Each index is pushed "
                   "and popped at most once: O(n) time, O(n) space.",
-        wrapper="int-list", expected_time="O(n)", expected_space="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "search-rotated", "Search in Rotated Sorted Array", "medium",
@@ -695,7 +695,7 @@ PROBLEMS += [
         editorial="At every step one of the two halves is sorted in the ordinary sense. Compare its endpoints to "
                   "decide which one, then use a normal binary-search range test to keep the half that could "
                   "contain the target. Halving the range each step keeps it at O(log n) with O(1) space.",
-        wrapper="int-list-int", expected_time="O(log n)",
+        wrapper="int-list-int",
     ),
     problem(
         "sqrt-integer", "Integer Square Root", "easy",
@@ -723,7 +723,7 @@ PROBLEMS += [
         editorial="Binary search on the answer: keep the largest mid with mid² ≤ x. Beware the classic overflow "
                   "in languages with fixed-width integers - in Python the numbers just grow. O(log x) time, "
                   "O(1) space. Newton's method converges faster and is worth mentioning in an interview.",
-        wrapper="int-n", expected_time="O(log x)",
+        wrapper="int-n",
     ),
     problem(
         "koko-eating-bananas", "Koko Eating Bananas", "medium",
@@ -757,7 +757,7 @@ PROBLEMS += [
                   "the speed range 1..max(piles). Each check is O(n), giving O(n log m) for the largest pile m. "
                   "The ceiling division `(pile + speed - 1) // speed` is the piece worth writing carefully: "
                   "integer division of a partial hour would under-count.",
-        wrapper="int-list-int", expected_time="O(n log m)",
+        wrapper="int-list-int",
     ),
     problem(
         "median-two-sorted", "Median of Two Sorted Arrays", "hard",
@@ -790,7 +790,7 @@ PROBLEMS += [
                   "where max(left half) ≤ min(right half); that runs in O(log(min(m, n))) and needs no merged "
                   "list at all. Both are accepted by this problem, and the follow-up question is usually \"do it "
                   "without merging\".",
-        wrapper="list-pair", expected_time="O(m + n) here; O(log(min(m, n))) possible", expected_space="O(m + n)",
+        wrapper="list-pair",
     ),
 ]
 
@@ -911,7 +911,7 @@ PROBLEMS += [
                   "recording the best left-height + right-height seen at any node. That makes it O(n) rather than "
                   "the O(n²) result of measuring the height of every node separately. The two concepts - path "
                   "length and height - are different, and mixing them up is the usual mistake.",
-        wrapper="tree", expected_time="O(n)", expected_space="O(h)",
+        wrapper="tree",
     ),
     problem(
         "kth-largest", "Kth Largest Element", "medium",
@@ -936,7 +936,7 @@ PROBLEMS += [
                   "in a min-heap, so the answer is the root at the end. Quickselect is the expected O(n) average "
                   "answer and shares its partition step with quicksort; its worst case is still O(n²) unless the "
                   "pivot is chosen randomly.",
-        wrapper="int-list-int", expected_time="O(n log n)", expected_space="O(n)",
+        wrapper="int-list-int",
     ),
     problem(
         "last-stone-weight", "Last Stone Weight", "easy",
@@ -967,7 +967,7 @@ PROBLEMS += [
                   "stones. Each round pops two and pushes at most one, so the cost is O(n log n) overall. "
                   "Simulating with sort() each iteration is O(n² log n) and is the answer this problem is "
                   "designed to rule out.",
-        wrapper="int-list", expected_time="O(n log n)", expected_space="O(n)",
+        wrapper="int-list",
     ),
 ]
 
@@ -1017,7 +1017,7 @@ PROBLEMS += [
                   "and flood-fill the connected land from there. Each cell is visited a constant number of times, "
                   "so it is O(rows × cols). A recursive flood fill is shortest; a queue-based one avoids recursion "
                   "limits on very large grids.",
-        wrapper="grid", expected_time="O(rows × cols)", expected_space="O(rows × cols) worst case",
+        wrapper="grid",
     ),
     problem(
         "bfs-grid-distance", "Shortest Path in a Binary Grid", "medium",
@@ -1059,7 +1059,7 @@ PROBLEMS += [
         editorial="Unweighted shortest paths are breadth-first search. Each queue entry carries its distance so "
                   "no separate distance table is needed. The visited set must be updated at enqueue time: marking "
                   "on dequeue is a subtle performance bug that turns a linear scan into one with repeated work.",
-        wrapper="grid", expected_time="O(rows × cols)",
+        wrapper="grid",
     ),
     problem(
         "rotting-oranges", "Rotting Oranges", "medium",
@@ -1105,7 +1105,7 @@ PROBLEMS += [
                   "exhaust the queue is the answer, and a leftover fresh count means some oranges are "
                   "unreachable. This is a breadcrumb-unfriendly problem to debug: write the level-by-level version "
                   "first, because it makes the minute count obvious. O(rows × cols) either way.",
-        wrapper="grid", expected_time="O(rows × cols)",
+        wrapper="grid",
     ),
     problem(
         "course-schedule", "Course Schedule", "medium",
@@ -1149,7 +1149,7 @@ PROBLEMS += [
                   "the recursion path) and black (finished). Reaching a grey node proves a cycle. The alternative "
                   "is Kahn's algorithm, which repeatedly removes nodes with no prerequisites and reports failure "
                   "if any nodes remain. Both are O(courses + prerequisites).",
-        wrapper="intervals", expected_time="O(V + E)",
+        wrapper="intervals",
     ),
     problem(
         "count-provinces", "Count Provinces", "medium",
@@ -1189,7 +1189,7 @@ PROBLEMS += [
                   "flat, so each operation is effectively O(1). A depth-first traversal of an adjacency list gives "
                   "the same answer with the same complexity - the union-find version just reads more directly as "
                   "\"how many groups are left?\"",
-        wrapper="intervals", expected_time="O(E α(V))", expected_space="O(V)",
+        wrapper="intervals",
     ),
 ]
 
@@ -1279,7 +1279,7 @@ PROBLEMS += [
                   "value that can end an increasing subsequence of length L; that array is always sorted, so "
                   "binary search finds where each new value belongs. Note the array is a tool, not a real "
                   "subsequence, which is why only its length is returned.",
-        wrapper="int-list", expected_time="O(n log n)", expected_space="O(n)",
+        wrapper="int-list",
     ),
     problem(
         "unique-paths", "Unique Paths", "medium",
@@ -1306,7 +1306,7 @@ PROBLEMS += [
                   "first row and first column fixed at 1. A single array updated left to right turns the O(m·n) "
                   "table into O(n) space. The closed form C(m+n-2, m-1) exists and is O(min(m, n)) work with big "
                   "integers, and is a nice thing to mention after the table works.",
-        wrapper="int-int", expected_time="O(m × n)", expected_space="O(n)",
+        wrapper="int-int",
     ),
     problem(
         "partition-equal-subset", "Partition Equal Subset Sum", "medium",
@@ -1337,7 +1337,7 @@ PROBLEMS += [
                   "the half-total. A boolean set (or bitmask) of reachable sums is updated per value; the bitmask "
                   "version is O(n · total / 64) and is a good follow-up. The greedy \"always add to the smaller "
                   "side\" idea is wrong, and this problem exists to show why.",
-        wrapper="int-list", expected_time="O(n × target)",
+        wrapper="int-list",
     ),
     problem(
         "max-product-subarray", "Maximum Product Subarray", "medium",
@@ -1401,7 +1401,7 @@ PROBLEMS += [
                   "characters differ; that finds every palindrome because every palindrome has exactly one centre. "
                   "The dynamic-programming formulation (is substring i..j a palindrome?) is another O(n²) route "
                   "with O(n²) space.",
-        wrapper="string-int", expected_time="O(n²)",
+        wrapper="string-int",
     ),
     problem(
         "edit-distance", "Edit Distance", "hard",
@@ -1435,7 +1435,7 @@ PROBLEMS += [
                   "into the first j target characters, taking the minimum of delete, insert and replace. Keeping "
                   "only the previous row makes it O(n·m) time with O(m) space. There is no faster general "
                   "algorithm, which is why the answer is always the table.",
-        wrapper="two-lines", expected_time="O(n × m)", expected_space="O(m)",
+        wrapper="two-lines",
     ),
     problem(
         "word-break", "Word Break", "hard",
@@ -1467,6 +1467,6 @@ PROBLEMS += [
                   "true if some reachable[start] has text[start:end] in the dictionary. O(n²) time with a set of "
                   "words, or O(n·w) with a trie that walks forward instead of re-slicing. Greedy matching takes "
                   "the longest word first and is wrong - \"catsandog\" is the standard counter-example.",
-        wrapper="two-lines", expected_time="O(n²)", expected_space="O(n)",
+        wrapper="two-lines",
     ),
 ]

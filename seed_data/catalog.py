@@ -48,7 +48,7 @@ SUBJECTS = [
      "Calculus, differential equations and linear algebra foundations every engineer uses."),
     ("engineering-mathematics-2", "Engineering Mathematics II", None, 2, True, "MA102", 4, "medium", "sigma", "#4f7cff",
      "Multivariable calculus, vector calculus, Laplace transforms and probability."),
-    ("engineering-mathematics-3", "Engineering Mathematics III", None, 3, True, "MA201", 4, "hard", "sigma", "#4f7cff",
+    ("engineering-mathematics-3", "Engineering Mathematics III", None, 3, False, "MA201", 4, "hard", "sigma", "#4f7cff",
      "Complex variables, partial differential equations, numerical methods and statistics."),
     ("engineering-physics", "Engineering Physics", None, 1, True, "PH101", 4, "medium", "atom", "#8b5cf6",
      "Waves, optics, quantum basics, semiconductors and materials for engineers."),

@@ -64,7 +64,7 @@ def f(x):
                   "`ceil(log2((b-a)/1e-6))` - but writing the loop shows why: bisection gains one bit of accuracy "
                   "per evaluation, so a tolerance of 1e-6 costs about 20 evaluations no matter how good the "
                   "bracket is. That is why Newton's method, which converges quadratically, exists.",
-        wrapper="int-int", expected_time="O(log((b-a)/tolerance))",
+        wrapper="int-int",
     ),
     problem(
         "trapezoid-integral", "Trapezoid Rule for ∫x²", "easy",
@@ -146,7 +146,7 @@ def f(x):
                   "m×n to n×m. In NumPy this is `.T`, and in matrix algebra it is the operation that makes "
                   "`AᵀA` square - the first step of least squares. Time O(m·n), and the only care needed is "
                   "producing lists rather than tuples.",
-        wrapper="matrix", expected_time="O(m × n)", expected_space="O(m × n)",
+        wrapper="matrix",
     ),
     problem(
         "dot-product", "Dot Product of Two Vectors", "easy",
@@ -283,7 +283,7 @@ def f(x):
                   "the loop stops, any remainder greater than 1 is a prime larger than √n. Stopping at √n makes "
                   "the worst case O(√n), which is why RSA uses numbers with hundreds of digits - factoring those "
                   "is exactly this hard problem at scale.",
-        wrapper="int-n", expected_time="O(√n)",
+        wrapper="int-n",
     ),
 ]
 
@@ -317,7 +317,7 @@ PROBLEMS += [
                   "as there are ones rather than once per bit position. That matters in embedded code where the "
                   "loop budget is real. Python's `bin(n).count('1')` is faster in practice because the loop runs "
                   "in C, and modern CPUs have a POPCNT instruction for exactly this.",
-        wrapper="int-n", expected_time="O(number of set bits)",
+        wrapper="int-n",
     ),
     problem(
         "single-number", "Single Number", "easy",
@@ -366,7 +366,7 @@ PROBLEMS += [
                   "a one-bit change can only ever read as the old value or the new one, never as a third code. "
                   "The reflected binary formula `k ^ (k >> 1)` generates the whole sequence in order. The inverse "
                   "conversion folds bits back the other way.",
-        wrapper="int-n", expected_time="O(2ⁿ)", expected_space="O(2ⁿ)",
+        wrapper="int-n",
     ),
     problem(
         "hamming-distance", "Hamming Distance", "easy",

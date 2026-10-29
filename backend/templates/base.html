@@ -277,7 +277,11 @@
   window.EngineVerse = {
     csrf: "{{ csrf_token }}",
     user: {{ 'true' if user else 'false' }},
-    staticCopy: {{ 'true' if static_export else 'false' }}
+    staticCopy: {{ 'true' if static_export else 'false' }},
+    // The product name, so the scripts that speak to the learner say the
+    // same name the page does. A white-label deployment sets site_name and
+    // the whole interface follows it.
+    siteName: {{ brand.site_name | tojson }}
   };
   // Wire up the footer language picker once i18n is ready.
   (function () {
@@ -296,6 +300,7 @@
 <script src="/static/js/assistant.js" defer></script>
 <script src="/static/js/pages-live.js" defer></script>
 <script src="/static/js/scroll.js" defer></script>
+<script src="/static/js/useful.js" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

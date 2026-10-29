@@ -372,6 +372,36 @@ def weak_topics(user_id: str, limit: int = 5) -> list[dict]:
     )
 
 
+#: The bands a mastery percentage falls into, and what each one means.
+#:
+#: The dashboard used to print a bare percentage with no explanation, so a
+#: learner could not tell whether 40% meant "nearly there" or "barely
+#: started". The label says which, and the note says what moves it.
+MASTERY_BANDS: tuple[tuple[int, str, str], ...] = (
+    (0, "Not started", "Read the topic once, then answer a question on it."),
+    (1, "Just started", "You have opened this topic. Answering questions raises it."),
+    (40, "Getting there", "You know the shape of it. Keep answering questions on this topic."),
+    (70, "Nearly there", "Most of it is holding. A few more questions should do it."),
+    (85, "Mastered", "You are answering these questions correctly. Move on."),
+)
+
+
+def mastery_level(percent: int | float | None) -> dict[str, str]:
+    """Turns a mastery percentage into a label and a line of explanation.
+
+    Returns a dictionary with ``percent``, ``label`` and ``note``. The bands
+    match the ones ``update_topic_mastery`` uses to decide whether a topic is
+    completed or mastered, so the label never contradicts the stored status.
+    """
+    value = int(round(float(percent or 0)))
+    value = max(0, min(100, value))
+    label, note = MASTERY_BANDS[0][1], MASTERY_BANDS[0][2]
+    for threshold, band_label, band_note in MASTERY_BANDS:
+        if value >= threshold:
+            label, note = band_label, band_note
+    return {"percent": value, "label": label, "note": note}
+
+
 def continue_learning(user_id: str, limit: int = 5) -> list[dict]:
     return db.query(
         "SELECT t.slug, t.title, t.difficulty, up.status, up.mastery, up.last_viewed_at, "

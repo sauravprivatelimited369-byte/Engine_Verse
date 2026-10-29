@@ -1068,9 +1068,14 @@ def enable_problem_editor(body: str) -> str:
         select_html = match.group(0)
         select_html = re.sub(r'\s+disabled(?=[>\s])', "", select_html)
         select_html = select_html.replace(" (starter only)", "")
+        select_html = select_html.replace(" (no runtime here)", "")
         return select_html
 
-    body = re.sub(r'<select id="lang-select">.*?</select>', _enable_select, body, count=1, flags=re.S)
+    # The select carries a data-judge attribute, so the tag has to be matched
+    # loosely. With a strict pattern the regex never matched, the options
+    # kept their "disabled" attribute, and the exported problem page offered
+    # a language list where nothing could be chosen.
+    body = re.sub(r'<select id="lang-select"[^>]*>.*?</select>', _enable_select, body, count=1, flags=re.S)
     body, replaced = re.subn(
         r'<div class="callout warning mb">\s*<span class="label">Code execution is off</span>.*?</div>',
         STATIC_RUNNER_NOTICE,
@@ -1078,6 +1083,17 @@ def enable_problem_editor(body: str) -> str:
         count=1,
         flags=re.S,
     )
+    if not replaced:
+        # The server-rendered page may already say "Runs in your browser" -
+        # that is the honest static-copy claim - in which case the runner
+        # notice would be a second, contradictory block. Replace it instead.
+        body, replaced = re.subn(
+            r'<div class="callout info mb">\s*<span class="label">Runs in your browser</span>.*?</div>',
+            STATIC_RUNNER_NOTICE,
+            body,
+            count=1,
+            flags=re.S,
+        )
     if not replaced and 'id="btn-run"' in body:
         body = body.replace(
             '<button class="btn btn-ghost" id="btn-run" type="button">Run</button>',
@@ -1267,14 +1283,25 @@ def write_account_pages(
     </section>
     <section class="panel">
       <h2>Back up or move your progress</h2>
-      <p class="muted">Download your progress as a JSON file, then import it in another browser or on another
-        device. Importing replaces the progress stored here.</p>
+      <div class="callout warning">
+        <span class="label">Your progress lives in this browser only</span>
+        This copy has no account and no server, so your progress is stored by this browser and
+        nowhere else. Clearing browsing data, using private mode, or switching to another browser or
+        device will lose it. Back it up now, and again every few weeks.
+      </div>
+      <p class="muted">A backup is a small text file. Download it, or copy it straight into a notes
+        app, an email or a chat - anything you can paste from later. To move to another device, or to
+        restore after clearing the browser, import that file here. Importing replaces the progress
+        stored in this browser.</p>
       <p class="row">
-        <button class="btn btn-soft btn-sm" type="button" id="ev-export-json">Export progress (.json)</button>
-        <label class="btn btn-ghost btn-sm planner-import">Import progress
-          <input type="file" id="ev-import-json" accept="application/json,.json" class="sr-only"></label>
+        <button class="btn btn-soft btn-sm" type="button" id="ev-export-json">Download a backup file</button>
+        <button class="btn btn-soft btn-sm" type="button" id="ev-copy-json">Copy backup to clipboard</button>
+        <label class="btn btn-ghost btn-sm planner-import">Restore from a backup
+          <input type="file" id="ev-import-json" accept="application/json,.json,.txt,text/plain" class="sr-only"></label>
       </p>
-      <p class="small muted">The study planner has its own export on the <a href="/planner">planner page</a>.</p>
+      <p class="small muted" id="ev-backup-summary">Your backup contains your profile, completed topics,
+        solved problems, mistakes, XP and streak. The study planner has its own export on the
+        <a href="/planner">planner page</a>.</p>
       <h2 class="mt">Delete your data</h2>
       <p class="muted">Removes your profile, streak, progress, mistakes and saved items from this browser.</p>
       <button class="btn btn-danger btn-sm" type="button" id="ev-clear-data">Delete my progress from this browser</button>

@@ -891,6 +891,62 @@ details:not(.panel) {
   font-size: 1.03rem;
   line-height: 1.68;
 }
+/* The "what do you need today" chooser in the hero.
+
+   Four routes, one click each. It replaces the old opening - a paragraph of
+   feature counts with no way in - and it is the first thing a first-time
+   visitor reads after the promise in the headline. */
+.mx-goal { margin: 0 0 26px; max-width: 62ch; }
+.mx-goal-title {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.mx-goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.mx-goal-list li { margin: 0; }
+.mx-goal-list a {
+  display: block;
+  height: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  background: var(--panel);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
+}
+.mx-goal-list a:hover,
+.mx-goal-list a:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.mx-goal-list strong {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+.mx-goal-list span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+@media (max-width: 640px) {
+  .mx-goal-list { grid-template-columns: 1fr; }
+}
+
 .mx-hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .mx-hero-aside {
   display: inline-flex;

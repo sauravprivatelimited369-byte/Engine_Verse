@@ -150,6 +150,26 @@
     // A filter that hides the whole catalogue should say so rather than leave a
     // grid of nothing. Only pages that asked for it (data-ev-stream-notice)
     // react; the attribute keeps the banner off pages that have no list.
+    // The catalogue says how many subjects it is showing. Once a stream is
+    // chosen the browser hides the others, and the number has to change with
+    // them - otherwise the page claims "71 subjects" while showing six.
+    const lead = document.querySelector("[data-ev-stream-lead]");
+    if (lead) {
+      const total = Number(lead.getAttribute("data-total") || 0);
+      const cards = document.querySelectorAll("[data-ev-stream-scope] .subject-card");
+      if (slug) {
+        const row = bySlug.get(slug);
+        let visible = 0;
+        cards.forEach((card) => {
+          if (!card.classList.contains("ev-stream-off")) visible += 1;
+        });
+        lead.textContent = row
+          ? `Showing ${visible} subject${visible === 1 ? "" : "s"} from ${row.name} on this page, out of ${total} in the whole catalogue.`
+          : `Showing ${visible} subject${visible === 1 ? "" : "s"} on this page, out of ${total} in the whole catalogue.`;
+      } else {
+        lead.textContent = `Showing ${cards.length || total} subjects across every engineering branch.`;
+      }
+    }
     const notice = document.querySelector("[data-ev-stream-notice]");
     if (notice) {
       const row = slug ? bySlug.get(slug) : null;

@@ -55,9 +55,43 @@
         Free, open-source engineering study workspace
       </p>
       <h1 class="mx-hero-title" id="mx-hero-title">Learn with purpose.<br>Practise with <em>confidence.</em></h1>
-      <p class="mx-hero-lead">Structured notes at four depths, {{ models_3d_count }} interactive 3D models,
-        {{ site.questions }} self-marking practice questions, and {{ site.problems }} judged coding problems across
-        {{ site.branches }} engineering branches — organised on one calm desk.</p>
+      <p class="mx-hero-lead">Read an engineering topic four ways — plain language, the working
+        explanation, the derivation, and the job it turns up in. Then check what you understood with
+        practice that marks itself, and keep it with spaced revision. All of it on one calm desk.</p>
+
+      {# The four ways a student actually arrive. The page used to open with a
+         count of features and let the reader pick; it now asks what they came
+         for and takes them there, because "45 branches and 3D models" is not a
+         route into the product. #}
+      <nav class="mx-goal" aria-labelledby="mx-goal-title">
+        <p class="mx-goal-title" id="mx-goal-title">What do you need today?</p>
+        <ul class="mx-goal-list">
+          <li>
+            <a href="/dpp">
+              <strong>Prepare for an exam</strong>
+              <span>Today's set, the syllabus you are covering, and the questions you have got wrong before.</span>
+            </a>
+          </li>
+          <li>
+            <a href="/explore">
+              <strong>Understand a difficult topic</strong>
+              <span>Every subject, four reading depths, a worked example and the mistakes people make.</span>
+            </a>
+          </li>
+          <li>
+            <a href="/practice/problems">
+              <strong>Practise coding</strong>
+              <span>Problems with real test cases, a stated time and space bound, and a verdict you can trust.</span>
+            </a>
+          </li>
+          <li>
+            <a href="/flashcards">
+              <strong>Revise what I keep forgetting</strong>
+              <span>Cards that come back on a schedule, just before you would have lost them.</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
 
       <div class="mx-hero-actions">
         <a class="btn btn-primary" href="/dpp">Start practising {{ icon("chevron", 14) }}</a>
@@ -83,7 +117,15 @@
 
       <ul class="mx-hero-facts">
         <li>{{ icon("check", 14) }} Read, inspect 3D models and practise with zero setup</li>
-        <li>{{ icon("check", 14) }} Real compilers and real test cases across {{ site.languages }} languages</li>
+        <li>{{ icon("check", 14) }}
+          {% if execution and execution.server.available %}
+            Real compilers and real test cases across {{ execution.server.runnable | length }} languages, on this server
+          {% elif execution and execution.browser.available %}
+            Real compilers in your own browser across {{ execution.browser.languages | length }} languages — your code is never uploaded
+          {% else %}
+            {{ site.languages }} language paths, with every problem's editorial and expected bounds
+          {% endif %}
+        </li>
         <li>{% if static_export %}{{ icon("check", 14) }} Progress stays in this browser, exportable as JSON{% else %}{{ icon("check", 14) }} One account keeps progress across devices{% endif %}</li>
       </ul>
 
@@ -179,7 +221,7 @@
           <span class="mx-desk-eyebrow">{{ icon("sun", 14) }} Today’s desk</span>
           <span class="mx-desk-date"><time data-local-date>Today</time></span>
         </div>
-        <h2 class="mx-desk-title" id="mx-desk-title">Four-step study queue<span>~65 min total</span></h2>
+        <h2 class="mx-desk-title" id="mx-desk-title">Four-step study queue<span>~{{ plan_minutes }} min total</span></h2>
         <ol class="mx-desk-list">
           <li class="mx-desk-row">
             <span class="mx-desk-num" aria-hidden="true">01</span>
@@ -187,7 +229,7 @@
               <span class="mx-desk-what">Daily practice set</span>
               <span class="mx-desk-why">Mixed engineering MCQs for <time data-local-date>today</time></span>
             </a>
-            <span class="mx-desk-meta">~30 min</span>
+            <span class="mx-desk-meta">~{{ plan_steps[0].minutes }} min</span>
           </li>
           <li class="mx-desk-row">
             <span class="mx-desk-num" aria-hidden="true">02</span>
@@ -195,7 +237,7 @@
               <span class="mx-desk-what">Revise flashcards</span>
               <span class="mx-desk-why">SM-2 spaced recall · {{ site.flashcards }} cards</span>
             </a>
-            <span class="mx-desk-meta">~10 min</span>
+            <span class="mx-desk-meta">~{{ plan_steps[1].minutes }} min</span>
           </li>
           {% if sample_problems %}
           <li class="mx-desk-row">
@@ -204,7 +246,7 @@
               <span class="mx-desk-what">{{ sample_problems[0].title }}</span>
               <span class="mx-desk-why">Judged coding · {{ sample_problems[0].difficulty }}{% if sample_problems[0].expected_time %} · {{ sample_problems[0].expected_time }}{% endif %}</span>
             </a>
-            <span class="mx-desk-meta">code</span>
+            <span class="mx-desk-meta">~{{ plan_steps[2].minutes }} min</span>
           </li>
           {% endif %}
           {% if featured_topics %}
@@ -214,7 +256,7 @@
               <span class="mx-desk-what">{{ featured_topics[0].title }}</span>
               <span class="mx-desk-why">4-depth notes · {{ featured_topics[0].subject }}</span>
             </a>
-            <span class="mx-desk-meta">{{ featured_topics[0].est_minutes }} min</span>
+            <span class="mx-desk-meta">~{{ plan_steps[3].minutes }} min</span>
           </li>
           {% endif %}
         </ol>
@@ -316,7 +358,8 @@
             <span class="mx-chapter-tag">Hold the bearing · {{ site.questions }} MCQs &amp; {{ site.problems }} problems</span>
           </div>
           <h3>Test understanding under real constraints</h3>
-          <p>Daily Practice Problems mix subjects so older material stays sharp. Coding problems execute on real compilers — CPython, Clang, OpenJDK, Roslyn, Rust, Go, TypeScript and SQLite — and every wrong answer goes straight into your mistake notebook.</p>
+          <p>Daily Practice Problems mix subjects so older material stays sharp. Coding problems execute on real compilers — CPython, Clang, OpenJDK, Roslyn, Rust, Go, TypeScript and SQLite — and every wrong answer goes straight into your mistake notebook.
+            {% if execution and not execution.server.available and execution.browser.available %}On this copy they run in your own browser, so nothing you write is uploaded anywhere.{% elif execution and execution.server.available %}On this copy they run on this server's judge.{% endif %}</p>
           <ul class="mx-ticks">
             <li>Knowledge-based XP: rewarded once on first genuine pass, never farmed</li>
             <li>14 curated problem sheets ordered from first drills to dynamic programming</li>
@@ -658,7 +701,7 @@
       <div class="mx-plan-head">
         <div>
           <p class="mx-eyebrow">Today’s plan · <time data-local-date>today</time></p>
-          <h2 class="mx-section-title" id="ev-plan-title">Four steps, about an hour.</h2>
+          <h2 class="mx-section-title" id="ev-plan-title">Four steps, about {{ plan_minutes }} minutes.</h2>
           <p class="mx-section-lead">Read it, practise it, test it, review it. Tick a step off when you finish; the ticks stay on this device
             and start clean tomorrow. Short on time? The first step alone still counts.</p>
         </div>
@@ -682,7 +725,7 @@
             <p>A mixed set drawn for today’s date, so concepts from different subjects stay warm at the same time.</p>
           </div>
           <div class="mx-plan-side">
-            <span class="mx-plan-time">~30 min</span>
+            <span class="mx-plan-time">~{{ plan_steps[0].minutes }} min</span>
             <a class="mx-plan-go" href="/dpp">Start the set {{ icon("chevron", 13) }}</a>
             <label class="mx-plan-check">
               <input type="checkbox" data-plan-step="dpp" aria-label="Mark today’s practice set as done">
@@ -699,7 +742,7 @@
             <p>Cards return on an SM-2 schedule, just before you would forget them. Ten minutes here saves an hour later.</p>
           </div>
           <div class="mx-plan-side">
-            <span class="mx-plan-time">~10 min</span>
+            <span class="mx-plan-time">~{{ plan_steps[1].minutes }} min</span>
             <a class="mx-plan-go" href="{{ '/revision' if user else '/flashcards' }}">Review cards {{ icon("chevron", 13) }}</a>
             <label class="mx-plan-check">
               <input type="checkbox" data-plan-step="revise" aria-label="Mark flashcards as done">
@@ -716,7 +759,7 @@
             <p>{% if sample_problems %}Try “{{ sample_problems[0].title }}” ({{ sample_problems[0].difficulty }}). It runs against real test cases, in your browser or on the judge.{% else %}One judged problem, run against real test cases.{% endif %}</p>
           </div>
           <div class="mx-plan-side">
-            <span class="mx-plan-time">~15 min</span>
+            <span class="mx-plan-time">~{{ plan_steps[2].minutes }} min</span>
             <a class="mx-plan-go" href="{% if sample_problems %}/practice/problems/{{ sample_problems[0].slug }}{% else %}/practice{% endif %}">Open problem {{ icon("chevron", 13) }}</a>
             <label class="mx-plan-check">
               <input type="checkbox" data-plan-step="code" aria-label="Mark the coding problem as done">
@@ -733,7 +776,7 @@
             <p>{% if featured_topics %}Start with “{{ featured_topics[0].title }}” ({{ featured_topics[0].est_minutes }} minutes): notes, a worked example and the mistakes people make.{% else %}Pick a topic from the catalogue and read it end to end.{% endif %}</p>
           </div>
           <div class="mx-plan-side">
-            <span class="mx-plan-time">{% if featured_topics %}~{{ featured_topics[0].est_minutes }} min{% else %}~15 min{% endif %}</span>
+            <span class="mx-plan-time">~{{ plan_steps[3].minutes }} min</span>
             <a class="mx-plan-go" href="{% if featured_topics %}/topics/{{ featured_topics[0].slug }}{% else %}/explore{% endif %}">Read the topic {{ icon("chevron", 13) }}</a>
             <label class="mx-plan-check">
               <input type="checkbox" data-plan-step="learn" aria-label="Mark the new topic as done">
@@ -764,7 +807,7 @@
           <div><dt>3D models</dt><dd>{{ models_3d_count }}</dd></div>
           <div><dt>Formula sheets</dt><dd>{{ site.formulas }}</dd></div>
         </dl>
-        <p class="mx-rail-link"><a class="mx-link" href="/explore">Browse the full catalogue {{ icon("chevron", 13) }}</a></p>
+        <p class="mx-rail-link"><a class="mx-link" href="/explore">All subjects</a> &middot; <a class="mx-link" href="/explore?year=1">First year</a> &middot; <a class="mx-link" href="/formulas">Formulas</a></p>
       </div>
 
       <div class="mx-split-main">

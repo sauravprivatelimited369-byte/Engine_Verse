@@ -48,7 +48,7 @@ PROBLEMS += [
         editorial="A loop from 1 to 10 appending `n * i` is the whole program. The drill is the "
                   "shape - counter, rule, collect - which every later loop reuses. Time O(1) "
                   "(ten steps regardless of input), space O(1).",
-        wrapper="lines", minutes=10, expected_time="O(1)", expected_space="O(1)",
+        wrapper="lines", minutes=10,
     ),
     problem(
         "drill-min-max-scan", "Min-Max Scan", "easy",
@@ -78,7 +78,7 @@ PROBLEMS += [
         editorial="Initialise `lo` and `hi` to the first element and update both per value: one "
                   "pass, two comparisons each. Sorting would cost O(n log n); the scan is O(n) "
                   "time and O(1) space, and the empty-list guard keeps the first-element access safe.",
-        wrapper="int-list", minutes=10, expected_time="O(n)", expected_space="O(1)",
+        wrapper="int-list", minutes=10,
     ),
     problem(
         "drill-grade-bands", "Grade Bands", "easy",
@@ -110,7 +110,7 @@ PROBLEMS += [
         editorial="Ordered early returns from the top band down: the first true condition is the "
                   "answer, and anything falling through every check is F. Boundary tests (90 "
                   "versus 89) are the whole test plan. Time and space O(1).",
-        wrapper="int-n", minutes=10, expected_time="O(1)", expected_space="O(1)",
+        wrapper="int-n", minutes=10,
     ),
     problem(
         "drill-sum-until-zero", "Sum Until Zero", "easy",
@@ -137,7 +137,7 @@ PROBLEMS += [
                "No zero in the list means the loop simply adds everything."],
         editorial="A running total plus `break` on the sentinel: the loop's two exits (sentinel "
                   "found, list exhausted) are both correct by construction. Time O(n), space O(1).",
-        wrapper="int-list", minutes=10, expected_time="O(n)", expected_space="O(1)",
+        wrapper="int-list", minutes=10,
     ),
     problem(
         "drill-count-vowels", "Count Vowels", "easy",
@@ -166,7 +166,7 @@ PROBLEMS += [
         editorial="One pass, one counter, membership in a ten-character set: O(n) time, O(1) "
                   "space. The only decisions are case handling (list both cases, or lower each "
                   "character) and remembering that the input line can be empty.",
-        wrapper="string-int", minutes=10, expected_time="O(n)", expected_space="O(1)",
+        wrapper="string-int", minutes=10,
     ),
     problem(
         "drill-valid-identifier", "Valid Identifier", "easy",
@@ -199,7 +199,7 @@ PROBLEMS += [
                   "Anything surviving all three is valid. Validation as a list of explicit "
                   "refusals - rather than one clever condition - is the professional shape. "
                   "Time O(n), space O(1).",
-        wrapper="string-bool", minutes=10, expected_time="O(n)", expected_space="O(1)",
+        wrapper="string-bool", minutes=10,
     ),
 ]
 
@@ -243,7 +243,7 @@ PROBLEMS += [
                   "sweep: keep the last merged interval, extend it when the next starts at or "
                   "before its end, otherwise start a new one. The sort dominates at O(n log n) "
                   "time; the sweep is O(n) time and O(n) space for the output.",
-        wrapper="intervals", minutes=25, expected_time="O(n log n)", expected_space="O(n)",
+        wrapper="intervals", minutes=25,
     ),
     problem(
         "trapping-rain-water", "Trapping Rain Water", "hard",
@@ -284,7 +284,7 @@ PROBLEMS += [
                   "the min is the shorter side's max - so that side can be settled without "
                   "knowing the rest. One pass, O(n) time, O(1) space. The easier O(n)-space "
                   "version precomputes both max arrays first.",
-        wrapper="int-list", minutes=35, expected_time="O(n)", expected_space="O(1)",
+        wrapper="int-list", minutes=35,
     ),
     problem(
         "word-ladder", "Word Ladder", "hard",
@@ -336,7 +336,7 @@ PROBLEMS += [
                   "word reaches the end at the shortest depth. Wildcard-pattern buckets make "
                   "neighbour lookup O(1) per pattern instead of comparing every pair of words. "
                   "Time O(M^2 * N) for N words of length M, space O(M^2 * N) for the buckets.",
-        wrapper="word-ladder", minutes=40, expected_time="O(M^2 N)", expected_space="O(M^2 N)",
+        wrapper="word-ladder", minutes=40,
     ),
     problem(
         "serialize-tree", "Serialize a Binary Tree", "medium",
@@ -372,6 +372,6 @@ PROBLEMS += [
                   "tokens back in the same order, rebuilding nodes and nulls one token at a "
                   "time. Every node produces one token plus markers, so time and space are O(n). "
                   "Level-order with trailing-null trimming is the common alternative format.",
-        wrapper="tree", minutes=25, expected_time="O(n)", expected_space="O(n)",
+        wrapper="tree", minutes=25,
     ),
 ]

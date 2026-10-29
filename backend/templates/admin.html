@@ -85,6 +85,28 @@
         <td class="tiny">{{ t.updated_at | ago }}</td></tr>{% endfor %}</tbody></table></div></section>
     {% endif %}
 
+    {% if permissions.analytics_view and page_traffic %}
+    <section class="panel"><h2>Page traffic and usefulness</h2>
+      <p class="small muted">A per-route, per-day count of visits, joined with the usefulness votes.
+        Nothing here identifies a visitor: no account, no name, no IP address, no cookie.</p>
+      <div class="tablewrap"><table class="table">
+        <thead><tr><th>Route</th><th>Views</th><th>Useful</th><th>Not useful</th><th>Useful rate</th></tr></thead>
+        <tbody>{% for r in page_traffic %}
+          <tr><td><a href="{{ r.path }}">{{ r.path }}</a></td><td>{{ r.views }}</td>
+            <td>{{ r.useful }}</td><td>{{ r.not_useful }}</td>
+            <td>{% if r.usefulness is not none %}{{ (r.usefulness * 100) | round | int }}%{% else %}—{% endif %}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% if feedback_notes %}
+      <h3 class="h-sub mt">What students wrote</h3>
+      <div class="stack">{% for n in feedback_notes %}
+        <div class="panel tight"><span class="tiny muted">{{ n.path }} · {{ n.day }} · {{ n.verdict | replace('_', ' ') }}</span>
+          <p class="small" style="margin:4px 0 0">{{ n.detail }}</p></div>
+      {% endfor %}</div>
+      {% endif %}
+    </section>
+    {% endif %}
+
     {% if permissions.community_moderate and reports %}
     <section class="panel"><h2>Open reports</h2>
       {% for r in reports %}<div class="between panel tight mb">
@@ -105,6 +127,14 @@
   <aside class="sidebar">
     {% if permissions.analytics_view and searches %}<div class="panel tight"><h3>Top searches</h3>
       <div class="stack">{% for s in searches %}<span class="small">{{ s.query }} <span class="muted">×{{ s.c }}</span></span>{% endfor %}</div></div>{% endif %}
+    {% if permissions.analytics_view and page_usefulness %}
+    <div class="panel tight"><h3>Pages students rated down</h3>
+      <p class="tiny muted">At least two votes each. No account, name or IP is stored with a vote.</p>
+      <div class="stack">{% for r in page_usefulness %}
+        <span class="small"><a href="{{ r.path }}">{{ r.path }}</a>
+          <span class="muted">{{ r.votes }} votes · {{ (r.usefulness * 100) | round | int }}% useful</span></span>
+      {% else %}<span class="tiny muted">Nothing has been rated down yet.</span>{% endfor %}</div>
+    </div>{% endif %}
     {% if permissions.users_manage or permissions.settings_manage %}
     <div class="panel tight"><h3>Audit log</h3>
       <div class="stack">{% for row in recent_audit[:20] %}

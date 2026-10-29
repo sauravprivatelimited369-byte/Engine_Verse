@@ -162,6 +162,11 @@ systems depend on:
 - The Android application id / package (changing it orphans installed apps).
 - All URLs and the `/Engine_Verse/` Pages base path (derived from the repository
   name by `project.py` — see below).
+- The browser namespace `window.EngineVerse` (an API name, not a name a reader
+  sees). It publishes `window.EngineVerse.siteName`, which is the product name
+  the deployment is configured with, so the browser-side features that used to
+  hard-code "EngineVerse" in a sentence — the voice reader, the voice tutor —
+  say the right name on a white-label deployment instead.
 
 ## Renaming the GitHub repository (optional, when ready)
 

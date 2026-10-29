@@ -987,6 +987,9 @@ class TestThemeAndJsonForms:
         from engineverse import brand, db
 
         original = brand.get("theme")
+        original_site_name = db.scalar(
+            "SELECT value FROM site_config WHERE key = 'site_name'"
+        )
         try:
             client = TestClient(app, raise_server_exceptions=False)
             page = client.get("/login").text
@@ -1016,7 +1019,14 @@ class TestThemeAndJsonForms:
                         follow_redirects=False)
             assert db.query_one("SELECT value FROM site_config WHERE key = 'theme'")["value"] == "dark"
         finally:
+            # The site name is put back too: the database is shared by the
+            # whole session, and a test that leaves "EngineVerse" behind makes
+            # every later page claim the wrong product name.
             brand.set_many({"theme": original or "dark"})
+            if original_site_name is None:
+                db.execute("DELETE FROM site_config WHERE key = 'site_name'")
+            else:
+                brand.set_many({"site_name": original_site_name})
 
     def test_a_stored_preference_is_restored_before_first_paint(self, client, seeded):
         """Without this the page flashes the default theme for one frame."""

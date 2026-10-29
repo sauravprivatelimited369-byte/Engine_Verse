@@ -606,6 +606,23 @@ details.panel > summary { cursor: pointer; }
 
 /* ---------------------------------------------------------------- tables */
 .tablewrap { overflow-x: auto; border-radius: var(--r); box-shadow: var(--neu-in-sm); background: var(--well); }
+
+/* The "what runs here" capability table on the compiler and problem pages.
+
+   One row per language: how it executes on this deployment, and whether it
+   can be judged against test cases. The page used to print a single warning
+   instead, which said nothing about where the code would go. */
+.cpl-caps { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.cpl-caps th, .cpl-caps td { text-align: left; padding: 9px 12px; vertical-align: top; }
+.cpl-caps thead th {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--edge);
+}
+.cpl-caps tbody tr + tr th, .cpl-caps tbody tr + tr td { border-top: 1px solid var(--edge); }
+.cpl-caps tbody th { font-weight: 600; white-space: nowrap; }
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { padding: 10px 13px; text-align: left; border-bottom: 1px solid var(--line); }
 th {
@@ -4409,3 +4426,28 @@ select {
     backdrop-filter: none !important;
   }
 }
+
+/* --- "Was this page useful?" --------------------------------------------
+   A deliberately quiet block. It sits at the end of a lesson, not in the
+   way of it, and it says plainly that the answer is anonymous. */
+.ev-useful {
+  margin: 28px 0 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line, #dfe3ea);
+  border-radius: 14px;
+  background: var(--surface-2, #f7f9fc);
+}
+.ev-useful-q { margin: 0 0 10px; font-weight: 600; }
+.ev-useful-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.ev-useful-note { margin-top: 12px; display: grid; gap: 8px; justify-items: start; }
+.ev-useful-note textarea {
+  width: min(520px, 100%);
+  padding: 8px 10px;
+  border: 1px solid var(--line, #dfe3ea);
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+.ev-useful-note textarea:focus-visible { outline: 2px solid var(--accent, #2f6df6); outline-offset: 2px; }
+.ev-useful-status { margin: 10px 0 0; min-height: 1.2em; }
+.ev-useful[data-ev-useful-done="1"] .ev-useful-row { opacity: 0.55; }

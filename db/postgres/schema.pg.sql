@@ -212,6 +212,24 @@ CREATE TABLE IF NOT EXISTS site_config (
   PRIMARY KEY (key)
 );
 
+CREATE TABLE IF NOT EXISTS content_feedback (
+  id                   TEXT NOT NULL,
+  path                 TEXT NOT NULL,
+  kind                 TEXT NOT NULL DEFAULT 'page',
+  verdict              TEXT NOT NULL,
+  detail               TEXT,
+  day                  TEXT NOT NULL,
+  created_at           BIGINT NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS page_stats (
+  path                 TEXT NOT NULL,
+  day                  TEXT NOT NULL,
+  views                BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (path, day)
+);
+
 CREATE TABLE IF NOT EXISTS user_roles (
   user_id              TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role                 TEXT NOT NULL,
@@ -1122,6 +1140,8 @@ CREATE INDEX IF NOT EXISTS idx_disc_recent ON discussions(last_activity_at DESC)
 CREATE INDEX IF NOT EXISTS idx_comment_disc ON comments(discussion_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_codelab_snippets_user ON codelab_snippets(user_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_content_feedback_path ON content_feedback(path);
+CREATE INDEX IF NOT EXISTS idx_content_feedback_day ON content_feedback(day);
 
 -- Append-only tables grow without bound. Prune in batches so VACUUM is never
 -- asked to churn over the whole table at once.

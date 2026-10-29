@@ -237,6 +237,85 @@ def subject_by_id(subject_id: str) -> dict | None:
     return db.query_one("SELECT * FROM subjects WHERE id = ?", subject_id)
 
 
+def topic_review(topic_id: str) -> dict:
+    """Who reviewed this note, and when.
+
+    The platform tracks an editorial state per topic: ``reviewed`` for material
+    that has been through review, ``needs_review`` for the public learning
+    drafts. The state was shown only when a note was *not* reviewed, so a
+    student had no way to tell a reviewed note from a draft - the absence of
+    a warning read as "reviewed", which is not the same thing.
+
+    This returns the state for every topic, the date the note last changed,
+    and the reviewer recorded for it.
+    """
+    row = db.query_one(
+        "SELECT accuracy_state, updated_at FROM topics WHERE id = ?", topic_id
+    ) or {}
+    note = db.query_one(
+        "SELECT updated_at FROM notes WHERE topic_id = ? AND status='published' "
+        "ORDER BY updated_at DESC LIMIT 1",
+        topic_id,
+    ) or {}
+    state = row.get("accuracy_state") or "reviewed"
+    return {
+        "state": state,
+        "reviewed": state == "reviewed",
+        "label": "Editorially reviewed" if state == "reviewed" else "Public learning draft",
+        "updated_at": note.get("updated_at") or row.get("updated_at") or 0,
+        # There is no per-topic reviewer in the schema yet; the platform says
+        # so rather than inventing a name.
+        "reviewer": "",
+    }
+
+
+def subject_curricula(subject_id: str) -> list[dict]:
+    """The curricula this subject belongs to, with the university behind them.
+
+    A student looking at "Engineering Mathematics III" needs to know which
+    regulation it is written against and in which year it is examined. The
+    platform has that in ``curricula`` (university, branch, effective year),
+    but the subject page never showed it, so a syllabus could not be traced
+    from the page that teaches it.
+    """
+    return db.query(
+        "SELECT c.id AS id, c.name AS name, c.effective_year AS effective_year, "
+        "u.name AS university, u.code AS university_code, u.country AS country, "
+        "b.name AS branch "
+        "FROM curriculum_subjects cs "
+        "JOIN curricula c ON c.id = cs.curriculum_id "
+        "LEFT JOIN universities u ON u.id = c.university_id "
+        "LEFT JOIN branches b ON b.id = c.branch_id "
+        "WHERE cs.subject_id = ? AND c.is_active = 1 "
+        "ORDER BY u.name, c.effective_year DESC",
+        subject_id,
+    )
+
+
+def subject_alignment(subject_id: str) -> dict:
+    """One line describing where this subject sits in a curriculum.
+
+    Returns the semester, the subject code, the credits and the syllabus it
+    belongs to, so a page can say "Semester 3, 4 credits, VTU Computer
+    Science syllabus (2024)" rather than leaving the reader to infer it.
+    """
+    rows = subject_curricula(subject_id)
+    semesters = {
+        row["id"]: row["label"]
+        for row in db.query("SELECT id, label FROM semesters")
+    }
+    subject = subject_by_id(subject_id) or {}
+    first = rows[0] if rows else None
+    return {
+        "semester_label": semesters.get(subject.get("semester_id"), ""),
+        "code": subject.get("code") or "",
+        "credits": subject.get("credits") or 0,
+        "curricula": rows,
+        "curriculum_count": len(rows),
+        "primary": first,
+    }
+
+
 def popular_subjects(limit: int = 8) -> list[dict]:
     return db.query(
         "SELECT s.*, b.slug AS branch_slug, b.name AS branch_name, "
@@ -373,10 +452,22 @@ def notes_for_topic(topic_id: str) -> list[dict]:
 
 
 DEPTH_BLURB = {
-    "beginner": "Plain language. Start here if this subject is new.",
-    "standard": "The working explanation: definition, intuition, a worked example, and the mistakes people make.",
-    "advanced": "For someone who already uses this. More of the derivation and the exam form.",
-    "industry": "How this shows up in a job, including what an interviewer will ask. Not a placement guarantee.",
+    "beginner": (
+        "Plain language, one way in, one worked example. Start here if this "
+        "subject is new."
+    ),
+    "standard": (
+        "The working explanation: the formal definition, why it works, the "
+        "formula, where it comes from, a worked example and the exam form."
+    ),
+    "advanced": (
+        "For someone who already uses this: the derivation as one continuous "
+        "argument, the boundary cases, and the questions an interviewer asks."
+    ),
+    "industry": (
+        "How this shows up in a job, what changes in practice, and the checks a "
+        "reviewer asks for. Not a placement guarantee."
+    ),
 }
 
 

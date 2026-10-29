@@ -268,12 +268,16 @@ LEARN = Section(
         ),
         Destination(
             "Study tutor", "/tutor",
-            "Answers composed only from this site's own material, with the sources cited.",
+            "Ask about something this site teaches. The answer is written only from "
+            "these notes and quotes them; if the material is not here, it says so.",
             icon="spark",
         ),
         Destination(
             "Study assistant", "/assistant",
-            "An AI assistant for error messages, revision plans and project ideas, with its limits stated.",
+            "A general AI assistant for what the tutor cannot do: reading an error "
+            "message, planning a revision week, brainstorming a project. It needs an "
+            "AI service that the operator configures; when there is none the page "
+            "says so and points at the notes tutor instead.",
             icon="chat",
         ),
         Destination(
@@ -343,17 +347,20 @@ CODE = Section(
         ),
         Destination(
             "Coding problems", "/practice/problems",
-            "Problems with editor stubs and tests, run by the judge on this host.",
+            "A set problem with a stub and hidden test cases. Your code is submitted, "
+            "the tests are run, and you get a verdict: accepted, wrong answer, compile error.",
             icon="code",
         ),
         Destination(
             "Code compiler", "/compiler",
-            "A compiler and terminal for every taught language: write a whole program, give it input, run it.",
+            "A one-box terminal for any taught language: write a whole program, give "
+            "it stdin, read the output. No test cases and no verdict.",
             match=("/compiler",), icon="terminal",
         ),
         Destination(
             "Python compiler", "/python-compiler",
-            "The compiler opened on Python: CPython on the judge, or CPython in your browser on the Pages copy.",
+            "The same terminal, already opened on Python - the language most people "
+            "reach for first.",
             match=("/python-compiler",), icon="terminal",
         ),
         Destination(
@@ -384,14 +391,17 @@ CODE = Section(
 CODELAB = Section(
     key="codelab",
     label="CodeLab",
-    blurb="CodeLab — Online Compiler for Python, Java, C, C++, JavaScript and more.",
+    blurb="The full workspace: line numbers, saved snippets, a split console, and the "
+          "same real compilers as the one-box terminal.",
     landing="/codelab",
     icon="code",
     in_footer=False,
     destinations=(
         Destination(
             "CodeLab — Online Compiler", "/codelab",
-            "Write, compile and run real code across Python, Java, C, C++, JavaScript and more.",
+            "The whole IDE, not one text box: line numbers, saved snippets, separated "
+            "compiler diagnostics and an output console, across Python, Java, C, C++, "
+            "JavaScript and more.",
             match=("/codelab",), icon="code",
         ),
     ),

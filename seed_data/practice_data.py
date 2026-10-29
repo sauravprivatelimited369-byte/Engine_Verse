@@ -4,6 +4,8 @@ Each entry: (subject, title, difficulty, statement, options, correct_index, expl
 Options are shown in order; `correct` is the 0-based index.
 """
 
+from . import complexity
+
 
 def q(subject, title, difficulty, statement, options, correct, explanation, tags, source="Meridian Bank"):
     return {
@@ -411,13 +413,22 @@ PROBLEM_WRAPPERS = {
 
 def problem(slug, title, difficulty, xp, statement, examples, topics, company,
             signature, stub, solution, tests, hints, editorial, minutes=20, wrapper=None):
-    """tests: list of dicts {input, expected, stdin?}."""
+    """tests: list of dicts {input, expected, stdin?}.
+
+    The complexity bounds come from ``seed_data.complexity.COMPLEXITY`` - the
+    one table where every bound in the bank is written down. These thirteen
+    problems used to declare none, and the seeder filled the gap with a blanket
+    "O(n) time, O(n) space", which is how binary search came to be published as
+    a linear-time, linear-space algorithm.
+    """
+    expected_time, expected_space = complexity.bounds(slug)
     return {
         "slug": slug, "title": title, "difficulty": difficulty, "xp": xp,
         "statement": statement, "examples": examples, "topics": topics, "company": company,
         "signature": signature, "stub": stub, "solution": solution, "tests": tests,
         "hints": hints, "editorial": editorial, "minutes": minutes,
         "wrapper": wrapper or PROBLEM_WRAPPERS.get(slug, "raw"),
+        "expected_time": expected_time, "expected_space": expected_space,
     }
 
 

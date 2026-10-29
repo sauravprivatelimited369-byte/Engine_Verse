@@ -1,0 +1,26 @@
+{# Was this page useful?
+
+   The audit asked for a way to hear from students without a tracker. This is
+   the whole thing: two buttons and an optional note. The vote carries the
+   route and nothing else - no account, no name, no IP - and the page says so
+   before the student clicks.
+
+   The widget is not rendered for the static export, because there is no
+   server there to receive a vote. #}
+{% if not static_export %}
+<section class="ev-useful" data-ev-useful data-kind="{{ useful_kind | default('page') }}" aria-labelledby="ev-useful-q" hidden>
+  <p class="ev-useful-q" id="ev-useful-q">Was this page useful?</p>
+  <div class="ev-useful-row">
+    <button class="btn btn-soft btn-sm" type="button" data-ev-useful-yes>Yes, it helped</button>
+    <button class="btn btn-soft btn-sm" type="button" data-ev-useful-no>No, something was confusing</button>
+  </div>
+  <div class="ev-useful-note" data-ev-useful-note hidden>
+    <label class="tiny" for="ev-useful-detail">What went wrong? One line is enough.</label>
+    <textarea id="ev-useful-detail" data-ev-useful-detail rows="2" maxlength="600"
+              placeholder="For example: the formula is named differently in my textbook."></textarea>
+    <button class="btn btn-ghost btn-sm" type="button" data-ev-useful-send>Send</button>
+  </div>
+  <p class="ev-useful-status tiny muted" data-ev-useful-status role="status" aria-live="polite"></p>
+  <p class="tiny muted">Anonymous. No account, no name, no tracking — the note goes to the people who write these pages.</p>
+</section>
+{% endif %}

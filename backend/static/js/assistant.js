@@ -410,6 +410,16 @@
       if (full) {
         pageRoot.dataset.evAssistantMode = "ready";
       }
+      // The server renders a conservative "not connected" panel, because it
+      // cannot know what the browser was given. The static export swaps the
+      // configuration for a direct URL at build time, so the panel can be
+      // wrong in the other direction. This block holds the browser's copy of
+      // the configuration, which is the one that decides: when the assistant
+      // is actually usable, the panel goes away.
+      const fallback = document.querySelector("[data-ev-asst-fallback]");
+      if (fallback) fallback.remove();
+      const offlineNotice = document.querySelector("[data-ev-asst-offline-notice]");
+      if (offlineNotice) offlineNotice.remove();
     }
   }
 

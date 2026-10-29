@@ -208,7 +208,22 @@ def test_cyber_security_notes_are_published_and_public(client, seeded):
             "SELECT id, status FROM notes WHERE topic_id = ? AND quality_level = 'standard'", topic["id"]
         )
         assert note and note["status"] == "published"
-        assert len(db.query("SELECT id FROM note_sections WHERE note_id = ?", note["id"])) == 13
+        # The standard reading is the working explanation - not all thirteen
+        # sections. The other three depths carry the rest, so a learner who
+        # switches depth gets a genuinely different document.
+        sections = db.query(
+            "SELECT kind FROM note_sections WHERE note_id = ? ORDER BY order_index", note["id"]
+        )
+        kinds = {row["kind"] for row in sections}
+        assert "definition" in kinds and "intuition" in kinds, topic["slug"]
+        assert "formula" in kinds and "derivation" in kinds, topic["slug"]
+        depths = db.query(
+            "SELECT quality_level FROM notes WHERE topic_id = ? AND status='published'",
+            topic["id"],
+        )
+        assert {row["quality_level"] for row in depths} == {
+            "beginner", "standard", "advanced", "industry",
+        }, topic["slug"]
         response = client.get(f"/topics/{topic['slug']}")
         assert response.status_code == 200, f"public Cyber Security lesson {topic['slug']} was not readable"
     assert client.get("/subjects/cryptography-security").status_code == 200
@@ -475,10 +490,13 @@ def test_no_two_flashcards_share_an_id(seeded):
 # Note completeness
 # ---------------------------------------------------------------------------
 
-#: The thirteen sections every standard note is specified to carry.
+#: The sections a note may carry. A note carries the ones its depth asks for
+#: and no others: the four reading modes are four different documents, so a
+#: section that belongs to another depth does not belong here.
 REQUIRED_SECTIONS = [
     "simple", "definition", "intuition", "points", "formula", "derivation",
     "example", "applications", "mistakes", "exam", "interview", "diagram", "industry",
+    "orientation", "boundaries", "workplace",
 ]
 
 
@@ -495,15 +513,39 @@ def test_every_published_topic_has_all_four_published_note_depths(seeded):
     assert missing == []
 
 
-def test_every_standard_note_carries_all_thirteen_sections(seeded):
-    """The full reading mode has exactly thirteen sections, including every generated lesson."""
-    incomplete = db.query(
-        "SELECT n.id, count(s.id) AS have FROM notes n "
-        "LEFT JOIN note_sections s ON s.note_id = n.id "
-        "WHERE n.quality_level = 'standard' AND n.status = 'published' "
-        "GROUP BY n.id HAVING have <> 13"
+def test_every_note_carries_exactly_its_depth_sections(seeded):
+    """A note carries the sections of its depth, and nothing else.
+
+    The audit found that the beginner and standard notes repeated the same
+    opening text, which is what happens when every depth is really one
+    document with a different title. The fix was to make the four depths four
+    different documents, so the section list is now part of the depth's
+    contract: a beginner note has the beginner sections, a standard note the
+    standard ones, and no note carries a section that belongs to another
+    depth.
+    """
+    expected = {depth: sorted(kinds) for depth, kinds in seeded.DEPTHS.items()}
+    rows = db.query(
+        "SELECT n.id AS id, n.quality_level AS depth, s.kind AS kind FROM notes n "
+        "JOIN note_sections s ON s.note_id = n.id WHERE n.status = 'published'"
     )
-    assert [(r["id"], r["have"]) for r in incomplete] == [], "standard notes with other than 13 sections"
+    seen: dict[tuple[str, str], list[str]] = {}
+    for row in rows:
+        seen.setdefault((row["id"], row["depth"]), []).append(row["kind"])
+
+    wrong: list[tuple[str, str, list[str]]] = []
+    for (note_id, depth), kinds in seen.items():
+        if depth not in expected:
+            wrong.append((note_id, depth, kinds))
+        elif sorted(kinds) != expected[depth]:
+            wrong.append((note_id, depth, sorted(kinds)))
+    assert wrong == [], f"notes whose sections do not match their depth: {wrong[:5]}"
+
+    empty = db.query(
+        "SELECT n.id AS id FROM notes n LEFT JOIN note_sections s ON s.note_id = n.id "
+        "WHERE n.status = 'published' GROUP BY n.id HAVING count(s.id) = 0"
+    )
+    assert [r["id"] for r in empty] == [], "published notes with no sections at all"
 
 
 def test_every_topic_has_the_four_previously_missing_fields(seeded):
