@@ -115,10 +115,16 @@ class TestCompilerPageWithoutCatalogue:
         assert page.text.count("<option") >= len(rows)
         # The banner is decided by the judge, not by the catalogue: a host with
         # no installed toolchain must say so, and only such a host may say it.
+        # The wording is the one templates/compiler.html renders for that state
+        # ("Nothing executes on this deployment"); the older "Code execution is
+        # off" copy was replaced on purpose, so the test must not pin it.
+        no_run_banner = "Nothing executes on this deployment"
         if runnable:
+            assert no_run_banner not in page.text
             assert "Code execution is off" not in page.text
         else:
-            assert "Code execution is off" in page.text
+            assert no_run_banner in page.text
+            assert 'id="cpl-host-note"' in page.text
 
 
 class TestToolchainDiagnostics:
