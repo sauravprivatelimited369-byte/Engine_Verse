@@ -48,7 +48,14 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="empty"><span class="em" aria-hidden="true">{{ icon("layers", 26) }}</span>No cards match those filters.</div>
+    <div class="empty"><span class="em" aria-hidden="true">{{ icon("layers", 26) }}</span>
+      <strong>No cards match those filters.</strong>
+      <p class="small muted" style="margin:6px 0 12px">Try a broader subject, or clear the filters and browse every deck.</p>
+      <div class="row" style="justify-content:center">
+        <a class="btn btn-soft btn-sm" href="/flashcards">All decks</a>
+        <a class="btn btn-soft btn-sm" href="/explore">Browse subjects</a>
+      </div>
+    </div>
   {% endif %}
   {% include "_pager.html" %}
 {% endif %}

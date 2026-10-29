@@ -348,6 +348,15 @@ class Settings:
         default_factory=lambda: _bool("ENGINEVERSE_SHOW_OTP_ON_PAGE", False)
     )
 
+    # --- privacy-preserving traffic counters -------------------------------
+    # On by default: the counters are a per-path, per-day aggregate with no
+    # identifier of any kind, which is the only way to find out where students
+    # give up without adding a tracker. Set ENGINEVERSE_PAGE_STATS=off to
+    # turn the counter off; the usefulness button keeps working either way.
+    page_stats_enabled: bool = field(
+        default_factory=lambda: _bool("ENGINEVERSE_PAGE_STATS", True)
+    )
+
     # --- AI tutor ---------------------------------------------------------
     ai_key: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_AI_KEY", ""))
     ai_url: str = field(default_factory=lambda: os.environ.get("ENGINEVERSE_AI_URL", ""))

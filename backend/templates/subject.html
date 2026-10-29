@@ -13,6 +13,35 @@
       <span class="chip diff-{{ subject.difficulty }}">{{ subject.difficulty }}</span>
       <span class="chip">{{ stats.topics }} topics</span>
     </div>
+    {# Which syllabus this subject belongs to, which semester and year it is
+       examined in, and which regulation it was written against. A student
+       checking a syllabus needs this on the page that teaches the subject,
+       not three clicks away. #}
+    {% if alignment and alignment.curricula %}
+    <details class="panel tight mt" id="subject-alignment">
+      <summary><strong>Syllabus alignment</strong>
+        <span class="muted small">Which regulation and academic year this subject is written against</span></summary>
+      <div class="tablewrap mt">
+        <table>
+          <thead><tr><th>University</th><th>Regulation</th><th>Academic year</th><th>Semester</th><th>Credits</th></tr></thead>
+          <tbody>
+            {% for row in alignment.curricula %}
+            <tr>
+              <td>{{ row.university or "Autonomous / generic" }}</td>
+              <td>{{ row.branch or "Core subject" }}</td>
+              <td>{{ row.effective_year or "—" }}</td>
+              <td>{{ alignment.semester_label or ("Semester " ~ subject.semester_id) }}</td>
+              <td>{{ alignment.credits or "—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="tiny muted">The same subject code ({{ alignment.code or "—" }}) appears across these
+        regulations. If your college follows a different one, the notes still cover the subject; check the
+        module list your department publishes before treating any of it as your official syllabus.</p>
+    </details>
+    {% endif %}
   </div>
 </div>
 
@@ -88,4 +117,7 @@
     </div></div>
   </aside>
 </div>
+{% with useful_kind = "subject" %}
+{% include "_useful.html" %}
+{% endwith %}
 {% endblock %}

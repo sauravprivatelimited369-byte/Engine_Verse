@@ -44,11 +44,20 @@
   </section>
 
   <section>
-    {% if not runnable_now %}
+    {# The judge may be off while the browser can still run the program and
+       check it against the test cases - that is the static copy. Say which. #}
+    {% set browser_ok = execution and execution.browser.available %}
+    {% if not runnable_now and not browser_ok %}
     <div class="callout warning mb"><span class="label">Code execution is off</span>
       This server is not running submitted code (judge: {{ judge_info.name | default('disabled') }}).
       You can still read the problem, the samples and the editorial. Run and Submit are disabled:
       nothing you type here will be executed until the operator enables a judge.</div>
+    {% elif not runnable_now %}
+    <div class="callout info mb"><span class="label">Runs in your browser</span>
+      This deployment has no server judge, so your code is not sent anywhere. It is compiled and run
+      by a WebAssembly toolchain inside this page, and the test cases below are checked here too.
+      {% if execution.browser.languages %}Languages available: {{ execution.browser.languages | join(', ') }}.{% endif %}
+      Nothing leaves your device.</div>
     {% elif runnable_now | length != languages | length %}
     <div class="callout mb"><span class="label">Limited runtimes on this server</span>
       Only {{ runnable_now | sort | join(', ') }} can run here (judge: {{ judge_info.name }}).
@@ -97,4 +106,7 @@ expected: {{ tc.expected }}</pre></div>
     {% endif %}
   </section>
 </div>
+{% with useful_kind = "problem" %}
+{% include "_useful.html" %}
+{% endwith %}
 {% endblock %}

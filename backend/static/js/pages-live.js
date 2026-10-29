@@ -2801,30 +2801,41 @@
 
     const cplLangEl = document.getElementById("cpl-lang");
     if (cplLangEl) {
-      // JavaScript and Python are runnable synchronously; the compiled
-      // languages + TypeScript/SQL stay disabled until the manifest
-      // confirms this deployment bundles their browser toolchains.
-      const RUNNABLE_HERE = new Set(["javascript", "python"]);
+      // Selectable is not the same as runnable, and this is the same rule the
+      // problem pages use: every starter stays selectable so a learner can
+      // read it, and the languages this copy cannot execute are *labelled*
+      // rather than silently offered. The vendored-runtime manifest decides
+      // which those are; JavaScript always works because its worker is built
+      // from the page itself.
       Array.from(cplLangEl.options).forEach((opt) => {
-        const runnable = RUNNABLE_HERE.has(opt.value);
-        opt.disabled = !runnable;
-        opt.textContent = opt.textContent.replace(/\s*\((no runtime here|cannot run here)\)/i, "");
-        if (!runnable) opt.textContent = `${opt.textContent} (cannot run here)`;
-        if (opt.value === "python" && !/CPython/i.test(opt.textContent)) {
-          opt.textContent = `${opt.textContent} (CPython in browser)`;
+        opt.textContent = opt.textContent.replace(/\s*\((no runtime here|cannot run here|no runtime in this copy)\)/i, "");
+        if (!/in browser/i.test(opt.textContent)) {
+          opt.textContent = `${opt.textContent} (in browser)`;
         }
       });
-      if (cplLangEl.selectedOptions?.[0]?.disabled) cplLangEl.value = "python";
     }
 
     const hostNote = document.getElementById("cpl-host-note");
+    const EV_CPL_ENGINE_NAME = {
+      javascript: "JavaScript",
+      python: "CPython 3.12 (Pyodide)",
+      c: "Clang 22 (C)",
+      cpp: "Clang 22 (C++)",
+      java: "OpenJDK + TeaVM",
+      typescript: "TypeScript 5.9",
+      go: "Go 1.24",
+      rust: "rustc",
+      csharp: "Roslyn (.NET)",
+      sql: "SQLite",
+      bash: "Bash",
+    };
     if (hostNote) {
       hostNote.classList.remove("warning");
       hostNote.innerHTML = '<span class="label">Static copy</span> '
-        + "Every language here compiles and executes right on your device with its real "
-        + "compiler or interpreter — Clang 22 (C17/C++20), OpenJDK + TeaVM (Java), rustc (Rust), "
-        + "Roslyn (.NET C#), TypeScript 5.9, Go 1.24, Bash, SQLite (SQL), CPython 3.12 (Python), "
-        + "and Node-compatible JavaScript — cached offline after first download.";
+        + "This copy has no server judge, so nothing you write is uploaded. Languages that carry a "
+        + "browser runtime compile and execute right on your device — each downloaded once and then "
+        + "cached. A language whose runtime files are missing from this copy is not executed and is "
+        + "never marked as passed.";
     }
 
     const runtimeEl = document.getElementById("cpl-runtime");
@@ -2881,21 +2892,32 @@
       schedulePrewarm();
     });
     paintStaticMeta();
-    // Once the vendored runtimes are known, light up every language this
-    // deployment actually carries (a missing one keeps its honest label).
+    // Once the vendored runtimes are known, name exactly the languages this
+    // copy carries. The old wording claimed every language here compiles and
+    // executes; that was only true for a copy that vendored every runtime,
+    // and the copy's own manifest is what decides.
     evLoadManifest().then(({ languages }) => {
       if (!cplLangEl) return;
-      let changed = false;
+      const carried = Array.from(languages).filter((slug) => EV_CPL_ENGINE_NAME[slug]);
       Array.from(cplLangEl.options).forEach((opt) => {
-        if (!languages.has(opt.value) || !opt.disabled) return;
-        opt.disabled = false;
-        opt.textContent = opt.textContent.replace(/\s*\(cannot run here\)/i, "");
-        changed = true;
+        const ok = opt.value === "javascript" || languages.has(opt.value);
+        opt.textContent = opt.textContent.replace(/\s*\(no runtime in this copy\)/i, "");
+        if (!ok) opt.textContent = `${opt.textContent} (no runtime in this copy)`;
       });
-      if (changed) {
-        paintStaticMeta();
-        cplLangEl.dispatchEvent(new Event("change"));
+      if (hostNote) {
+        const names = carried.map((slug) => EV_CPL_ENGINE_NAME[slug]);
+        const carriedText = names.length
+          ? `It carries the browser runtime for ${names.length} language(s): ${names.join(", ")}. `
+          : "This build carries no compiled-language runtime, so only JavaScript runs. ";
+        hostNote.innerHTML = '<span class="label">Static copy</span> '
+          + "This copy has no server judge, so nothing you write is uploaded. "
+          + carriedText
+          + "JavaScript always works, because its worker is built from the page itself. "
+          + "A language whose runtime files are missing from this copy is not executed and is never "
+          + "marked as passed.";
       }
+      paintStaticMeta();
+      cplLangEl.dispatchEvent(new Event("change"));
       setTimeout(schedulePrewarm, 150);
     });
     cplLangEl?.dispatchEvent(new Event("change"));
@@ -3098,6 +3120,55 @@
         refreshLocalUi();
       });
     }
+    // A human-readable line saying what is actually in the backup. A student
+    // who cannot tell whether the file is worth keeping will not keep it.
+    const backupSummary = document.getElementById("ev-backup-summary");
+    if (backupSummary) {
+      const p = getActiveProfile();
+      const days = (readStreak()?.days || []).length;
+      const parts = [
+        `${(p.completed_topics || []).length} topics read`,
+        `${(p.solved_problems || []).length} problems solved`,
+        `${(p.mistakes || []).length} mistakes saved`,
+        `${p.xp || 0} XP`,
+        `${days}-day streak`,
+      ];
+      const line = document.createElement("span");
+      line.textContent = `Right now this backup holds ${parts.join(", ")}.`;
+      backupSummary.insertBefore(line, backupSummary.firstChild);
+    }
+    document.getElementById("ev-copy-json")?.addEventListener("click", async () => {
+      if (/EngineVerseAndroid\//.test(navigator.userAgent) || /EngineVerseApple\//.test(navigator.userAgent)) {
+        settingsStatus("Copying is not available inside the app. Use \u201cOpen in browser\u201d (top right) to copy your backup.", "warn");
+        return;
+      }
+      const text = JSON.stringify(exportProfilePayload(), null, 2);
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          settingsStatus("Backup copied. Paste it into a notes app, an email or a chat so it is not only in this browser.", "ok");
+          return;
+        }
+      } catch (_) { /* fall through to the manual copy below */ }
+      // Clipboard access can be refused. Fall back to a selectable text box
+      // rather than pretending the copy worked.
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "readonly");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      let copied = false;
+      try { copied = document.execCommand("copy"); } catch (_) { copied = false; }
+      area.remove();
+      settingsStatus(
+        copied
+          ? "Backup copied to the clipboard."
+          : "Your browser would not let the page copy automatically. Use \u201cDownload a backup file\u201d instead.",
+        copied ? "ok" : "warn",
+      );
+    });
     document.getElementById("ev-export-json")?.addEventListener("click", () => {
       // The native apps' in-app viewers cannot save blob downloads; say so
       // instead of reporting an export that did not happen.
@@ -3109,7 +3180,8 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `engineverse-progress-${isoOf(new Date())}.json`;
+      const siteName = (window.EngineVerse && window.EngineVerse.siteName) || "meridian";
+      a.download = `${String(siteName).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-progress-${isoOf(new Date())}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();

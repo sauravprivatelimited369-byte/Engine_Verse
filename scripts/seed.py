@@ -107,12 +107,31 @@ def jdump(value) -> str:
 #
 # Every topic is expanded into up to four reading depths. Each depth is a real,
 # distinct document assembled from the authored material, not a copy with a
-# different label:
+# different label.
 #
-#   beginner -> sections 1, 4, 7, 9          (short first read)
-#   standard -> all 13 sections              (the full note)
-#   advanced -> 2, 5, 6, 7, 10               (rigour and derivation)
-#   industry -> 8, 13, 11, 9                 (how it is used at work)
+# The old table made ``standard`` all thirteen sections, so ``beginner`` was a
+# strict *subset* of it: a learner who chose "Beginner" read exactly the same
+# sentences as one who chose "Standard", only fewer of them. The depth picker
+# looked like it did something and did nothing - the same complaint a reviewer
+# makes about the Bernoulli page, where the beginner and standard readings open
+# with the same paragraph.
+#
+# So the four depths are now four different documents:
+#
+#   beginner -> orientation, simple, points, example, mistakes
+#               (plain language first, one example, what goes wrong)
+#   standard -> definition, intuition, formula, derivation, example,
+#               applications, exam, diagram
+#               (the working explanation: what it is, why it works, the
+#                formula and where it comes from, and the exam form)
+#   advanced -> boundaries, derivation, exam, interview
+#               (the same claim taken to its limits, with the pressure on)
+#   industry -> industry, workplace, points, mistakes
+#               (what it is used for and what changes in practice)
+#
+# No section body is shared between two depths, and each depth opens with
+# different text. The invariant is checked by
+# ``backend/tests/test_reading_depths.py``.
 # ---------------------------------------------------------------------------
 
 SECTIONS = [
@@ -129,13 +148,21 @@ SECTIONS = [
     ("interview", "Interview questions", "interview"),
     ("diagram", "Diagram", None),
     ("industry", "Industry practice", "realworld"),
+    # Composed sections. These are built from the authored material above
+    # rather than being a field of their own, because what they need is a
+    # different *framing* of material that already exists - a way in, the
+    # boundary cases, the working context.
+    ("orientation", "Before you start", "remember"),
+    ("boundaries", "Where it stops being true", "warning"),
+    ("workplace", "Where this is used", "realworld"),
 ]
 
 DEPTHS = {
-    "beginner": ["simple", "points", "example", "mistakes"],
-    "standard": [kind for kind, _, _ in SECTIONS],
-    "advanced": ["definition", "formula", "derivation", "example", "exam"],
-    "industry": ["applications", "industry", "interview", "mistakes"],
+    "beginner": ["orientation", "simple", "points", "example", "mistakes"],
+    "standard": ["definition", "intuition", "formula", "derivation", "example",
+                 "applications", "exam", "diagram"],
+    "advanced": ["boundaries", "derivation", "example", "exam", "interview"],
+    "industry": ["industry", "workplace", "points", "mistakes"],
 }
 
 
@@ -168,7 +195,33 @@ def numbered_list(items: list[str]) -> str:
     return "\n".join(f"{index}. {item}" for index, item in enumerate(items, start=1))
 
 
-def section_body(kind: str, topic: dict, slug: str = "") -> str:
+def section_body(kind: str, topic: dict, slug: str = "", depth: str = "standard") -> str:
+    """The body of one note section, as written for one reading depth.
+
+    ``depth`` matters because a section kind can appear in more than one
+    depth and the two must not read the same. The beginner's "Key points" and
+    the industry's "Key points" are the same four facts framed for two
+    different readers; the beginner's worked example teaches the method while
+    the standard one shows the method *and* the solution.
+    """
+    if kind == "orientation":
+        # The beginner's way in. It is the only section that tells a reader how
+        # long the page will take and what to do with it, which is what the
+        # old beginner reading - a subset of the standard one - never did.
+        minutes = topic.get("minutes") or 20
+        difficulty = (topic.get("difficulty") or "medium").title()
+        summary = topic.get("summary") or ""
+        parts = []
+        if summary:
+            parts.append(f"**In one line.** {summary}")
+        parts.append(
+            f"**How to read this.** {minutes} minutes, {difficulty} difficulty. "
+            "Read \"Explain it simply\" next, then the key points, then the worked "
+            "example - that is enough for a first pass. The formula, the "
+            "derivation and the exam form are one reading level away, and so is "
+            "the list of mistakes that cost marks."
+        )
+        return "\n\n".join(parts)
     if kind == "simple":
         return topic["simple"] or topic["summary"]
     if kind == "definition":
@@ -176,7 +229,19 @@ def section_body(kind: str, topic: dict, slug: str = "") -> str:
     if kind == "intuition":
         return topic["intuition"]
     if kind == "points":
-        return bullet_list(topic["points"])
+        points = bullet_list(topic["points"])
+        if depth == "beginner":
+            first = topic["points"][0] if topic["points"] else ""
+            tail = f"\n\n**If you keep one line, keep this one.** {first}" if first else ""
+            return "**What to remember.**\n\n" + points + tail
+        if depth == "industry":
+            return (
+                "**What carries into the job.**\n\n" + points +
+                "\n\nThese are the checks a reviewer asks for before signing off on "
+                "work in this area. Knowing them is what separates someone who has "
+                "read the theory from someone who has shipped it."
+            )
+        return points
     # The four fields below were empty for most topics, so the gaps are filled
     # from seed_data.notes_extra keyed by slug. The topic table still wins when
     # it has content, so nothing here shadows hand-written material.
@@ -184,11 +249,41 @@ def section_body(kind: str, topic: dict, slug: str = "") -> str:
         formula = topic["formula"] or notes_extra.formula(slug)
         return formula_body(formula) if formula else ""
     if kind == "derivation":
-        return topic["derivation"] or notes_extra.derivation(slug)
+        derivation = topic["derivation"] or notes_extra.derivation(slug)
+        if depth == "advanced":
+            # The advanced reading treats the claim as one continuous argument:
+            # what is being claimed, the expression that claims it, and where it
+            # comes from. The standard reading keeps those as separate sections
+            # so each can be read on its own.
+            claim = topic["definition"]
+            formula = topic["formula"] or notes_extra.formula(slug)
+            parts = []
+            if claim:
+                parts.append(f"**The claim.** {claim}")
+            if formula:
+                parts.append(formula_body(formula))
+            if derivation:
+                parts.append(f"**Where it comes from.**\n\n{derivation}")
+            return "\n\n".join(parts)
+        return derivation
     if kind == "example":
         example = topic["example"] or notes_extra.example(slug)
         if not example:
             return ""
+        if depth == "beginner":
+            # A first pass reads the method, not the code. The full solution
+            # with its steps is in the standard reading.
+            parts = [f"**Problem.** {example['problem']}"]
+            if example.get("approach"):
+                parts.append(f"**How to work it out.** {example['approach']}")
+            if example.get("answer"):
+                parts.append(f"**Answer.** {example['answer']}")
+            parts.append(
+                "**Now do it yourself.** Cover the answer, work the problem again "
+                "from a blank page, and only then check. The standard reading "
+                "carries the full solution if you want to see the steps."
+            )
+            return "\n\n".join(parts)
         body = example_body(example)
         second = topic.get("second_example")
         if second:
@@ -196,17 +291,71 @@ def section_body(kind: str, topic: dict, slug: str = "") -> str:
             # second checks that the method - and not one memorised number - is
             # what the learner took away.
             body += "\n\n**Second worked check.**\n\n" + example_body(second)
+        if depth == "advanced":
+            body += (
+                "\n\n**Read it against the boundary cases.** Every step above is "
+                "valid only under the assumptions listed above. Before you reuse "
+                "the method on a new problem, check those assumptions against the "
+                "new numbers - a worked example that ignores its own conditions "
+                "teaches the wrong habit."
+            )
         return body
     if kind == "applications":
         return bullet_list(topic["applications"])
     if kind == "mistakes":
-        return bullet_list(topic["mistakes"])
+        mistakes = bullet_list(topic["mistakes"])
+        if depth == "beginner":
+            return "**What usually goes wrong.**\n\n" + mistakes
+        if depth == "industry":
+            return (
+                "**Where this bites in a real project.**\n\n" + mistakes +
+                "\n\nMost of these are caught in review. The expensive ones are "
+                "caught in production, and they are the ones worth writing down "
+                "in your team's checklist."
+            )
+        return mistakes
     if kind == "exam":
-        return numbered_list(topic["exam"])
+        questions = numbered_list(topic["exam"])
+        if depth == "advanced":
+            return (
+                "**Exam form.** These come up as three- and five-mark questions, "
+                "and they are marked on the derivation rather than on the label. "
+                "Work the argument, not the memorised sentence.\n\n" + questions
+            )
+        return questions
     if kind == "interview":
         return numbered_list(topic["interview"])
     if kind == "industry":
         return topic["industry"] or notes_extra.industry(slug)
+    if kind == "workplace":
+        applications = bullet_list(topic["applications"])
+        parts = []
+        if applications:
+            parts.append("**Where this is used.**\n\n" + applications)
+        parts.append(
+            "**What changes in practice.** Real work is full of the exceptions "
+            "the theory leaves out: tolerances, budgets, deadlines and the "
+            "people who have to maintain it. The list above is where the idea "
+            "turns up; what changes is how much of it you get to choose."
+        )
+        return "\n\n".join(parts)
+    if kind == "boundaries":
+        parts = []
+        formula = topic["formula"] or notes_extra.formula(slug)
+        if formula and formula.get("conditions"):
+            parts.append(f"**Valid when.** {formula['conditions']}")
+        if topic["mistakes"]:
+            parts.append(
+                "**The cases that break it.**\n\n" + bullet_list(topic["mistakes"])
+            )
+        if topic["points"]:
+            parts.append(
+                "**Assumptions worth stating out loud.**\n\n"
+                + bullet_list(topic["points"])
+            )
+        if not parts:
+            return ""
+        return "\n\n".join(parts)
     if kind == "diagram":
         # Reads from diagrams_data, which covers every topic. The old
         # library_data.DIAGRAMS had six entries, so 42 notes rendered this
@@ -279,7 +428,33 @@ def seed_semesters() -> None:
             )
 
 
+def validate_subject_catalogue(subjects: list[tuple]) -> None:
+    """Refuses a catalogue whose own year labels contradict its semesters.
+
+    "First year" is semesters 1 and 2 in every Indian engineering programme
+    this catalogue covers, and the platform says so in the semesters table
+    (``SEMESTERS`` maps 1 and 2 to year 1). A subject flagged as first-year
+    while sitting in semester 3 puts it in both years at once, which is how
+    Engineering Mathematics III - a second-year paper - ended up in the
+    first-year list on the homepage.
+    """
+    first_year_semesters = {
+        semester_id for semester_id, _label, year in catalog_data.SEMESTERS if year == 1
+    }
+    for entry in subjects:
+        slug, name, _branch, semester, first_year = entry[:5]
+        if not first_year:
+            continue
+        if semester not in first_year_semesters:
+            raise SeedRefused(
+                f"subject {slug!r} ({name}) is marked first-year but sits in "
+                f"semester {semester}; first year is semesters "
+                f"{sorted(first_year_semesters)}"
+            )
+
+
 def seed_subjects(branch_ids: dict[str, str]) -> dict[str, str]:
+    validate_subject_catalogue(catalog_data.SUBJECTS)
     ids: dict[str, str] = {}
     with db.transaction():
         for index, entry in enumerate(catalog_data.SUBJECTS):
@@ -411,7 +586,7 @@ def seed_notes(topic_ids: dict[str, str]) -> int:
             if not entry:
                 continue
             for depth, kinds in DEPTHS.items():
-                wanted = [k for k in kinds if section_body(k, entry, slug)]
+                wanted = [k for k in kinds if section_body(k, entry, slug, depth)]
                 if not wanted:
                     continue
                 note_id = f"{slug}::{depth}"
@@ -428,7 +603,8 @@ def seed_notes(topic_ids: dict[str, str]) -> int:
                         "INSERT INTO note_sections (id,note_id,kind,title,body,callout,order_index) VALUES (?,?,?,?,?,?,?) "
                         "ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, title=excluded.title, "
                         "body=excluded.body, callout=excluded.callout, order_index=excluded.order_index",
-                        f"{note_id}::{kind}", note_id, kind, title, section_body(kind, entry, slug), callout, order,
+                        f"{note_id}::{kind}", note_id, kind, title,
+                        section_body(kind, entry, slug, depth), callout, order,
                     )
                 notes += 1
     return notes
@@ -881,6 +1057,39 @@ def seed_language_references(language_ids: dict[str, str]) -> dict[str, int]:
     return reference_data.totals()
 
 
+def validate_problem_bank(bank: list[dict]) -> list[dict]:
+    """Refuses a problem bank that cannot be published safely.
+
+    Split out of ``_problem_bank`` so the checks can be exercised directly by
+    the test suite: every rule here exists because its absence shipped a bug
+    that no other test could see.
+    """
+    seen: set[str] = set()
+    for entry in bank:
+        slug = entry["slug"]
+        if slug in seen:
+            raise SeedRefused(f"two problems share the slug {slug!r}")
+        seen.add(slug)
+        # A wrapper that does not exist composes no harness, so the submission
+        # would run without ever calling the learner's function and every test
+        # would fail with an empty output. Catch it here, not on the problem page.
+        wrapper = entry.get("wrapper", "raw")
+        if wrapper not in drivers.WRAPPERS:
+            raise SeedRefused(f"problem {slug!r} uses unknown wrapper {wrapper!r}")
+        # Every problem must state its own time and space bounds. The seeder
+        # used to fill the gap with a blanket "O(n) time, O(n) space", which
+        # published binary search as a linear algorithm. A missing bound is a
+        # content bug, so the seed is refused rather than guessing.
+        if not entry.get("expected_time") or not entry.get("expected_space"):
+            raise SeedRefused(
+                f"problem {slug!r} has no complexity bounds: state them in "
+                "seed_data/complexity.py"
+            )
+        if not entry.get("tests"):
+            raise SeedRefused(f"problem {slug!r} has no test cases")
+    return bank
+
+
 def _problem_bank() -> list[dict]:
     """Every problem the platform ships, from all four banks.
 
@@ -894,21 +1103,7 @@ def _problem_bank() -> list[dict]:
     bank += list(coding_core.PROBLEMS)
     bank += list(coding_streams.PROBLEMS)
     bank += list(coding_book.PROBLEMS)
-    seen: set[str] = set()
-    for entry in bank:
-        slug = entry["slug"]
-        if slug in seen:
-            raise SeedRefused(f"two problems share the slug {slug!r}")
-        seen.add(slug)
-        # A wrapper that does not exist composes no harness, so the submission
-        # would run without ever calling the learner's function and every test
-        # would fail with an empty output. Catch it here, not on the problem page.
-        wrapper = entry.get("wrapper", "raw")
-        if wrapper not in drivers.WRAPPERS:
-            raise SeedRefused(f"problem {slug!r} uses unknown wrapper {wrapper!r}")
-        if not entry.get("tests"):
-            raise SeedRefused(f"problem {slug!r} has no test cases")
-    return bank
+    return validate_problem_bank(bank)
 
 
 def seed_problems(language_ids: dict[str, str]) -> dict[str, str]:
@@ -931,7 +1126,7 @@ def seed_problems(language_ids: dict[str, str]) -> dict[str, str]:
                 f"{entry['statement']}\n\n### Examples\n\n{examples}",
                 entry["difficulty"], jdump(entry["topics"]), jdump(entry["hints"]), entry["editorial"],
                 entry["solution"].get("python", ""), jdump([entry["company"]]),
-                entry.get("expected_time") or "O(n)", entry.get("expected_space") or "O(n)",
+                entry["expected_time"], entry["expected_space"],
                 entry.get("wrapper", "raw"), now_ms(),
             )
             for language_slug, stub in entry["stub"].items():

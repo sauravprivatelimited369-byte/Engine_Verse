@@ -94,6 +94,13 @@
     return;
   }
   const IS_ANDROID_APP = /EngineVerseAndroid\//.test(navigator.userAgent || "");
+  // The product name, taken from the page. The scripts used to hard-code the
+  // old "EngineVerse" codename, which made a white-label deployment - and
+  // the name in the user's own voice - inconsistent with the site.
+  const SITE_NAME =
+    (typeof window !== "undefined" && window.EngineVerse && window.EngineVerse.siteName) ||
+    document.documentElement.getAttribute("data-site-name") ||
+    "this site";
   const PREF_KEY = "ev:voice:v1";
   const SESSION_CHAR_BUDGET = 24000; // one tab; the server also rate-limits per IP
 
@@ -1084,7 +1091,7 @@
     if (IS_ANDROID_APP) {
       startBtn.disabled = true;
       if (chip) chip.textContent = "Use a browser";
-      say("Spoken conversations need a microphone permission the Android app does not request. Open EngineVerse in Chrome or your browser to use the voice tutor. The written tutor and the voice reader still work here.");
+      say("Spoken conversations need a microphone permission the Android app does not request. Open " + SITE_NAME + " in Chrome or your browser to use the voice tutor. The written tutor and the voice reader still work here.");
       return;
     }
     if (!ready) {
@@ -1415,7 +1422,7 @@
     if (!button || !input || !form || !status || !Recognition || IS_ANDROID_APP) return null;
     button.hidden = false;
     status.hidden = false;
-    status.textContent = "Ask by voice uses your browser's speech recognition service. The answer comes from EngineVerse notes and can be read aloud.";
+    status.textContent = "Ask by voice uses your browser's speech recognition service. The answer comes from " + SITE_NAME + " notes and can be read aloud.";
     let listening = false;
     let recognizer = null;
     let waitingForAnswer = false;

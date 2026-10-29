@@ -1093,3 +1093,40 @@ CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
   tags        UNINDEXED,
   tokenize = 'porter unicode61'
 );
+
+-- ---------------------------------------------------------------------------
+-- 13. USEFULNESS FEEDBACK AND COARSE TRAFFIC (no identifiers)
+-- ---------------------------------------------------------------------------
+-- The audit asked for a way to find out where students give up without adding a
+-- tracker. The rule this schema keeps is simple: a row here can never be traced
+-- back to a person.
+--
+--   * content_feedback stores one row per submitted vote. There is no user id,
+--     no IP address, no user agent and no cookie. The path is normalised to a
+--     route without its query string, so "/topic/x?ref=email" and "/topic/x"
+--     are the same page and no campaign or search term is captured.
+--   * page_stats stores a per-path, per-day counter. It is an aggregate, not a
+--     log: it cannot be reversed into individual visits, and the day bucket
+--     keeps the table small.
+--
+-- Both tables are optional. If they are not migrated the feature degrades to
+-- "no data", never to an error.
+
+CREATE TABLE IF NOT EXISTS content_feedback (
+  id         TEXT PRIMARY KEY,
+  path       TEXT NOT NULL,
+  kind       TEXT NOT NULL DEFAULT 'page',
+  verdict    TEXT NOT NULL,
+  detail     TEXT,
+  day        TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_content_feedback_path ON content_feedback(path);
+CREATE INDEX IF NOT EXISTS idx_content_feedback_day ON content_feedback(day);
+
+CREATE TABLE IF NOT EXISTS page_stats (
+  path  TEXT NOT NULL,
+  day   TEXT NOT NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (path, day)
+);

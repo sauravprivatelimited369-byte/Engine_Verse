@@ -18,8 +18,12 @@ and the module fills in the mechanical parts:
 * the Python stub is generated from the signature, so the editor always opens on
   a declaration the harness can actually call - a stub that does not match
   ``drivers.entrypoint`` is a Run button that always fails;
-* ``expected_time``/``expected_space`` default to the honest generic answer and
-  are stated per problem where the real bound matters.
+* ``expected_time``/``expected_space`` are *not* written on the problem. They
+  come from ``seed_data/complexity.py``, the one table where every bound in the
+  bank is written down, and a problem whose slug is missing from that table is
+  a hard error. The old per-problem keyword had a generic default of
+  ``O(n)``/``O(1)``, and thirteen problems never overrode it - so binary search
+  shipped to learners labelled "O(n) time, O(n) space".
 
 XP for a judged submission is awarded by outcome rather than by difficulty - see
 ``engineverse.coding.submit`` - so a problem does not carry an ``xp`` field here,
@@ -30,6 +34,8 @@ Every reference solution in this bank is executed against its own test cases by
 much content: a wrong expected output is a problem nobody can solve.
 """
 from __future__ import annotations
+
+from . import complexity
 
 
 def ex(prompt: str, output: str, explain: str | None = None) -> dict:
@@ -58,8 +64,6 @@ def problem(
     editorial: str = "",
     company: str = "",
     minutes: int = 20,
-    expected_time: str = "O(n)",
-    expected_space: str = "O(1)",
 ) -> dict:
     """Builds one problem in the shape ``scripts/seed.py`` inserts.
 
@@ -67,9 +71,14 @@ def problem(
     learner would write it after the harness appends its driver. ``signature``
     is the same entry point written as a declaration; the generated stub is that
     declaration with a body that does nothing, which is what the editor opens on.
+
+    The complexity bounds are read from ``seed_data.complexity.COMPLEXITY``.
+    A slug that is not in that table raises ``KeyError`` rather than silently
+    inheriting a generic bound.
     """
     if difficulty not in {"easy", "medium", "hard"}:
         raise ValueError(f"{slug}: unknown difficulty {difficulty!r}")
+    expected_time, expected_space = complexity.bounds(slug)
     stubs = {
         "python": (
             f"{signature}\n"

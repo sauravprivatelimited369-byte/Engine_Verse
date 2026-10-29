@@ -22,7 +22,17 @@
         <span class="chip">{{ b.level }}</span></div>
       <a class="btn btn-soft btn-sm" href="{{ b.legal_url }}" target="_blank" rel="noopener noreferrer nofollow">
         {{ 'Read free' if b.access_kind == 'open_access' else 'Publisher' }}</a></div>
-  {% else %}<div class="empty"><span class="em" aria-hidden="true">{{ icon("book", 26) }}</span>No books match.</div>{% endfor %}
+  {% else %}
+  <div class="empty"><span class="em" aria-hidden="true">{{ icon("book", 26) }}</span>
+    <strong>No books match that filter.</strong>
+    <p class="small muted" style="margin:6px 0 12px">Every book here is free to read online or listed with its publisher.
+      Try a different subject, or clear the filter and see the whole shelf.</p>
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-soft btn-sm" href="/books">All books</a>
+      <a class="btn btn-soft btn-sm" href="/resources">All resources</a>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% include "_pager.html" %}
 {% endblock %}

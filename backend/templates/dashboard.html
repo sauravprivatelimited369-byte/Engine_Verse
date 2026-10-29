@@ -84,7 +84,7 @@
     <section class="panel panel-section ev-reveal">
       <div class="section-head compact">
         <div>
-          <p class="ev-eyebrow">Roughly an hour</p>
+          <p class="ev-eyebrow">About {{ plan_minutes }} minutes</p>
           <h2>Today's plan</h2>
         </div>
         <a class="section-link" href="/today">Open the full plan {{ icon("chevron", 13) }}</a>
@@ -132,7 +132,11 @@
             </span>
             <span class="continue-progress">
               <span class="bar thin"><span style="width:{{ item.mastery or 0 }}%"></span></span>
-              <span class="tiny muted">{{ item.mastery or 0 }}%</span>
+              {# A bare percentage tells a learner nothing; the label says which
+                 band they are in and what moves it up. #}
+              <span class="tiny muted" title="{{ mastery_levels.get(item.slug, {}).get('note', '') }}">
+                {{ item.mastery or 0 }}% · {{ mastery_levels.get(item.slug, {}).get('label', '') }}
+              </span>
             </span>
           </a>
         {% endfor %}

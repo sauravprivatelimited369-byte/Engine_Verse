@@ -603,6 +603,16 @@ def render(
     explicitly marked anonymous in that browser's local cache.
     """
     context = base_context(request, **extra)
+    # One privacy-preserving traffic counter per rendered page. It records a
+    # route and a day, never a person, and the whole thing can be switched off
+    # with ENGINEVERSE_PAGE_STATS=off. It is best-effort: a failure here must
+    # never turn a page into a 500.
+    try:
+        from engineverse import feedback as feedback_mod
+
+        feedback_mod.record_view(request.url.path)
+    except Exception:  # pragma: no cover - counters are best-effort
+        pass
     # The error handlers pass their status as ``status=`` (it lands in the template
     # context, as the docstring above warns), so look at that too.
     effective_status = max(int(status_code or 0), int(extra.get("status") or 0))

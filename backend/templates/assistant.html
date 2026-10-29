@@ -25,6 +25,32 @@
   <p>{{ assistant.disclosure }}</p>
 </div>
 
+{# Availability, stated before the chat box rather than inside it.
+
+   The audit found the assistant advertised on the public deployment with
+   nothing behind it: clicking it did nothing. The page now says up front
+   whether it can answer, and names the alternatives that work either way.
+   The browser removes this block when the assistant turns out to be
+   configured after all (the static export can point the browser straight at
+   a Chat Trigger, which the server cannot see). #}
+{% if assistant.mode == 'off' %}
+<div class="callout warning mt" data-ev-asst-offline-notice>
+  <span class="label">Not available on this deployment</span>
+  <p>The study assistant needs an AI service that this deployment's operator configures
+    (<code>ENGINEVERSE_ASSISTANT_URL</code>), and there is none here. Nothing you type into the
+    box below will be sent anywhere, so the box is not usable.</p>
+  <p class="mb"><strong>What works instead:</strong></p>
+  <ul class="small">
+    <li><a href="/tutor">The notes tutor</a> — answers strictly from this platform's own material
+      and quotes the notes it used, so you can check every claim.</li>
+    <li><a href="/search">Search</a> — the whole catalogue, notes, formulas and problems.</li>
+    <li><a href="/practice">Practice sets</a> — questions with worked solutions and the topic they belong to.</li>
+    {% if static_export %}<li><a href="/install">Install the app</a> — the native builds talk to a
+      hosted server, which can run the assistant.</li>{% endif %}
+  </ul>
+</div>
+{% endif %}
+
 <div class="layout-2 mt">
   <article>
     <section class="panel" id="ev-assistant-page" data-ev-assistant-mode="page"

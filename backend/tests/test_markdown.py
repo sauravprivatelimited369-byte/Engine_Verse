@@ -67,11 +67,35 @@ def test_every_variable_in_a_seeded_formula_is_rendered():
 
 
 def test_display_math_is_wrapped_once_and_labelled():
-    """aria-label carries the raw LaTeX, which is what a screen reader reads."""
+    """The accessible name is a spoken reading, not the LaTeX source.
+
+    A screen reader announces the accessible name, and reading the source out
+    character by character ("backslash sum underscore k") is not a
+    description of the formula. The exact source is still on the element, in
+    ``data-tex``, for anyone who needs it.
+    """
     html = markdown.render(r"$$\sum_k I_k = 0$$")
     assert html.count('class="math math-display"') == 1
-    assert r'aria-label="\sum_k I_k = 0"' in html
+    assert 'aria-label="the sum of sub k I sub k equals 0"' in html
+    assert r'data-tex="\sum_k I_k = 0"' in html
     assert "$$" not in html, "the delimiters must be consumed, not printed"
+
+
+def test_a_formula_is_spoken_rather_than_spelled_out():
+    """The common commands have spoken readings."""
+    assert markdown.tex_speech(r"\frac{x}{y}") == "x divided by y"
+    assert markdown.tex_speech(r"\sqrt{2}") == "the square root of 2"
+    assert markdown.tex_speech(r"\alpha + \beta") == "alpha plus beta"
+    assert markdown.tex_speech(r"E = mc^2") == "E equals mc to the power of 2"
+    assert markdown.tex_speech(r"\text{Result} = 5") == "Result equals 5"
+
+
+def test_a_formula_that_cannot_be_spoken_still_has_a_name():
+    """An unreadable fragment must not become an empty accessible name."""
+    spoken = markdown.tex_speech(r"\begin{unknown}")
+    assert spoken
+    html = markdown.render_tex(r"\begin{unknown}")
+    assert 'aria-label="' in html and 'aria-label=""' not in html
 
 
 def test_math_renderer_does_not_emit_raw_angle_brackets():

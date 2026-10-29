@@ -31,6 +31,21 @@
       </div>
     </header>
 
+    {# The review state is shown for every note, not only for the drafts. A
+       note with no badge read as "reviewed", which is not the same thing -
+       the audit asked for reviewed content to be distinguishable from
+       drafts, and that needs a badge on both. #}
+    {% if review %}
+    <p class="small muted mt" id="topic-review-state">
+      <span class="chip {{ 'ok' if review.reviewed else 'warn' }}">{{ review.label }}</span>
+      {% if review.reviewed %}
+        Checked by a subject reviewer{% if review.updated_at %} · last updated {{ review.updated_at | ago }}{% endif %}.
+      {% else %}
+        Not yet through editorial review — verify anything exam-critical against your course material.
+      {% endif %}
+    </p>
+    {% endif %}
+
     {% if topic.accuracy_state != 'reviewed' %}
     <div class="callout warning mt"><span class="label">Public learning draft</span>
       <p>This structured note has not completed editorial review. Use it to study, then verify safety-critical or exam-critical decisions against your course material and authoritative references.</p>
@@ -261,4 +276,7 @@
     {% endif %}
   </aside>
 </div>
+{% with useful_kind = "topic" %}
+{% include "_useful.html" %}
+{% endwith %}
 {% endblock %}

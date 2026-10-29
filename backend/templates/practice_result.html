@@ -21,10 +21,29 @@
   {% if result and result.explanation %}
   <div class="explain on" data-speak data-speak-title="Explanation"><strong>Why.</strong> {{ result.explanation }}</div>
   {% endif %}
-  {% if result and not result.correct %}<p class="small muted">It has been added to your <a href="/mistakes">mistake notebook</a>.</p>{% endif %}
+
+  {# What to do next.
+
+     A wrong answer used to end at "it has been added to your mistake
+     notebook", which is a record, not a way forward. The recovery path is
+     now explicit: look at why, read the concept, try a related question on
+     the same topic, and come back to this one later. #}
+  {% if result and not result.correct %}
+  <section class="panel tight mt" aria-labelledby="ev-recovery">
+    <h2 class="h-sub" id="ev-recovery">What to do next</h2>
+    <ol class="small" style="margin:0 0 0 18px;padding:0">
+      {% if result.explanation %}<li>Read the explanation above - it says why the right answer is right.</li>{% endif %}
+      {% if result.topicSlug %}<li>Read <a href="/topics/{{ result.topicSlug }}">the topic this question came from</a>.</li>{% endif %}
+      {% if result.topicSlug %}<li>Try <a href="/practice/questions?topic={{ result.topicSlug }}">another question on this topic</a>.</li>{% endif %}
+      <li>It is in your <a href="/mistakes">mistake notebook</a>, so it will come back until you get it right twice.</li>
+    </ol>
+  </section>
+  {% endif %}
+
   <div class="row mt">
     <a class="btn btn-primary" href="{{ back }}#q-{{ question.id }}">Back to the questions</a>
     {% if result and result.topicSlug %}<a class="btn btn-ghost" href="/topics/{{ result.topicSlug }}">Read the topic</a>{% endif %}
+    {% if result and result.topicSlug %}<a class="btn btn-ghost" href="/practice/questions?topic={{ result.topicSlug }}">More on this topic</a>{% endif %}
   </div>
 </div>
 {% endblock %}

@@ -40,7 +40,109 @@ release.
   apps gained the same screens. The website is now used only for interactive
   diagrams, 3D models and the WebAssembly code playground.
 
+### Added
+
+- **Privacy-preserving page feedback and coarse traffic counters.** A "Was this
+  page useful?" widget on topic, subject and problem pages records a route, a
+  verdict and an optional note - and nothing that identifies a visitor: no
+  account, no IP address, no user agent, no cookie. Alongside it, a per-route,
+  per-day count of visits, which is an aggregate rather than a log. Staff with
+  `analytics.view` see traffic joined with usefulness, the routes students
+  rated down, and what they wrote. The counter can be switched off with
+  `ENGINEVERSE_PAGE_STATS=off`; the usefulness button keeps working either way.
+  A vote is capped at 20 an hour per browser, held in memory only and keyed on
+  a hash of the caller's session subject - no IP address is read and nothing
+  about the caller is written down. This is the audit's "where do students
+  give up" question answered without a tracker. See `docs/AUDIT_2026-10-29.md`
+  §10.
+
 ### Fixed
+
+- **Binary Search was published with the wrong complexity.** Thirteen problems
+  carried no complexity at all and the seeder filled the gap with a blanket
+  `O(n)` / `O(n)`, so Binary Search - the algorithm most likely to be looked up
+  - read as O(n) time and O(n) space instead of O(log n) time and O(1) extra
+  space. `seed_data/complexity.py` is now the single registry of bounds for
+  all 105 problems, the seeder refuses to publish a problem without them, and
+  `scripts/audit_complexity.py` fails on drift.
+
+- **The four reading depths were one document with four names.** A beginner
+  note and a standard note on the same topic opened with identical text,
+  because the standard depth included the beginner's sections and both were
+  rendered by the same function. The four depths are now four different
+  documents, and a note carries exactly the sections of its depth.
+
+- **"What runs here?" is now answered once, and truthfully.** The compiler
+  page, the problem pages, the practice sheets and the homepage each answered
+  it differently, and none of the answers was derived from the deployment the
+  reader was on. `backend/engineverse/execution.py` is now the only place that
+  answers it: per language, whether this host runs it on the server judge, in
+  the browser, or not at all - and it separates *running a program* from
+  *judging a problem*, because the hidden test cases live on the server.
+
+- **A server deployment no longer claims the browser will run your code.** The
+  JavaScript worker that would have run it exists only on the static copy,
+  and the capability answer was cached, so the static export's answer leaked
+  onto the hosted app for the rest of the process.
+
+- **The static copy no longer claims every language compiles there.** It now
+  names the languages its own runtime manifest carries, and says plainly that
+  a language whose runtime files are missing is not executed and is never
+  marked as passed.
+
+- **Engineering Mathematics III is no longer in the first-year catalogue.** It
+  is a third-year course, and the seeder now refuses to publish a first-year
+  subject outside year one.
+
+- **A subject page says which syllabus it comes from** - university,
+  regulation, effective year, semester and credits - and **every topic says
+  whether it was editorially reviewed** or is a public learning draft. The
+  badge used to appear only for drafts, so the absence of a warning read as
+  "reviewed".
+
+- **The AI study assistant states its availability before the chat box**, and
+  names the alternatives that work either way: the notes tutor (which answers
+  only from this platform's own material and cites it), search and practice
+  sets. The floating launcher is removed rather than left as a dead bubble.
+
+- **The navigation tells the study tutor from the study assistant**, and the
+  coding problems from the code compiler from the Python compiler.
+
+- **A filter that matches nothing is no longer a dead end.** The books,
+  formulas, flashcards and API-directory pages all offer a way out.
+
+- **A formula is now spoken rather than spelled.** A rendered formula carried
+  the raw LaTeX in its accessible name, so a screen reader announced
+  "backslash sum underscore k". The accessible name is now a spoken reading -
+  "x divided by y", "the square root of 2" - and the exact source stays on the
+  element in `data-tex`.
+
+- **A mastery percentage says what it means.** The dashboard printed "45%"
+  with no indication of whether that was nearly there or barely started. Every
+  percentage now carries a band and a line saying what moves it up, and the
+  bands match the thresholds the progress table already uses.
+
+- **A wrong answer has a way forward.** The practice result page ended at "it
+  has been added to your mistake notebook". It now names the steps: read the
+  explanation, read the topic, try another question on the same topic, and the
+  mistake notebook. The link to more questions on that topic pointed at
+  `/question-bank`, which is not a route - it is `/practice/questions` - so the
+  button led nowhere; the dead-link test that walks every internal URL in the
+  templates caught it.
+
+- **Every page that mentions the day's plan quotes the same number.** The
+  homepage, the dashboard and the plan section each had their own figure
+  ("about 65 minutes", "roughly an hour"); they now read one computed value.
+
+- **The coverage report names the question-coverage gap instead of hiding it
+  in a table.** Programming Fundamentals carries 96 questions and the median
+  subject carries 4; the report now lists the heavy and thin subjects and says
+  plainly that closing it needs authored questions, not code.
+
+- **A test was leaking the old product name into every later page.** Two tests
+  wrote a site name to the shared `site_config` table to exercise the
+  white-label form and never put it back, so every page rendered after them
+  called the product "EngineVerse". Both now restore it.
 
 - **Choosing a topic's MCQs in the question bank now works.** The bank's
   filter form offered Subject, Difficulty and Kind but no Topic at all: the

@@ -22,8 +22,10 @@ from engineverse import (
     coding,
     community,
     db,
+    feedback,
     hub,
     judge,
+    execution,
     ladders,
     library,
     models3d,
@@ -317,6 +319,49 @@ def _dashboard_model(branch_id: str | None) -> dict[str, Any] | None:
     }
 
 
+#: The four steps of the homepage study plan, with the time each one takes.
+#: Both the hero desk and the "Today's plan" section render this list, so the
+#: headline total can be computed from it rather than guessed.
+PLAN_STEP_MINUTES = (
+    ("practice", "Daily practice set", 30),
+    ("revise", "Revise flashcards", 10),
+    ("code", "Code one judged problem", 15),
+    ("learn", "Read one new topic", 25),
+)
+
+
+def _featured_topics(limit: int = 9) -> list[dict]:
+    """The topics the homepage offers, most-read first."""
+    return db.query(
+        "SELECT t.slug, t.title, t.summary, t.difficulty, t.est_minutes, s.name AS subject, s.color AS color "
+        "FROM topics t JOIN subjects s ON s.id = t.subject_id WHERE t.status='published' "
+        "ORDER BY t.view_count DESC, t.order_index LIMIT ?",
+        limit,
+    )
+
+
+def plan_minutes() -> int:
+    """The real length of the day's plan, in minutes.
+
+    One answer for every page that mentions it: the homepage, the dashboard
+    and the plan page all read this, so they cannot drift apart the way a
+    hard-coded "about an hour" and a hand-summed list did.
+    """
+    return sum(step["minutes"] for step in _plan_steps(_featured_topics(1)))
+
+
+def _plan_steps(featured_topics: list[dict]) -> list[dict]:
+    """The homepage plan, with the reading step sized by the topic it offers."""
+    steps = []
+    for key, label, minutes in PLAN_STEP_MINUTES:
+        steps.append({"key": key, "label": label, "minutes": minutes})
+    if featured_topics:
+        est = int(featured_topics[0].get("est_minutes") or 0)
+        if est > 0:
+            steps[-1]["minutes"] = est
+    return steps
+
+
 @router.get("/")
 async def home(request: Request):
     viewer = current_user(request)
@@ -332,7 +377,18 @@ async def home(request: Request):
     if viewer:
         context["dashboard"] = recommend.dashboard(viewer.id)
         context["continue_learning"] = progress.continue_learning(viewer.id, 6)
+        # A mastery percentage on its own says nothing about what it means, so
+        # every card carries the band it falls in and what moves it up.
+        context["mastery_levels"] = {
+            item["slug"]: progress.mastery_level(item.get("mastery"))
+            for item in context["continue_learning"]
+        }
         context["dpp"] = practice.dpp_with_context()
+        # The dashboard said "Roughly an hour" in hard type, which is a guess
+        # that the plan itself can answer. The plan's own steps size it, and
+        # the same helper the homepage uses answers it, so the two pages
+        # cannot disagree.
+        context["plan_minutes"] = plan_minutes()
         # One query, and the dashboard can name the viewer's own stream with its
         # real sizes instead of a generic "browse everything" link.
         context["my_stream"] = next(
@@ -341,11 +397,7 @@ async def home(request: Request):
         context["dashboard_model"] = _dashboard_model(viewer.branch_id)
         return render(request, "dashboard.html", **context)
 
-    featured_topics = db.query(
-        "SELECT t.slug, t.title, t.summary, t.difficulty, t.est_minutes, s.name AS subject, s.color AS color "
-        "FROM topics t JOIN subjects s ON s.id = t.subject_id WHERE t.status='published' "
-        "ORDER BY t.view_count DESC, t.order_index LIMIT 9"
-    )
+    featured_topics = _featured_topics(9)
     sample_problems = coding.list_problems(limit=6)[0]
     showcase_models = _curated_showcase_models()
     hero_scene_json = models3d.scene_json(models3d.meridian_instrument_scene())
@@ -370,10 +422,21 @@ async def home(request: Request):
     context["first_year"] = catalog.list_subjects(first_year=True, limit=200)
     context["hero_model"] = hero_model
     context["showcase_models"] = showcase_models
-    context["demo_topic"] = _demo_topic_depths(featured_topics[0]["slug"] if featured_topics else None)
+    context["demo_topic"] = _demo_topic_depths(featured_topics[0].get("slug") if featured_topics else None)
     context["demo_questions"] = _demo_questions()
     context["demo_flashcards"] = _demo_flashcards()
     context["demo_problem"] = demo_problem
+    # What this deployment can actually execute. The homepage used to claim
+    # "real compilers and real test cases across N languages" whatever the
+    # host could do, which is exactly the mismatch a student hits on the
+    # compiler page.
+    context["execution"] = execution.capabilities()
+    # The four-step plan, with its real length. The page used to say "about 65
+    # minutes" while the four steps it listed added up to 80, so a student
+    # planning a session had two different answers and no way to tell which
+    # was the real one. The total is now computed from the steps.
+    context["plan_steps"] = _plan_steps(featured_topics)
+    context["plan_minutes"] = sum(step["minutes"] for step in context["plan_steps"])
     return render(request, "home.html", **context)
 
 
@@ -485,6 +548,10 @@ async def subject_page(request: Request, slug: str):
         books=library.list_books(subject_id=subject["id"], limit=10),
         roadmaps=library.list_roadmaps(kind="subject"),
         my_progress=progress.subject_progress(viewer.id, subject["id"]) if viewer else None,
+        # Which syllabus, regulation, academic year and semester this subject
+        # is written against. The platform has the mapping; the page used to
+        # hide it.
+        alignment=catalog.subject_alignment(subject["id"]),
     )
 
 
@@ -514,6 +581,7 @@ async def topic_page(request: Request, slug: str, depth: str | None = None):
         flashcards=library.flashcards_for_topic(topic["id"]),
         resources=library.topic_resources(topic["id"], topic["subject_id"]),
         related=catalog.related_topics(topic),
+        review=catalog.topic_review(topic["id"]),
         siblings=catalog.topic_siblings(topic["subject_id"], topic["order_index"]),
         recommendations=recommend.for_topic(topic, viewer.id if viewer else None),
         my_progress=progress.topic_progress(viewer.id, topic["id"]) if viewer else None,
@@ -894,6 +962,11 @@ async def problem_page(request: Request, slug: str):
         # produced the same dead button as SQL did.
         runnable_now=runnable_now,
         judge_info=judge.provider_info(),
+        # The same capability table the compiler page uses. On the static copy
+        # the judge is disabled but the browser can still run the program and
+        # check it against the test cases, so "code execution is off" would
+        # have been the wrong thing to print.
+        execution=execution.capabilities(),
         submissions=coding.submissions_for(viewer.id, problem["id"], 10) if viewer else [],
         saved=coding.saved_code(viewer.id, problem["id"], "python") if viewer else None,
         sheets=coding.sheets_for_problem(problem["id"]),
@@ -974,19 +1047,42 @@ def _host_runtime_hint() -> dict:
     }
 
 
+def _execution_context(languages: list[dict]) -> dict:
+    """Merge the live execution capabilities into the terminal language rows.
+
+    ``coding.terminal_languages`` answers "can the judge run this", which on
+    the static copy is "no, for everything". The browser is the other half of
+    the answer, and the page has to show both: a language that cannot run on
+    the server but can run in the reader's own browser is not unavailable.
+    """
+    caps = execution.capabilities()
+    by_slug = {row["slug"]: row for row in caps["languages"]}
+    for row in languages:
+        info = by_slug.get(row["slug"])
+        row["mode"] = info["mode"] if info else "unavailable"
+        row["mode_label"] = info["label"] if info else "Cannot run on this deployment"
+        row["mode_note"] = info["note"] if info else ""
+        row["can_run"] = row["mode"] != "unavailable"
+    return {"execution": caps}
+
+
 @router.get("/compiler")
 async def compiler_page(request: Request, lang: str | None = None):
     """The website compiler/terminal: every catalogue language, one editor.
 
     Execution goes through POST /api/coding/run with no problem attached, so
     the program in the editor runs verbatim (stdin from the input box) on the
-    configured judge - the same isolation contract as judged problems. Which
-    languages can run *here* is answered live by the judge, and the page says
-    so per language instead of offering dead Run buttons. On the static
-    Pages copy, pages-live.js runs JavaScript and Python (CPython) in the
-    browser and reports the rest as not run.
+    configured judge - the same isolation contract as judged problems.
+
+    Which languages can run *here* is answered by
+    ``engineverse.execution.capabilities``: the judge's own list for the
+    server, and the browser runtimes for the static copy. The page prints
+    that table instead of a single "code execution is off" wall, because a
+    student who came to write a program needs to know where their program
+    will run, not just that something is missing.
     """
     languages = coding.terminal_languages()
+    context = _execution_context(languages)
     runnable_now = {row["slug"] for row in languages if row["can_run"]}
     default_language = next(
         (row["slug"] for row in languages if row["slug"] == (lang or "")),
@@ -1002,8 +1098,10 @@ async def compiler_page(request: Request, lang: str | None = None):
         page_title="Code compiler",
         page_intro=(
             "Pick a language, write a complete program, give it input, run it. "
-            "Every language Meridian teaches is here; what can execute depends on this host's judge."
+            "Every language Meridian teaches is here; the table below says exactly "
+            "which of them can execute on this deployment, and where."
         ),
+        **context,
     )
 
 
@@ -1016,6 +1114,7 @@ async def python_compiler_page(request: Request):
     same judge - only the preselected language and heading differ.
     """
     languages = coding.terminal_languages()
+    context = _execution_context(languages)
     runnable_now = {row["slug"] for row in languages if row["can_run"]}
     return render(
         request, "compiler.html",
@@ -1026,10 +1125,12 @@ async def python_compiler_page(request: Request):
         **_host_runtime_hint(),
         page_title="Python compiler",
         page_intro=(
-            "Write Python, press Run, see real output. On the hosted app this is CPython on the "
-            "judge; on the GitHub Pages copy CPython itself runs in your browser (Pyodide/WebAssembly, "
-            "loaded on first Run). Switch the language menu any time for the other compilers."
+            "Write Python, press Run, see real output. Where that runs depends on this "
+            "deployment: CPython on the server judge, or CPython itself in your browser "
+            "(Pyodide/WebAssembly, loaded on the first Run). The table below says which. "
+            "Switch the language menu any time for the other compilers."
         ),
+        **context,
     )
 
 
@@ -1086,6 +1187,7 @@ async def sheet_page(request: Request, slug: str):
             "total": len(problems), "solved": 0, "percent": 0},
         all_sheets=coding.list_sheets(),
         runnable_now=set(judge.runnable_languages()),
+        execution=execution.capabilities(),
     )
 
 
@@ -1851,6 +1953,12 @@ async def admin_page(request: Request):
         searches=db.query(
             "SELECT query, count(*) AS c FROM search_log GROUP BY query ORDER BY c DESC LIMIT 20"
         ) if permissions["analytics_view"] and db.table_exists("search_log") else [],
+        # Page usefulness and coarse traffic. Both tables hold no identifier of
+        # any kind, so the aggregate is all the admin view can show and all it
+        # needs to show.
+        page_traffic=feedback.summary(days=30) if permissions["analytics_view"] else [],
+        page_usefulness=feedback.low_rated(days=30) if permissions["analytics_view"] else [],
+        feedback_notes=feedback.recent_notes(10) if permissions["analytics_view"] else [],
     )
 
 

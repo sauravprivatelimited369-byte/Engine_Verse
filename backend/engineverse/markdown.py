@@ -233,6 +233,182 @@ class _TeX:
         )
 
 
+#: Spoken readings for the LaTeX commands a reader meets most often. The
+#: accessible name of a formula is what a screen reader announces, and reading
+#: the raw source ("frac x over y") is not the same as saying what the
+#: formula means.
+_TEX_WORDS: dict[str, str] = {
+    "alpha": "alpha", "beta": "beta", "gamma": "gamma", "delta": "delta",
+    "epsilon": "epsilon", "varepsilon": "epsilon", "zeta": "zeta", "eta": "eta",
+    "theta": "theta", "vartheta": "theta", "iota": "iota", "kappa": "kappa",
+    "lambda": "lambda", "mu": "mu", "nu": "nu", "xi": "xi", "pi": "pi",
+    "rho": "rho", "sigma": "sigma", "tau": "tau", "upsilon": "upsilon",
+    "phi": "phi", "varphi": "phi", "chi": "chi", "psi": "psi", "omega": "omega",
+    "Gamma": "capital gamma", "Delta": "capital delta", "Theta": "capital theta",
+    "Lambda": "capital lambda", "Xi": "capital xi", "Pi": "capital pi",
+    "Sigma": "capital sigma", "Phi": "capital phi", "Psi": "capital psi",
+    "Omega": "capital omega",
+    "times": " times ", "cdot": " times ", "div": " divided by ",
+    "pm": " plus or minus ", "mp": " minus or plus ", "ast": " asterisk ",
+    "le": " less than or equal to ", "leq": " less than or equal to ",
+    "ge": " greater than or equal to ", "geq": " greater than or equal to ",
+    "neq": " not equal to ", "ne": " not equal to ", "approx": " approximately ",
+    "equiv": " is equivalent to ", "sim": " is similar to ", "propto": " is proportional to ",
+    "infty": " infinity ", "partial": " partial ", "nabla": " nabla ",
+    "sum": " the sum of ", "prod": " the product of ", "int": " the integral of ",
+    "lim": " the limit of ", "forall": " for every ", "exists": " there exists ",
+    "in": " in ", "notin": " not in ", "subset": " is a subset of ",
+    "subseteq": " is a subset of or equal to ", "supset": " is a superset of ",
+    "cup": " union ", "cap": " intersection ", "emptyset": " the empty set ",
+    "rightarrow": " arrow right ", "leftarrow": " arrow left ",
+    "Rightarrow": " implies ", "Leftarrow": " is implied by ",
+    "to": " arrow right ",
+    "land": " and ", "lor": " or ", "lnot": " not ", "neg": " not ",
+    "ldots": " dot dot dot ", "cdots": " dot dot dot ", "dots": " dot dot dot ",
+    "sin": " sine ", "cos": " cosine ", "tan": " tangent ", "log": " log ",
+    "ln": " natural log ", "exp": " e to the power ", "min": " minimum ",
+    "max": " maximum ", "det": " determinant ", "deg": " degrees ",
+    "quad": " ", "qquad": " ", "left": " ", "right": " ", "displaystyle": " ",
+    "mathrm": " ", "mathbf": " ", "mathit": " ", "operatorname": " ",
+    "text": " ", "textbf": " ", "textit": " ", "mathbb": " ", "mathcal": " ",
+    "overline": " over ", "hat": " hat ", "tilde": " tilde ", "vec": " vector ",
+    "bar": " bar ", "dot": " dot ",
+}
+
+#: Symbols that are said rather than shown.
+_TEX_SYMBOLS: dict[str, str] = {
+    "=": " equals ", "+": " plus ", "-": " minus ", "*": " times ",
+    "/": " divided by ", "<": " less than ", ">": " greater than ",
+    "^": " to the power of ", "_": " sub ", "&": " and ",
+    "|": " modulus ", "~": " ", "%": " percent ",
+}
+
+
+def _tex_group(source: str, start: int) -> tuple[str, int]:
+    """Reads a ``{...}`` group starting at ``start``; returns its text.
+
+    A group that is not brace-delimited runs to the next command or
+    operator, which is what ``\frac12`` means.
+    """
+    if start >= len(source) or source[start] != "{":
+        end = start
+        while end < len(source) and source[end] not in " \\{}":
+            end += 1
+        return source[start:end], end
+    depth = 0
+    out: list[str] = []
+    i = start
+    while i < len(source):
+        char = source[i]
+        if char == "{":
+            depth += 1
+            if depth == 1:
+                i += 1
+                continue
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return "".join(out), i + 1
+        out.append(char)
+        i += 1
+    return "".join(out), i
+
+
+def tex_speech(source: str) -> str:
+    """A spoken reading of a LaTeX fragment.
+
+    Used as the accessible name of a rendered formula. It is a reading aid,
+    not a LaTeX engine: it says "x divided by the square root of 2" rather
+    than reading the source out character by character.
+    """
+    if not source:
+        return ""
+    out: list[str] = []
+    i = 0
+    length = len(source)
+    while i < length:
+        char = source[i]
+        if char == "\\":
+            i += 1
+            if i >= length:
+                break
+            if source[i].isalpha():
+                start = i
+                while i < length and source[i].isalpha():
+                    i += 1
+                name = source[start:i]
+                if name == "frac":
+                    numerator, i = _tex_group(source, i)
+                    denominator, i = _tex_group(source, i)
+                    out.append(" ")
+                    out.append(tex_speech(numerator))
+                    out.append(" divided by ")
+                    out.append(tex_speech(denominator))
+                    out.append(" ")
+                    continue
+                if name == "sqrt":
+                    root = ""
+                    if i < length and source[i] == "[":
+                        close = source.find("]", i)
+                        if close == -1:
+                            close = length
+                        root = source[i + 1:close]
+                        i = close + 1
+                    body, i = _tex_group(source, i)
+                    if root:
+                        out.append(f" the {root} root of ")
+                    else:
+                        out.append(" the square root of ")
+                    out.append(tex_speech(body))
+                    out.append(" ")
+                    continue
+                if name in {"text", "mathrm", "mathbf", "mathit", "operatorname", "textbf", "textit"}:
+                    body, i = _tex_group(source, i)
+                    out.append(" ")
+                    out.append(body)
+                    out.append(" ")
+                    continue
+                if name in _TEX_WORDS:
+                    out.append(_TEX_WORDS[name])
+                else:
+                    out.append(" ")
+                    out.append(name.replace("_", " "))
+                    out.append(" ")
+                continue
+            escaped = source[i]
+            i += 1
+            if escaped in "{},$":
+                out.append(" ")
+            elif escaped == "%":
+                out.append(" percent ")
+            elif escaped == "&":
+                out.append(" and ")
+            elif escaped == "_":
+                out.append(" sub ")
+            elif escaped == "^":
+                out.append(" to the power of ")
+            elif escaped == " ":
+                out.append(" ")
+            else:
+                out.append(" ")
+                out.append(escaped)
+                out.append(" ")
+            continue
+        if char in _TEX_SYMBOLS:
+            out.append(_TEX_SYMBOLS[char])
+            i += 1
+            continue
+        if char in "{}":
+            out.append(" ")
+            i += 1
+            continue
+        out.append(char)
+        i += 1
+    text = "".join(out)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def render_tex(source: str, display: bool = False) -> str:
     """Renders a LaTeX fragment to escaped HTML."""
     if not source or not source.strip():
@@ -242,7 +418,17 @@ def render_tex(source: str, display: bool = False) -> str:
     except RecursionError:  # pragma: no cover - pathological nesting
         return f'<code class="mtex">{_esc(source)}</code>'
     klass = "math math-display" if display else "math math-inline"
-    return f'<span class="{klass}" role="math" aria-label="{_esc(source)}">{inner}</span>'
+    # The accessible name is a spoken reading, not the LaTeX source: a screen
+    # reader should say "x divided by the square root of 2", not "frac x over
+    # sqrt 2". The raw source is still available to anyone reading the page.
+    spoken = tex_speech(source) or source
+    # ``data-tex`` keeps the exact source for anyone who needs it; the
+    # accessible name is the spoken reading, because a screen reader would
+    # otherwise announce the backslashes and underscores one by one.
+    return (
+        f'<span class="{klass}" role="math" aria-label="{_esc(spoken)}" '
+        f'data-tex="{_esc(source)}">{inner}</span>'
+    )
 
 
 # ---------------------------------------------------------------------------

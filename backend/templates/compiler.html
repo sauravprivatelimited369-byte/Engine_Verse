@@ -6,18 +6,74 @@
   <p class="muted">{{ page_intro }} Want gutter line numbers, syntax highlighting, example programs, saved snippets, separated compiler diagnostics, and Android mobile coding keys? <a href="/codelab">Open CodeLab — Online Compiler →</a></p>
 </div>
 
-{% if not runnable_now %}
-<div class="callout warning mb" id="cpl-host-note"><span class="label">Code execution is off</span>
-  This server is not running submitted code (judge: {{ judge_info.name | default('disabled') }}), so Run is
-  disabled: nothing you type here will be executed until the operator enables a judge. The editors and
-  starters below still work for reading and writing code.</div>
-{% elif runnable_now | length != languages | length %}
+{# What runs here.
+
+   The old page said one thing - "Code execution is off" - and left it at
+   that, which is honest but useless to a student who came to write a
+   program: it never said *where* their program would run, or whether there
+   was a working alternative. The table below is generated from the live
+   capabilities of this deployment, so it is true of this host rather than of
+   the product in general. #}
+{% if execution %}
+<section class="panel mb" id="cpl-capabilities" aria-labelledby="cpl-cap-title">
+  <h2 class="h-sub" id="cpl-cap-title">What runs here</h2>
+  <p class="small muted">{{ execution.summary }}</p>
+  <div class="tablewrap">
+    <table class="cpl-caps">
+      <thead>
+        <tr><th>Language</th><th>How it runs</th><th>Judged against test cases?</th></tr>
+      </thead>
+      <tbody>
+        {% for row in execution.languages %}
+        <tr>
+          <th scope="row">{{ row.name }}</th>
+          <td>
+            <span class="chip {{ 'ok' if row.mode != 'unavailable' else 'warn' }}">{{ row.label }}</span>
+            {% if row.note %}<br><span class="tiny muted">{{ row.note }}</span>{% endif %}
+          </td>
+          <td class="small">
+            {% if row.can_judge %}Yes — submit against the hidden test cases.
+            {% elif row.mode == 'browser' %}No — it runs a program, but the test cases and the verdict need the server.
+            {% else %}Not on this deployment.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="tiny muted mt">Three different things are often confused here. <strong>Running a program</strong> means
+    writing a whole program, giving it input and seeing its output — that is what this page does.
+    <strong>Judging a problem</strong> means submitting against a fixed set of test cases and getting a verdict
+    (accepted, wrong answer, compile error) — that needs the server judge, so it is a separate page.
+    <strong>Learning a language</strong> is the path, the reference and the exercises, and it never needed a runtime
+    at all.</p>
+</section>
+{% endif %}
+
+{% set server_runs = runnable_now and runnable_now | length %}
+{% if server_runs and runnable_now | length != languages | length %}
 <div class="callout mb" id="cpl-host-note"><span class="label">Limited runtimes on this server</span>
   Runnable here (judge: {{ judge_info.name }}): {{ runnable_now | sort | join(', ') }}. Other languages show
   their starter but cannot execute on this host — the editor says which, instead of pretending a run happened.
   {% if toolchain_hint %}<br><span class="tiny">Install the missing compilers on the server with
   <code>{{ toolchain_hint }}</code> — see <code>scripts/setup_toolchains.py</code>, then reload this page.</span>{% endif %}
 </div>
+{% elif server_runs %}
+<div class="callout mb" id="cpl-host-note"><span class="label">Runs on this server's judge</span>
+  Your program is compiled by the judge's own toolchain ({{ judge_info.name }}) and run with your input.
+  Nothing is simulated: a language with no toolchain on this host is labelled and left unrunnable.</div>
+{% elif execution and execution.browser.available %}
+<div class="callout mb" id="cpl-host-note"><span class="label">Runs in your browser</span>
+  Nothing is uploaded. {{ execution.browser.languages | length }} of {{ execution.languages | length }} languages
+  have a browser runtime that runs locally in this page with the real toolchain, after a one-off download the
+  browser caches afterwards. A language whose runtime files are missing from this copy is not executed and is
+  never marked as passed. Judging a problem against hidden test cases still needs a server, so that is a
+  <a href="/practice/problems">separate page</a>.</div>
+{% else %}
+<div class="callout warning mb" id="cpl-host-note"><span class="label">Nothing executes on this deployment</span>
+  This server is not running submitted code (judge: {{ judge_info.name | default('disabled') }}), so Run is
+  disabled here: nothing you type on this page will be executed until an operator enables a judge. The editors and
+  starters still work for reading and writing code.</div>
 {% endif %}
 {% if provider_hint %}<div class="callout mb" id="cpl-provider-note"><span class="label">Judge unavailable</span> {{ provider_hint }}</div>{% endif %}
 
@@ -26,7 +82,8 @@
     <label for="cpl-lang" style="margin:0">Language</label>
     <select id="cpl-lang" data-judge="{{ judge_info.name | default('disabled') }}">
       {% for lang in languages %}
-        {% set can_run = lang.slug in runnable_now %}
+        {% set cap = (execution.languages | selectattr('slug', 'eq', lang.slug) | list | first) if execution else none %}
+        {% set can_run = (lang.slug in runnable_now) or (cap is not none and cap.mode == 'browser') %}
         <option value="{{ lang.slug }}" {{ 'selected' if lang.slug == default_language }}
           {{ '' if can_run else 'disabled' }}>{{ lang.name }}{{ '' if can_run else ' (no runtime here)' }}</option>
       {% endfor %}
@@ -45,7 +102,7 @@
 
   <div class="row mt">
     <button class="btn btn-primary" id="cpl-run" type="button"
-      {{ '' if runnable_now else 'disabled title="Code execution is disabled on this server"' }}>Run</button>
+      {{ '' if (runnable_now or (execution and execution.browser.available)) else 'disabled title="Code execution is disabled on this deployment"' }}>Run</button>
     <span class="tiny muted">Ctrl+Enter to run. Compiled languages are really compiled by the judge;
       output below is the program's actual stdout/stderr.</span>
   </div>

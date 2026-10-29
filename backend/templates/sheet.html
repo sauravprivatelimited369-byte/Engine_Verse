@@ -60,7 +60,16 @@
   </div>
 </div>
 
-{% if not runnable_now %}
+{% if execution and execution.server.available %}
+<div class="callout mt"><span class="label">Runs on this server's judge</span>
+  Every problem on this sheet can be submitted and judged here. Judge: {{ execution.server.name }}.</div>
+{% elif execution and execution.browser.available %}
+<div class="callout mt"><span class="label">Runs in your browser</span>
+  This deployment has no server judge, so nothing you write is uploaded.
+  {{ execution.browser.languages | length }} of {{ execution.languages | length }} languages run locally in your own
+  browser after a one-off runtime download ({{ execution.browser.languages | join(', ') }}); the rest can still be
+  read with their examples and editorial.</div>
+{% elif not runnable_now %}
 <div class="callout warning mt"><span class="label">Code execution is off on this server</span>
   Submissions cannot be judged here right now. You can still read every problem, its examples and its editorial,
   and the pages keep your place. Ask the site operator to enable a judge.</div>

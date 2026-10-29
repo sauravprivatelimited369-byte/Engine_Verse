@@ -6,6 +6,7 @@ Every mutating endpoint requires a signed-in session plus the CSRF header.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
@@ -24,6 +25,7 @@ from engineverse import (
     coding,
     community,
     db,
+    feedback,
     judge,
     library,
     outcomes,
@@ -1299,6 +1301,68 @@ async def api_feedback(request: Request):
         flash(response, message)
         return response
     return ok(message=message)
+
+
+@router.post("/content/feedback")
+async def api_content_feedback(request: Request):
+    """Records "was this useful?" on a page. No identifiers, no account needed.
+
+    The audit wanted a way to see where students give up without a tracker.
+    This is the whole mechanism: a route, a verdict and an optional note.
+    Nothing that identifies a visitor is written, so an anonymous vote is
+    anonymous, and the endpoint is deliberately open to signed-out students
+    because the people who most need to be able to say "this is confusing" are
+    the ones without an account.
+    """
+    data = await payload(request)
+    path_value = text_field(data, "path", maximum=200, default="")
+    verdict = text_field(data, "verdict", maximum=20, default="")
+    kind = text_field(data, "kind", maximum=20, default="page")
+    detail = text_field(data, "detail", maximum=600, default="")
+
+    if verdict not in feedback.VERDICTS:
+        return fail("That is not a verdict we accept.", 400)
+
+    # Nothing about the caller is recorded - not the account, not the IP, not
+    # a browser key. The page hides the buttons once a vote is sent, which is
+    # enough to stop a double-click without tracking anyone.
+    #
+    # A vote is cheap to send and cheap to store, so a bored script could fill
+    # the table with noise. The limit is per caller and lives only in this
+    # process's memory: the key is a hash of the caller's session subject -
+    # the account session for a signed-in reader, the random CSRF cookie
+    # otherwise - so no IP address is read and nothing about the caller is
+    # written down anywhere.
+    from .deps import session_id as session_subject
+
+    subject = session_subject(request)
+    bucket = "feedback:" + hashlib.sha256(subject.encode("utf-8")).hexdigest()[:32]
+    allowance = ratelimit.check(bucket, 20, 3600)
+    if not allowance.allowed:
+        return ok(stored=False, message="Thanks - that is enough feedback for now.")
+
+    result = feedback.vote(path_value, verdict, kind=kind, detail=detail)
+    if not result.get("stored"):
+        return ok(stored=False, message="Not recorded. Thanks anyway.")
+    return ok(stored=True, message="Thanks — noted.")
+
+
+@router.get("/content/feedback/summary")
+async def api_content_feedback_summary(request: Request):
+    """Aggregated usefulness and traffic. Staff with analytics rights only."""
+    viewer = current_user(request)
+    if not viewer or not rbac.can(viewer.role, "analytics.view"):
+        return fail("Staff only.", 403)
+    days = 30
+    try:
+        days = max(1, min(int(request.query_params.get("days") or 30), 365))
+    except (TypeError, ValueError):
+        days = 30
+    return ok(
+        rows=feedback.summary(days=days),
+        low_rated=feedback.low_rated(days=days),
+        notes=feedback.recent_notes(),
+    )
 
 
 @router.get("/ops/judge")

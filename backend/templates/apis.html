@@ -50,7 +50,14 @@
 </article>
 {% endfor %}
 </div>
-<div class="empty" id="apis-empty" {{ 'hidden' if apis }}>No public APIs match all the selected filters. Try fewer filters or clear the slug.</div>
+<div class="empty" id="apis-empty" {{ 'hidden' if apis }}>
+  <strong>No public APIs match all the selected filters.</strong>
+  <p class="small muted" style="margin:6px 0 12px">Drop one filter, or clear the slug to see the whole directory.</p>
+  <div class="row" style="justify-content:center">
+    <a class="btn btn-soft btn-sm" href="/apis">All APIs</a>
+    <a class="btn btn-soft btn-sm" href="/resources">Full site index</a>
+  </div>
+</div>
 </section>
 <section class="section panel">
 <h2>Curated, not connected</h2>
