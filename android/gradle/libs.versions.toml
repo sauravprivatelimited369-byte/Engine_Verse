@@ -1,7 +1,7 @@
 # targetSdk stays 36 (Google Play's requirement from 31 Aug 2026) while
 # compileSdk is 37: these AndroidX releases fail AAR metadata checks below 37.
 [versions]
-agp = "9.4.1"
+agp = "9.5.0"
 kotlin = "2.4.21"
 composeBom = "2026.09.00"
 activityCompose = "1.12.4"
