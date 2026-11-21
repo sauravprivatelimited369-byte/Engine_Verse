@@ -1800,7 +1800,7 @@ def export(
     client = TestClient(app, follow_redirects=False)
     written = 0
     failed: list[str] = []
-    home_html = ""
+    study_shell = ""
     from engineverse import db as export_db
 
     dpp_dates = [
@@ -1824,7 +1824,7 @@ def export(
         if response.status_code != 200 or "text/html" not in response.headers.get("content-type", ""):
             failed.append(f"{path} -> {response.status_code}")
             continue
-        body = inject(
+        body = rewrite_html(response.text, base) if path == "/" else inject(
             response.text,
             base,
             search=(path == "/search"),
@@ -1858,11 +1858,12 @@ def export(
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(body, encoding="utf-8")
         written += 1
-        if path == "/":
-            home_html = body
+        # Generated study pages need the full Meridian shell, not the standalone atlas.
+        if path == "/explore":
+            study_shell = body
 
-    if not home_html:
-        raise SystemExit("Home page did not render. Nothing was published.")
+    if not study_shell:
+        raise SystemExit("Study shell did not render. Nothing was published.")
 
     from engineverse import catalog
 
@@ -1870,7 +1871,7 @@ def export(
     written += write_account_pages(
         site,
         base,
-        home_html,
+        study_shell,
         apk_url=effective_apk_url,
         branches=branch_list,
         macos_url=effective_macos_url,
@@ -1878,7 +1879,7 @@ def export(
     )
 
     hosting = fill_shell(
-        home_html,
+        study_shell,
         "Use Meridian",
         rewrite_html(
             hosting_main(
@@ -1907,7 +1908,7 @@ def export(
             assistant_url=assistant_url,
         )
         if missing.text
-        else home_html
+        else study_shell
     )
     (site / "404.html").write_text(not_found, encoding="utf-8")
 

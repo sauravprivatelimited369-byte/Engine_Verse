@@ -45,6 +45,7 @@ from engineverse import (
 from engineverse.config import get_settings
 from engineverse.security import phone_rules, rbac
 
+from .atlas import OBJECTS
 from .deps import current_user, render, require_user
 
 router = APIRouter()
@@ -365,6 +366,9 @@ def _plan_steps(featured_topics: list[dict]) -> list[dict]:
 @router.get("/")
 async def home(request: Request):
     viewer = current_user(request)
+    if not viewer:
+        return render(request, "home.html", objects=OBJECTS, branches=catalog.branch_groups())
+
     context = {
         "site": catalog.site_stats(),
         "branches": catalog.branch_groups(),
@@ -374,70 +378,27 @@ async def home(request: Request):
         "models_3d_count": int(db.scalar("SELECT count(*) AS c FROM models_3d") or 0),
         "diagrams_count": int(db.scalar("SELECT count(*) AS c FROM diagrams") or 0),
     }
-    if viewer:
-        context["dashboard"] = recommend.dashboard(viewer.id)
-        context["continue_learning"] = progress.continue_learning(viewer.id, 6)
-        # A mastery percentage on its own says nothing about what it means, so
-        # every card carries the band it falls in and what moves it up.
-        context["mastery_levels"] = {
-            item["slug"]: progress.mastery_level(item.get("mastery"))
-            for item in context["continue_learning"]
-        }
-        context["dpp"] = practice.dpp_with_context()
-        # The dashboard said "Roughly an hour" in hard type, which is a guess
-        # that the plan itself can answer. The plan's own steps size it, and
-        # the same helper the homepage uses answers it, so the two pages
-        # cannot disagree.
-        context["plan_minutes"] = plan_minutes()
-        # One query, and the dashboard can name the viewer's own stream with its
-        # real sizes instead of a generic "browse everything" link.
-        context["my_stream"] = next(
-            (row for row in hub.list_streams() if row["id"] == viewer.branch_id), None
-        )
-        context["dashboard_model"] = _dashboard_model(viewer.branch_id)
-        return render(request, "dashboard.html", **context)
-
-    featured_topics = _featured_topics(9)
-    sample_problems = coding.list_problems(limit=6)[0]
-    showcase_models = _curated_showcase_models()
-    hero_scene_json = models3d.scene_json(models3d.meridian_instrument_scene())
-    hero_model = {
-        "topic_slug": featured_topics[0]["slug"] if featured_topics else "",
-        "topic_title": featured_topics[0]["title"] if featured_topics else "Explore catalogue",
-        "subject_name": "Meridian Reference Instrument",
-        "tab_label": "Meridian Ring",
-        "discipline": "Navigation & Reference",
-        "title": "The Meridian Armillary — position, bearing and verification",
-        "caption": "Orthogonal meridian rings fix coordinates in 3D space; the emerald signal marks your active topic on the prime meridian while the vector triad resolves concept, practice and spaced review.",
-        "scene_json": hero_scene_json,
+    context["dashboard"] = recommend.dashboard(viewer.id)
+    context["continue_learning"] = progress.continue_learning(viewer.id, 6)
+    # A mastery percentage on its own says nothing about what it means, so
+    # every card carries the band it falls in and what moves it up.
+    context["mastery_levels"] = {
+        item["slug"]: progress.mastery_level(item.get("mastery"))
+        for item in context["continue_learning"]
     }
-    demo_problem = coding.get_problem("two-sum")
-    if not demo_problem and sample_problems:
-        demo_problem = coding.get_problem(sample_problems[0]["slug"])
-
-    context["featured_topics"] = featured_topics
-    context["sample_problems"] = sample_problems
-    context["sample_projects"] = projects.list_projects(limit=3)
-    context["paths"] = catalog.featured_paths()
-    context["first_year"] = catalog.list_subjects(first_year=True, limit=200)
-    context["hero_model"] = hero_model
-    context["showcase_models"] = showcase_models
-    context["demo_topic"] = _demo_topic_depths(featured_topics[0].get("slug") if featured_topics else None)
-    context["demo_questions"] = _demo_questions()
-    context["demo_flashcards"] = _demo_flashcards()
-    context["demo_problem"] = demo_problem
-    # What this deployment can actually execute. The homepage used to claim
-    # "real compilers and real test cases across N languages" whatever the
-    # host could do, which is exactly the mismatch a student hits on the
-    # compiler page.
-    context["execution"] = execution.capabilities()
-    # The four-step plan, with its real length. The page used to say "about 65
-    # minutes" while the four steps it listed added up to 80, so a student
-    # planning a session had two different answers and no way to tell which
-    # was the real one. The total is now computed from the steps.
-    context["plan_steps"] = _plan_steps(featured_topics)
-    context["plan_minutes"] = sum(step["minutes"] for step in context["plan_steps"])
-    return render(request, "home.html", **context)
+    context["dpp"] = practice.dpp_with_context()
+    # The dashboard said "Roughly an hour" in hard type, which is a guess
+    # that the plan itself can answer. The plan's own steps size it, and
+    # the same helper the homepage uses answers it, so the two pages
+    # cannot disagree.
+    context["plan_minutes"] = plan_minutes()
+    # One query, and the dashboard can name the viewer's own stream with its
+    # real sizes instead of a generic "browse everything" link.
+    context["my_stream"] = next(
+        (row for row in hub.list_streams() if row["id"] == viewer.branch_id), None
+    )
+    context["dashboard_model"] = _dashboard_model(viewer.branch_id)
+    return render(request, "dashboard.html", **context)
 
 
 @router.get("/dashboard")
